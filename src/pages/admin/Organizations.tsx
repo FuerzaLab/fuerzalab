@@ -179,9 +179,10 @@ function DeleteOrgModal({ org, onClose, onDeleted }: { org: OrganizationRow; onC
         <p className="note">Comprobando…</p>
       ) : blocked ? (
         <p>
-          Esta organización todavía tiene <b>{memberCount}</b> {memberCount === 1 ? "persona" : "personas"} (entrenadores,
-          staff o clientes). No se puede eliminar mientras tenga gente adentro — primero desactívalos o muévelos a otra
-          organización.
+          Esta organización todavía tiene <b>{memberCount}</b> {memberCount === 1 ? "persona" : "personas"} con perfil
+          aquí (entrenadores, staff o clientes), estén activos o no. Desactivarlos bloquea su acceso, pero no alcanza
+          para poder eliminar la organización: la base de datos protege la organización mientras exista cualquier
+          perfil que le pertenezca. Para liberarla necesitarías mover esos perfiles a otra organización.
         </p>
       ) : (
         <>

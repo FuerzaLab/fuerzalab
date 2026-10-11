@@ -50,7 +50,13 @@ export async function toggleOrganizationStatus(id: string, status: "active" | "s
   if (error) throw error;
 }
 
-/** Cuántos entrenadores/staff/clientes tiene la organización — sirve para no dejar borrar una que todavía tiene gente. */
+/**
+ * Cuántos perfiles (entrenadores, staff o clientes) tienen esta
+ * organización asignada, ACTIVOS o NO. La base de datos protege la
+ * organización mientras exista cualquier perfil apuntando a ella —
+ * desactivar a alguien no quita esa referencia, así que no alcanza
+ * para poder eliminar la organización después.
+ */
 export async function countOrganizationMembers(id: string): Promise<number> {
   const { count, error } = await supabase
     .from("profiles")
