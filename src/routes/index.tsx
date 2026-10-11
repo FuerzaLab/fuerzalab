@@ -20,6 +20,8 @@ import ClientDashboard from "../pages/client/Dashboard";
 import ClientsList from "../pages/trainer/clients/ClientsList";
 import ClientDetail from "../pages/trainer/clients/ClientDetail";
 import ExercisesPage from "../pages/shared/exercises/ExercisesPage";
+import ProgramsPage from "../pages/trainer/programs/ProgramsPage";
+import BuilderPage from "../pages/trainer/builder/BuilderPage";
 
 import { paths } from "./paths";
 
@@ -58,8 +60,8 @@ export default function AppRoutes() {
             <Route path={paths.trainerClientDetailPattern} element={<ClientDetail />} />
             <Route path={paths.trainerExercises} element={<ExercisesPage scope="trainer" />} />
             <Route path={paths.trainerTemplates} element={<ComingSoon title="Plantillas" />} />
-            <Route path={paths.trainerPrograms} element={<ComingSoon title="Planificación" />} />
-            <Route path={paths.trainerBuilder} element={<ComingSoon title="Constructor de rutinas" />} />
+            <Route path={paths.trainerPrograms} element={<ProgramsPage />} />
+            <Route path={paths.trainerBuilder} element={<BuilderPage />} />
             <Route path={paths.trainerTracking} element={<ComingSoon title="Seguimiento" />} />
             <Route path={paths.trainerAnalytics} element={<ComingSoon title="Analytics" />} />
             <Route path={paths.trainerSuggestions} element={<ComingSoon title="Sugerencias" />} />
