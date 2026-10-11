@@ -60,8 +60,10 @@ export default function ClientPayments() {
             <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 14.5 }}>
               <thead>
                 <tr style={{ textAlign: "left", color: "var(--muted)", fontSize: 13 }}>
+                  <th style={{ padding: "10px 16px" }}>Plan</th>
                   <th style={{ padding: "10px 16px" }}>Monto</th>
                   <th style={{ padding: "10px 16px" }}>Vencimiento</th>
+                  <th style={{ padding: "10px 16px" }}>Fecha de pago</th>
                   <th style={{ padding: "10px 16px" }}>Estado</th>
                   <th style={{ padding: "10px 16px" }}>Comprobante</th>
                 </tr>
@@ -69,8 +71,10 @@ export default function ClientPayments() {
               <tbody>
                 {payments.map((p) => (
                   <tr key={p.id} style={{ borderTop: "1px solid var(--line)" }}>
+                    <td style={{ padding: "11px 16px" }}>{p.plan_name ?? <span className="note">Sin plan</span>}</td>
                     <td style={{ padding: "11px 16px" }}>{p.currency} {p.amount.toLocaleString("es")}</td>
                     <td style={{ padding: "11px 16px" }}>{new Date(p.due_date).toLocaleDateString("es")}</td>
+                    <td style={{ padding: "11px 16px" }}>{p.paid_at ? new Date(p.paid_at).toLocaleDateString("es") : <span className="note">—</span>}</td>
                     <td style={{ padding: "11px 16px" }}><Chip tone={STATUS_TONE[p.status]}>{STATUS_LABEL[p.status]}</Chip></td>
                     <td style={{ padding: "11px 16px" }}>
                       {p.receipt_path ? (
@@ -95,7 +99,7 @@ export default function ClientPayments() {
                   </tr>
                 ))}
                 {payments.length === 0 && (
-                  <tr><td colSpan={4} className="note" style={{ padding: 16 }}>Todavía no hay pagos registrados.</td></tr>
+                  <tr><td colSpan={6} className="note" style={{ padding: 16 }}>Todavía no hay pagos registrados.</td></tr>
                 )}
               </tbody>
             </table>

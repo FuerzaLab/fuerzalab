@@ -26,6 +26,30 @@ export interface PaymentRow {
   receipt_path: string | null;
   notes: string | null;
   created_at: string;
+  plan_name: string | null;
+}
+
+/** Vincula al cliente con un plan (una suscripción) para que el pago quede asociado a él. */
+export async function subscribeClientToPlan(params: {
+  organizationId: string;
+  trainerId: string;
+  clientId: string;
+  planId: string;
+  dueDate: string;
+}): Promise<string> {
+  const { data, error } = await supabase
+    .from("client_plans")
+    .insert({
+      organization_id: params.organizationId,
+      trainer_id: params.trainerId,
+      client_id: params.clientId,
+      plan_id: params.planId,
+      due_date: params.dueDate,
+    })
+    .select("id")
+    .single();
+  if (error) throw error;
+  return data.id as string;
 }
 
 export async function listPaymentPlans(): Promise<PaymentPlanRow[]> {
@@ -65,12 +89,17 @@ export async function createPaymentPlan(params: {
 export async function listPayments(clientId?: string): Promise<PaymentRow[]> {
   let q = supabase
     .from("payments")
-    .select("id, client_id, client_plan_id, amount, currency, due_date, paid_at, method, status, receipt_path, notes, created_at")
+    .select(
+      "id, client_id, client_plan_id, amount, currency, due_date, paid_at, method, status, receipt_path, notes, created_at, client_plans(payment_plans(name))"
+    )
     .order("due_date", { ascending: false });
   if (clientId) q = q.eq("client_id", clientId);
   const { data, error } = await q;
   if (error) throw error;
-  return (data ?? []) as PaymentRow[];
+  return (data ?? []).map((row: any) => ({
+    ...row,
+    plan_name: row.client_plans?.payment_plans?.name ?? null,
+  })) as PaymentRow[];
 }
 
 export async function createPayment(params: {
@@ -82,6 +111,7 @@ export async function createPayment(params: {
   status: PaymentStatus;
   method: PaymentMethod | null;
   notes: string;
+  clientPlanId?: string | null;
 }): Promise<PaymentRow> {
   const { data, error } = await supabase
     .from("payments")
@@ -89,6 +119,7 @@ export async function createPayment(params: {
       organization_id: params.organizationId,
       trainer_id: params.trainerId,
       client_id: params.clientId,
+      client_plan_id: params.clientPlanId ?? null,
       amount: params.amount,
       due_date: params.dueDate,
       status: params.status,
@@ -96,10 +127,10 @@ export async function createPayment(params: {
       notes: params.notes || null,
       paid_at: params.status === "paid" ? new Date().toISOString() : null,
     })
-    .select()
+    .select("id, client_id, client_plan_id, amount, currency, due_date, paid_at, method, status, receipt_path, notes, created_at, client_plans(payment_plans(name))")
     .single();
   if (error) throw error;
-  return data as PaymentRow;
+  return { ...(data as any), plan_name: (data as any).client_plans?.payment_plans?.name ?? null } as PaymentRow;
 }
 
 export async function markPaymentPaid(id: string): Promise<void> {

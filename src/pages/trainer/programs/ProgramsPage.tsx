@@ -273,7 +273,7 @@ export default function ProgramsPage() {
                         <b style={{ display: "block", fontFamily: "'Barlow Condensed',sans-serif", fontSize: 20 }}>
                           {program.method === "atr" ? m.phase[0].toUpperCase() : m.name}
                         </b>
-                        <span style={{ fontSize: 12 }}>{m.name} {m.duration_weeks ?? 0} sem.</span>
+                        <span style={{ fontSize: 12 }}>Duración: {m.duration_weeks ?? 0} semana{(m.duration_weeks ?? 0) === 1 ? "" : "s"}</span>
                       </button>
                     ))}
                   </div>

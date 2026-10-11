@@ -1,10 +1,12 @@
 import { useEffect, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { Plus, Check, ExternalLink } from "lucide-react";
 import { useAuth } from "../../../contexts/AuthContext";
 import { useToast } from "../../../contexts/ToastContext";
 import Modal from "../../../components/ui/Modal";
 import Chip from "../../../components/ui/Chip";
-import { listClients, type ClientRow } from "../../../services/clients";
+import { listClients, type ClientRow, type ClientStatus } from "../../../services/clients";
+import { paths } from "../../../routes/paths";
 import {
   listPaymentPlans,
   createPaymentPlan,
@@ -12,6 +14,7 @@ import {
   createPayment,
   markPaymentPaid,
   getReceiptUrl,
+  subscribeClientToPlan,
   type PaymentPlanRow,
   type PaymentRow,
   type PaymentStatus,
@@ -20,10 +23,13 @@ import {
 
 const STATUS_LABEL: Record<PaymentStatus, string> = { pending: "Pendiente", paid: "Pagado", cancelled: "Cancelado" };
 const STATUS_TONE: Record<PaymentStatus, "warn" | "ok" | "bad"> = { pending: "warn", paid: "ok", cancelled: "bad" };
+const CLIENT_STATUS_LABEL: Record<ClientStatus, string> = { prospect: "Prospecto", active: "Activo", paused: "En pausa", archived: "Dado de baja" };
+const CLIENT_STATUS_TONE: Record<ClientStatus, "ok" | "warn" | "bad" | ""> = { prospect: "", active: "ok", paused: "warn", archived: "bad" };
 
 export default function PaymentsPage() {
   const { profile } = useAuth();
   const { notify } = useToast();
+  const navigate = useNavigate();
   const [clients, setClients] = useState<ClientRow[]>([]);
   const [plans, setPlans] = useState<PaymentPlanRow[]>([]);
   const [payments, setPayments] = useState<PaymentRow[]>([]);
@@ -60,7 +66,10 @@ export default function PaymentsPage() {
   return (
     <div className="page">
       <div style={{ display: "flex", flexWrap: "wrap", justifyContent: "space-between", gap: 12, marginBottom: 20 }}>
-        <h1>Pagos</h1>
+        <div>
+          <h1 style={{ marginBottom: 4 }}>Pagos</h1>
+          <p className="note">Toca el nombre de un cliente para abrir su ficha y suspenderlo o darlo de baja.</p>
+        </div>
         <div style={{ display: "flex", gap: 8 }}>
           <button className="btn ghost" onClick={() => setShowNewPlan(true)}><Plus size={16} /> Nuevo plan</button>
           <button className="btn" onClick={() => setShowNewPayment(true)}><Plus size={16} /> Registrar pago</button>
@@ -87,8 +96,10 @@ export default function PaymentsPage() {
               <thead>
                 <tr style={{ textAlign: "left", color: "var(--muted)", fontSize: 13 }}>
                   <th style={{ padding: "10px 16px" }}>Cliente</th>
+                  <th style={{ padding: "10px 16px" }}>Plan</th>
                   <th style={{ padding: "10px 16px" }}>Monto</th>
                   <th style={{ padding: "10px 16px" }}>Vencimiento</th>
+                  <th style={{ padding: "10px 16px" }}>Fecha de pago</th>
                   <th style={{ padding: "10px 16px" }}>Estado</th>
                   <th style={{ padding: "10px 16px" }}>Comprobante</th>
                   <th style={{ padding: "10px 16px" }} />
@@ -97,9 +108,22 @@ export default function PaymentsPage() {
               <tbody>
                 {payments.map((p) => (
                   <tr key={p.id} style={{ borderTop: "1px solid var(--line)" }}>
-                    <td style={{ padding: "11px 16px" }}>{clientName(p.client_id)}</td>
+                    <td style={{ padding: "11px 16px" }}>
+                      <button
+                        onClick={() => navigate(paths.trainerClientDetail(p.client_id))}
+                        style={{ border: 0, background: "none", padding: 0, cursor: "pointer", textAlign: "left", color: "inherit", font: "inherit" }}
+                      >
+                        <b>{clientName(p.client_id)}</b>
+                      </button>
+                      {(() => {
+                        const c = clients.find((c) => c.id === p.client_id);
+                        return c ? <div><Chip tone={CLIENT_STATUS_TONE[c.status]}>{CLIENT_STATUS_LABEL[c.status]}</Chip></div> : null;
+                      })()}
+                    </td>
+                    <td style={{ padding: "11px 16px" }}>{p.plan_name ?? <span className="note">Sin plan</span>}</td>
                     <td style={{ padding: "11px 16px" }}>{p.currency} {p.amount.toLocaleString("es")}</td>
                     <td style={{ padding: "11px 16px" }}>{new Date(p.due_date).toLocaleDateString("es")}</td>
+                    <td style={{ padding: "11px 16px" }}>{p.paid_at ? new Date(p.paid_at).toLocaleDateString("es") : <span className="note">—</span>}</td>
                     <td style={{ padding: "11px 16px" }}><Chip tone={STATUS_TONE[p.status]}>{STATUS_LABEL[p.status]}</Chip></td>
                     <td style={{ padding: "11px 16px" }}>
                       {p.receipt_path ? (
@@ -132,7 +156,7 @@ export default function PaymentsPage() {
                   </tr>
                 ))}
                 {payments.length === 0 && (
-                  <tr><td colSpan={6} className="note" style={{ padding: 16 }}>Todavía no hay pagos registrados.</td></tr>
+                  <tr><td colSpan={8} className="note" style={{ padding: 16 }}>Todavía no hay pagos registrados.</td></tr>
                 )}
               </tbody>
             </table>
@@ -269,6 +293,10 @@ function NewPaymentModal({
     setError("");
     setSaving(true);
     try {
+      let clientPlanId: string | undefined;
+      if (planId) {
+        clientPlanId = await subscribeClientToPlan({ organizationId, trainerId, clientId, planId, dueDate });
+      }
       onCreated(
         await createPayment({
           organizationId,
@@ -279,6 +307,7 @@ function NewPaymentModal({
           status,
           method: (method || null) as PaymentMethod | null,
           notes,
+          clientPlanId,
         })
       );
     } catch (e: any) {
