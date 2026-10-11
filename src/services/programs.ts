@@ -201,6 +201,30 @@ export async function updateProgramName(id: string, name: string): Promise<void>
   if (error) throw error;
 }
 
+export async function deleteProgram(id: string): Promise<void> {
+  const { error } = await supabase.from("programs").delete().eq("id", id);
+  if (error) throw error;
+}
+
+/**
+ * Agrega más semanas al final del programa (solo permite alargarlo, nunca
+ * acortarlo): acortar borraría semanas que ya podrían tener rutinas
+ * armadas en el Constructor, así que esa operación no está disponible —
+ * si hace falta un programa más corto, conviene crear uno nuevo.
+ */
+export async function extendProgramWeeks(programId: string, newTotal: number): Promise<void> {
+  const current = await listWeeks(programId);
+  if (newTotal <= current.length) {
+    throw new Error(`La nueva duración debe ser mayor a las ${current.length} semanas actuales.`);
+  }
+  const toAdd = Array.from({ length: newTotal - current.length }, (_, i) => ({
+    program_id: programId,
+    week_number: current.length + i + 1,
+  }));
+  const { error } = await supabase.from("weeks").insert(toAdd);
+  if (error) throw error;
+}
+
 export async function updateMesocycle(id: string, fields: Partial<MesocycleRow>): Promise<void> {
   const { error } = await supabase.from("mesocycles").update(fields).eq("id", id);
   if (error) throw error;

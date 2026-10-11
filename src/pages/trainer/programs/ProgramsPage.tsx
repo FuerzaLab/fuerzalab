@@ -1,8 +1,9 @@
 import { useEffect, useMemo, useState } from "react";
-import { Plus, Copy } from "lucide-react";
+import { Plus, Copy, X } from "lucide-react";
 import { useAuth } from "../../../contexts/AuthContext";
 import { useToast } from "../../../contexts/ToastContext";
 import Modal from "../../../components/ui/Modal";
+import ConfirmModal from "../../../components/ui/ConfirmModal";
 import Chip from "../../../components/ui/Chip";
 import { listClients, type ClientRow } from "../../../services/clients";
 import {
@@ -10,10 +11,13 @@ import {
   listMesocycles,
   listWeeks,
   createProgram,
+  updateProgramName,
   updateMesocycle,
   addMesocycle,
   removeMesocycle,
   duplicateMesocycle,
+  deleteProgram,
+  extendProgramWeeks,
   syncWeekBlocks,
   METHOD_LABEL,
   type ProgramRow,
@@ -42,6 +46,9 @@ export default function ProgramsPage() {
   const [selMeso, setSelMeso] = useState(0);
   const [showNew, setShowNew] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [deleteTarget, setDeleteTarget] = useState<ProgramRow | null>(null);
+  const [extendValue, setExtendValue] = useState("");
+  const [extending, setExtending] = useState(false);
 
   useEffect(() => {
     listClients().then(setClients).catch((e) => notify(e.message));
@@ -147,25 +154,90 @@ export default function ProgramsPage() {
       {programs.length > 0 && (
         <div style={{ display: "flex", flexWrap: "wrap", gap: 6, marginBottom: 16 }}>
           {programs.map((p) => (
-            <button
+            <span
               key={p.id}
-              onClick={() => setProgramId(p.id)}
               className="chip"
               style={{
-                cursor: "pointer",
+                display: "inline-flex",
+                alignItems: "center",
+                gap: 6,
                 border: "1px solid var(--line)",
                 background: p.id === programId ? "var(--pri)" : "#fff",
                 color: p.id === programId ? "#fff" : "var(--muted)",
+                paddingRight: 6,
               }}
             >
-              {p.name}
-            </button>
+              <button onClick={() => setProgramId(p.id)} style={{ border: 0, background: "none", color: "inherit", cursor: "pointer", font: "inherit" }}>
+                {p.name}
+              </button>
+              <button
+                aria-label={`Eliminar ${p.name}`}
+                onClick={() => setDeleteTarget(p)}
+                style={{ border: 0, background: "none", color: "inherit", opacity: 0.75, cursor: "pointer", display: "inline-flex" }}
+              >
+                <X size={12} />
+              </button>
+            </span>
           ))}
         </div>
       )}
 
       {program && (
         <>
+          <div className="panel" style={{ marginBottom: 18 }}>
+            <div className="hd"><h3>Datos del programa</h3></div>
+            <div className="bd">
+              <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(200px,1fr))", gap: 14, marginBottom: 14 }}>
+                <div>
+                  <label className="field-label">Nombre del programa</label>
+                  <input
+                    className="input"
+                    value={program.name}
+                    onChange={(e) => setPrograms((ps) => ps.map((p) => (p.id === program.id ? { ...p, name: e.target.value } : p)))}
+                    onBlur={async (e) => {
+                      if (!e.target.value.trim()) return;
+                      await updateProgramName(program.id, e.target.value.trim());
+                    }}
+                  />
+                </div>
+                <div>
+                  <label className="field-label">Cliente</label>
+                  <div className="input" style={{ background: "var(--bg)", color: "var(--muted)" }}>
+                    {clients.find((c) => c.id === clientId)?.full_name ?? ""}
+                  </div>
+                </div>
+              </div>
+              <label className="field-label">Duración actual: {totalWeeks} semanas</label>
+              <p className="note" style={{ marginBottom: 10 }}>
+                Solo puedes alargar el programa, nunca acortarlo: reducirlo podría borrar semanas que ya tengan rutinas armadas en el Constructor. Si necesitas uno más corto, crea un programa nuevo.
+              </p>
+              <div style={{ display: "flex", gap: 8, alignItems: "flex-end", flexWrap: "wrap" }}>
+                <div>
+                  <label className="field-label">Nueva duración total (semanas)</label>
+                  <input className="input" style={{ maxWidth: 110 }} inputMode="numeric" value={extendValue} onChange={(e) => setExtendValue(e.target.value.replace(/\D/g, ""))} placeholder={String(totalWeeks)} />
+                </div>
+                <button
+                  className="btn ghost"
+                  disabled={extending || !extendValue || Number(extendValue) <= totalWeeks}
+                  onClick={async () => {
+                    setExtending(true);
+                    try {
+                      await extendProgramWeeks(program.id, Number(extendValue));
+                      await loadProgramDetail(program.id);
+                      setExtendValue("");
+                      notify(`Programa extendido a ${extendValue} semanas.`);
+                    } catch (e: any) {
+                      notify(e.message);
+                    }
+                    setExtending(false);
+                  }}
+                >
+                  Extender
+                </button>
+              </div>
+            </div>
+          </div>
+
           <div className="panel" style={{ marginBottom: 18 }}>
             <div className="hd">
               <h3>Método de periodización</h3>
@@ -236,8 +308,13 @@ export default function ProgramsPage() {
                       <button
                         className="btn ghost"
                         onClick={async () => {
+                          const remaining = totalWeeks - assignedWeeks;
+                          if (remaining <= 0) {
+                            notify(`Ya asignaste las ${totalWeeks} semanas del programa entre los bloques existentes. Reduce la duración de otro bloque, o extiende la duración total, antes de añadir uno nuevo.`);
+                            return;
+                          }
                           const macro = mesos[0];
-                          const created = await addMesocycle(program.id, macro.macrocycle_id, mesos.length, Math.max(1, totalWeeks - assignedWeeks) || 1);
+                          const created = await addMesocycle(program.id, macro.macrocycle_id, mesos.length, remaining);
                           setMesos((ms) => [...ms, created]);
                           setSelMeso(mesos.length);
                           notify("Bloque añadido. Complétalo abajo.");
@@ -275,9 +352,21 @@ export default function ProgramsPage() {
                   <button
                     className="btn ghost"
                     onClick={async () => {
+                      const remaining = totalWeeks - assignedWeeks;
+                      if (remaining <= 0) {
+                        notify(`Ya asignaste las ${totalWeeks} semanas del programa entre los bloques existentes. Reduce la duración de otro bloque, o extiende la duración total, antes de duplicar uno.`);
+                        return;
+                      }
                       const created = await duplicateMesocycle(program.id, meso, mesos.length);
+                      if ((created.duration_weeks ?? 0) > remaining) {
+                        await updateMesocycle(created.id, { duration_weeks: remaining });
+                        await syncWeekBlocks(program.id);
+                        created.duration_weeks = remaining;
+                        notify(`Bloque duplicado. Solo quedaban ${remaining} semanas libres, así que se ajustó su duración a eso — revísala.`);
+                      } else {
+                        notify("Bloque duplicado. Ajusta lo que cambie.");
+                      }
                       setMesos((ms) => [...ms, created]);
-                      notify("Bloque duplicado. Ajusta lo que cambie.");
                     }}
                   >
                     <Copy size={14} /> Duplicar bloque
@@ -340,6 +429,24 @@ export default function ProgramsPage() {
             await loadPrograms(clientId);
             setProgramId(p.id);
             notify(`Programa "${p.name}" creado.`);
+          }}
+        />
+      )}
+
+      {deleteTarget && (
+        <ConfirmModal
+          title="Eliminar programa"
+          message={`¿Eliminar "${deleteTarget.name}"? Se borran también sus fases o bloques y, si ya armaste rutinas para alguna de sus semanas en el Constructor, se pierden con él. Esta acción no se puede deshacer.`}
+          confirmLabel="Eliminar programa"
+          danger
+          onClose={() => setDeleteTarget(null)}
+          onConfirm={async () => {
+            await deleteProgram(deleteTarget.id);
+            const rest = programs.filter((p) => p.id !== deleteTarget.id);
+            setPrograms(rest);
+            if (programId === deleteTarget.id) setProgramId(rest[0]?.id ?? "");
+            setDeleteTarget(null);
+            notify(`Programa "${deleteTarget.name}" eliminado.`);
           }}
         />
       )}
