@@ -14,6 +14,8 @@ export const paths = {
 
   trainerDashboard: "/t",
   trainerClients: "/t/clientes",
+  trainerClientDetailPattern: "/t/clientes/:id",
+  trainerClientDetail: (id: string) => `/t/clientes/${id}`,
   trainerExercises: "/t/ejercicios",
   trainerTemplates: "/t/plantillas",
   trainerPrograms: "/t/programas",

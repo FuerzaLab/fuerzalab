@@ -17,6 +17,9 @@ import ComingSoon from "../pages/shared/ComingSoon";
 import AdminDashboard from "../pages/admin/Dashboard";
 import TrainerDashboard from "../pages/trainer/Dashboard";
 import ClientDashboard from "../pages/client/Dashboard";
+import ClientsList from "../pages/trainer/clients/ClientsList";
+import ClientDetail from "../pages/trainer/clients/ClientDetail";
+import ExercisesPage from "../pages/shared/exercises/ExercisesPage";
 
 import { paths } from "./paths";
 
@@ -42,7 +45,7 @@ export default function AppRoutes() {
             <Route path={paths.adminDashboard} element={<AdminDashboard />} />
             <Route path={paths.adminOrgs} element={<ComingSoon title="Organizaciones" />} />
             <Route path={paths.adminUsers} element={<ComingSoon title="Usuarios" />} />
-            <Route path={paths.adminExercises} element={<ComingSoon title="Ejercicios globales" />} />
+            <Route path={paths.adminExercises} element={<ExercisesPage scope="global" />} />
             <Route path={paths.adminSettings} element={<ComingSoon title="Configuración" />} />
           </Route>
         </Route>
@@ -51,8 +54,9 @@ export default function AppRoutes() {
         <Route element={<RequireRole allow={["trainer", "staff"]} />}>
           <Route element={<AppLayout />}>
             <Route path={paths.trainerDashboard} element={<TrainerDashboard />} />
-            <Route path={paths.trainerClients} element={<ComingSoon title="Clientes" />} />
-            <Route path={paths.trainerExercises} element={<ComingSoon title="Ejercicios" />} />
+            <Route path={paths.trainerClients} element={<ClientsList />} />
+            <Route path={paths.trainerClientDetailPattern} element={<ClientDetail />} />
+            <Route path={paths.trainerExercises} element={<ExercisesPage scope="trainer" />} />
             <Route path={paths.trainerTemplates} element={<ComingSoon title="Plantillas" />} />
             <Route path={paths.trainerPrograms} element={<ComingSoon title="Planificación" />} />
             <Route path={paths.trainerBuilder} element={<ComingSoon title="Constructor de rutinas" />} />

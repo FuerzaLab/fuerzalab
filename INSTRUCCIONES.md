@@ -10,6 +10,8 @@ No hace falta saber programar para estos pasos. Son dos partes: primero Supabase
 
 3. Abre el archivo `supabase_setup.sql` que viene en esta carpeta, copia **todo** su contenido, pégalo ahí, y presiona **Run**. Esto crea automáticamente todas las tablas, los permisos y las reglas de seguridad. Puede tardar unos segundos. Si ves un mensaje de éxito al final, ya está.
 
+3.1. Repite lo mismo con el archivo `catalog_seed.sql`: **New query**, pega todo su contenido, **Run**. Este carga una lista inicial de grupos musculares, patrones de movimiento y equipamiento en español, para que los desplegables al crear un ejercicio no aparezcan vacíos. Es opcional pero muy recomendado — sin esto, igual puedes crear ejercicios, solo que sin esas listas.
+
 4. En el menú de la izquierda, entra a **Authentication > Users** y presiona **Add user > Create new user**. Pon tu correo y una contraseña. **No marques ninguna casilla especial.** Esta va a ser tu cuenta de administrador — el sistema la reconoce automáticamente como tal porque es la primera cuenta que se crea.
 
 5. Todavía en Supabase, ve a **Storage** y crea dos buckets (botón **New bucket**):
@@ -55,15 +57,16 @@ No hace falta saber programar para estos pasos. Son dos partes: primero Supabase
 
 ## Qué hace falta para crear más usuarios
 
-Desde dentro de la aplicación, no desde Supabase: el administrador invita entrenadores, y cada entrenador invita a sus clientes. Esa pantalla de invitaciones se conecta en la próxima entrega de este proyecto (todavía no está activa en esta versión).
+Un entrenador ya puede invitar clientes desde dentro de la aplicación (pantalla "Clientes" → "Invitar cliente"), sin volver a Supabase. Lo que todavía no está conectado es que el administrador invite entrenadores — esa pantalla llega en la próxima entrega.
 
 ## Qué es real en esta entrega y qué todavía no
 
-**Ya funciona de verdad**, contra tu base de datos:
-- Iniciar sesión y cerrar sesión.
-- Registrarse con un código de invitación.
-- Recuperar la contraseña.
+**Ya funciona de verdad**, contra tu base de datos real (no simulado):
+- Iniciar sesión, cerrar sesión, recuperar contraseña.
+- Registrarse con un código de invitación (el formulario te confirma a qué organización te unes antes de completar el resto).
 - El menú y las pantallas cambian según el rol (Super Admin, Entrenador, Cliente).
-- El panel de Super Admin ya consulta datos reales de tu base de datos (cuenta organizaciones y entrenadores).
+- El panel de Super Admin consulta datos reales de tu Supabase (cuenta organizaciones y entrenadores en vivo).
+- **Clientes** (entrenador): lista con búsqueda y filtros, invitar cliente (crea la ficha y un código real para que se registre), ficha de datos y salud editable, suspender, reactivar y dar de baja — todo escribiendo en tu base de datos real.
+- **Ejercicios**: biblioteca compartida entre Super Admin (ejercicios globales) y Entrenador (los suyos propios), con filtro por tren del cuerpo, búsqueda, y formulario para crear ejercicios nuevos con grupo muscular, patrón de movimiento, equipamiento y objetivos. Sin fotos ni videos todavía, como se definió.
 
-**Todavía no está conectado** (vas a ver una pantalla de "este módulo todavía no está conectado" si entras): Clientes, Ejercicios, Constructor de rutinas, Planificación, Pagos, Reportes, Mensajes, y el resto de las pantallas que ya viste en la vista previa. Esas llegan en las siguientes dos entregas, como acordamos.
+**Todavía no está conectado** (vas a ver una pantalla de "este módulo todavía no está conectado" si entras): Constructor de rutinas, Planificación, Pagos, Reportes, Mensajes, formulario de ingreso del cliente, fotos de progreso, y el resto de las pantallas que ya viste en la vista previa. El Constructor y Planificación necesitan, además, dos columnas nuevas en la base de datos (para zona de frecuencia cardíaca y tipo de fuerza) que no estaban en el script original — te las traigo junto con esas pantallas en la próxima entrega, con su propio script corto para pegar una sola vez.

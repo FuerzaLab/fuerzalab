@@ -2013,45 +2013,24 @@ create index if not exists idx_assess_history   on public.assessments (client_id
 create index if not exists idx_alerts_open      on public.alerts (trainer_id, status);
 create index if not exists idx_exercises_name   on public.exercises using gin (to_tsvector('spanish', name));
 
--- Permisos de ejecución: denegar por defecto y conceder solo funciones
--- utilizadas por las políticas RLS o RPC explícitamente necesarias.
--- Las funciones de trigger se ejecutan por medio de sus triggers; no necesitan
--- exponerse como RPC a los clientes.
+-- Permisos de ejecución: nada para anon, salvo check_invitation.
+-- Las funciones de trigger y de mantenimiento no son invocables por RPC.
 do $$
 declare r record;
 begin
   for r in
-    select p.oid::regprocedure as sig
-    from pg_proc p
-    join pg_namespace n on n.oid = p.pronamespace
+    select p.oid::regprocedure as sig, p.proname, (p.prorettype = 'trigger'::regtype) as is_trigger
+    from pg_proc p join pg_namespace n on n.oid = p.pronamespace
     where n.nspname = 'public' and p.prokind = 'f'
   loop
     execute format('revoke all on function %s from public, anon, authenticated', r.sig);
+    if r.proname = 'check_invitation' then
+      execute format('grant execute on function %s to anon, authenticated', r.sig);
+    elsif not r.is_trigger and r.proname <> 'refresh_log_metrics' then
+      execute format('grant execute on function %s to authenticated', r.sig);
+    end if;
   end loop;
 end $$;
-
--- Funciones auxiliares necesarias para evaluar políticas RLS.
-grant execute on function public.auth_role() to authenticated;
-grant execute on function public.auth_org() to authenticated;
-grant execute on function public.is_super_admin() to authenticated;
-grant execute on function public.my_client_id() to authenticated;
-grant execute on function public.my_trainer_id() to authenticated;
-grant execute on function public.is_trainer_scope(uuid, uuid) to authenticated;
-grant execute on function public.is_own_client(uuid, uuid) to authenticated;
-grant execute on function public.staff_can(uuid, text, text) to authenticated;
-grant execute on function public.can_see_profile(uuid) to authenticated;
-grant execute on function public.program_published(uuid) to authenticated;
-grant execute on function public.is_self_report(uuid) to authenticated;
-grant execute on function public.log_editable(uuid) to authenticated;
-grant execute on function public.safe_uuid(text) to authenticated;
-grant execute on function public.exercise_writable(text, uuid, uuid) to authenticated;
-grant execute on function public.storage_client_access(text, uuid, text, boolean) to authenticated;
-
--- RPC autenticadas explícitas.
-grant execute on function public.set_profile_active(uuid, boolean) to authenticated;
-
--- Validación de códigos de invitación antes del registro.
-grant execute on function public.check_invitation(text) to anon, authenticated;
 
 -- Las vistas se consultan con los permisos del usuario (RLS aplica)
 grant select on public.payments_with_status, public.v_adherence_weekly to authenticated;
