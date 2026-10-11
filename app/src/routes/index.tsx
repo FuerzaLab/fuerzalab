@@ -25,6 +25,11 @@ import ClientDetail from "../pages/trainer/clients/ClientDetail";
 import ExercisesPage from "../pages/shared/exercises/ExercisesPage";
 import ProgramsPage from "../pages/trainer/programs/ProgramsPage";
 import BuilderPage from "../pages/trainer/builder/BuilderPage";
+import TrainerPaymentsPage from "../pages/trainer/payments/PaymentsPage";
+import TrainerMessagesPage from "../pages/trainer/messages/MessagesPage";
+import ClientPayments from "../pages/client/Payments";
+import ClientMessages from "../pages/client/Messages";
+import Settings from "../pages/shared/Settings";
 
 import { paths } from "./paths";
 
@@ -51,7 +56,7 @@ export default function AppRoutes() {
             <Route path={paths.adminOrgs} element={<Organizations />} />
             <Route path={paths.adminUsers} element={<Users />} />
             <Route path={paths.adminExercises} element={<ExercisesPage scope="global" />} />
-            <Route path={paths.adminSettings} element={<ComingSoon title="Configuración" />} />
+            <Route path={paths.adminSettings} element={<Settings />} />
           </Route>
         </Route>
 
@@ -68,10 +73,10 @@ export default function AppRoutes() {
             <Route path={paths.trainerTracking} element={<ComingSoon title="Seguimiento" />} />
             <Route path={paths.trainerAnalytics} element={<ComingSoon title="Analytics" />} />
             <Route path={paths.trainerSuggestions} element={<ComingSoon title="Sugerencias" />} />
-            <Route path={paths.trainerMessages} element={<ComingSoon title="Mensajes" />} />
-            <Route path={paths.trainerPayments} element={<ComingSoon title="Pagos" />} />
+            <Route path={paths.trainerMessages} element={<TrainerMessagesPage />} />
+            <Route path={paths.trainerPayments} element={<TrainerPaymentsPage />} />
             <Route path={paths.trainerReports} element={<ComingSoon title="Reportes" />} />
-            <Route path={paths.trainerSettings} element={<ComingSoon title="Configuración" />} />
+            <Route path={paths.trainerSettings} element={<Settings />} />
           </Route>
         </Route>
 
@@ -84,9 +89,9 @@ export default function AppRoutes() {
             <Route path={paths.clientHistory} element={<ComingSoon title="Historial" />} />
             <Route path={paths.clientProgress} element={<ComingSoon title="Mi progreso" />} />
             <Route path={paths.clientAssessments} element={<ComingSoon title="Evaluaciones" />} />
-            <Route path={paths.clientMessages} element={<ComingSoon title="Mensajes" />} />
-            <Route path={paths.clientPayments} element={<ComingSoon title="Pagos" />} />
-            <Route path={paths.clientProfile} element={<ComingSoon title="Mi perfil" />} />
+            <Route path={paths.clientMessages} element={<ClientMessages />} />
+            <Route path={paths.clientPayments} element={<ClientPayments />} />
+            <Route path={paths.clientProfile} element={<Settings />} />
           </Route>
           </Route>
         </Route>
