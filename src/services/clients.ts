@@ -44,6 +44,7 @@ export interface ClientProfileRow {
   preferences: { trainingDays: string; sessionDuration: string } | null;
   consent_accepted: boolean;
   submitted_at: string | null;
+  reviewed_at: string | null;
 }
 
 export const MAIN_GOALS = [
@@ -73,6 +74,15 @@ export async function getMyClientId(): Promise<string | null> {
   const { data, error } = await supabase.rpc("my_client_id");
   if (error) throw error;
   return (data as string) ?? null;
+}
+
+/** El entrenador confirma que revisó el formulario de ingreso; recién ahí se desbloquea el resto de la app para el cliente. */
+export async function approveIntake(clientId: string): Promise<void> {
+  const { error } = await supabase
+    .from("client_profiles")
+    .update({ reviewed_at: new Date().toISOString() })
+    .eq("client_id", clientId);
+  if (error) throw error;
 }
 
 export async function submitOnboarding(

@@ -9,6 +9,7 @@ import {
   getClientProfile,
   upsertClientProfile,
   updateClientStatus,
+  approveIntake,
   PAR_Q_QUESTIONS,
   type ClientRow,
   type ClientProfileRow,
@@ -156,7 +157,24 @@ export default function ClientDetail() {
         </div>
       ) : (
         <div className="panel" style={{ marginBottom: 18 }}>
-          <div className="hd"><h3>Formulario de ingreso</h3></div>
+          <div className="hd">
+            <h3>Formulario de ingreso</h3>
+            {intake.reviewed_at ? (
+              <Chip tone="ok">Revisado</Chip>
+            ) : (
+              <button
+                className="btn"
+                style={{ padding: "6px 14px", fontSize: 13 }}
+                onClick={async () => {
+                  await approveIntake(client.id);
+                  setIntake((i) => (i ? { ...i, reviewed_at: new Date().toISOString() } : i));
+                  notify(`Ingreso de ${client.full_name} aprobado. Ya puede ver el resto de la app.`);
+                }}
+              >
+                Aprobar ingreso
+              </button>
+            )}
+          </div>
           <div className="bd">
             {PAR_Q_QUESTIONS.some((q) => intake.par_q?.[q.key]) && (
               <div style={{ borderLeft: "4px solid var(--bad)", background: "var(--bad-soft)", padding: "10px 14px", borderRadius: 6, marginBottom: 16 }}>

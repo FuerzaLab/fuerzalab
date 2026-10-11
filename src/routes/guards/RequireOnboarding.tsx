@@ -7,6 +7,7 @@ export default function RequireOnboarding() {
   const [loading, setLoading] = useState(true);
   const [clientId, setClientId] = useState<string | null>(null);
   const [submitted, setSubmitted] = useState(false);
+  const [reviewed, setReviewed] = useState(false);
   const [error, setError] = useState("");
 
   const check = async () => {
@@ -17,6 +18,7 @@ export default function RequireOnboarding() {
       if (id) {
         const prof = await getClientProfile(id);
         setSubmitted(Boolean(prof?.submitted_at));
+        setReviewed(Boolean(prof?.reviewed_at));
       }
     } catch (e: any) {
       setError(e.message ?? "No pudimos cargar tu cuenta.");
@@ -58,6 +60,23 @@ export default function RequireOnboarding() {
 
   if (!submitted) {
     return <OnboardingForm clientId={clientId} onDone={check} />;
+  }
+
+  if (!reviewed) {
+    return (
+      <div className="auth-shell">
+        <div className="auth-card">
+          <h2 style={{ marginBottom: 10 }}>Ya casi</h2>
+          <p className="note" style={{ marginBottom: 16 }}>
+            Enviamos tu formulario. Tu entrenador lo está revisando — en cuanto lo confirme, vas a poder ver el resto
+            de la app. No hace falta que hagas nada más por ahora.
+          </p>
+          <button className="btn ghost" style={{ width: "100%", justifyContent: "center" }} onClick={check}>
+            Ya me confirmaron, volver a intentar
+          </button>
+        </div>
+      </div>
+    );
   }
 
   return <Outlet />;
