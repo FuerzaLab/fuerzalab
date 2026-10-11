@@ -9,6 +9,7 @@ import {
   getClientProfile,
   upsertClientProfile,
   updateClientStatus,
+  PAR_Q_QUESTIONS,
   type ClientRow,
   type ClientProfileRow,
   type ClientStatus,
@@ -54,6 +55,7 @@ export default function ClientDetail() {
   const { notify } = useToast();
 
   const [client, setClient] = useState<ClientRow | null>(null);
+  const [intake, setIntake] = useState<ClientProfileRow | null>(null);
   const [form, setForm] = useState<FormState>(EMPTY_FORM);
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState("");
@@ -70,6 +72,7 @@ export default function ClientDetail() {
         const [c, p] = await Promise.all([getClient(id), getClientProfile(id)]);
         if (cancelled) return;
         setClient(c);
+        setIntake(p);
         if (p) setForm(profileToForm(p));
       } catch (err: any) {
         if (!cancelled) setLoadError(err.message ?? "No pudimos cargar este cliente.");
@@ -144,6 +147,41 @@ export default function ClientDetail() {
           )}
         </div>
       </div>
+
+      {!intake?.submitted_at ? (
+        <div className="panel" style={{ marginBottom: 18 }}>
+          <div className="bd">
+            <p className="note">{client.full_name} todavía no completó su formulario de ingreso.</p>
+          </div>
+        </div>
+      ) : (
+        <div className="panel" style={{ marginBottom: 18 }}>
+          <div className="hd"><h3>Formulario de ingreso</h3></div>
+          <div className="bd">
+            {PAR_Q_QUESTIONS.some((q) => intake.par_q?.[q.key]) && (
+              <div style={{ borderLeft: "4px solid var(--bad)", background: "var(--bad-soft)", padding: "10px 14px", borderRadius: 6, marginBottom: 16 }}>
+                <b>Señales de salud a revisar antes de armar el plan:</b>
+                <ul style={{ margin: "6px 0 0", paddingLeft: 18 }}>
+                  {PAR_Q_QUESTIONS.filter((q) => intake.par_q?.[q.key]).map((q) => (
+                    <li key={q.key}>{q.text}</li>
+                  ))}
+                </ul>
+                {intake.par_q?.otherDetail && <p style={{ marginTop: 6 }}>Detalle: {intake.par_q.otherDetail}</p>}
+              </div>
+            )}
+            <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(180px,1fr))", gap: 10, marginBottom: 10 }}>
+              <div><span className="note">Objetivo principal</span><div>{intake.main_goal || "—"}</div></div>
+              <div><span className="note">Objetivos secundarios</span><div>{intake.secondary_goals.length ? intake.secondary_goals.join(", ") : "—"}</div></div>
+              <div><span className="note">Peso</span><div>{intake.weight_kg ? `${intake.weight_kg} kg` : "—"}</div></div>
+              <div><span className="note">Sueño</span><div>{intake.habits?.sleepHours ? `${intake.habits.sleepHours} h/noche` : "—"}</div></div>
+              <div><span className="note">Actividad diaria</span><div>{intake.habits?.activityLevel || "—"}</div></div>
+              <div><span className="note">Días disponibles</span><div>{intake.preferences?.trainingDays || "—"}</div></div>
+              <div><span className="note">Duración preferida</span><div>{intake.preferences?.sessionDuration || "—"}</div></div>
+            </div>
+            <p className="note">Completado el {new Date(intake.submitted_at).toLocaleDateString("es")}.</p>
+          </div>
+        </div>
+      )}
 
       <div className="panel">
         <div className="hd">

@@ -14,6 +14,8 @@ No hace falta saber programar para estos pasos. Son dos partes: primero Supabase
 
 3.2. Repite lo mismo con `part3_migration.sql`: **New query**, pega todo su contenido, **Run**. Este agrega las columnas que necesitan el Constructor de rutinas y Planificación (zona de frecuencia cardíaca, pasos diarios, tipo de fuerza) y que no estaban en el script original. **Este paso es obligatorio** para que esas dos pantallas funcionen; sin él, vas a ver errores al intentar crear un programa o una rutina.
 
+3.3. Repite lo mismo con `part3b_migration.sql`: **New query**, pega todo su contenido, **Run**. Agrega lo que necesita el formulario de ingreso del cliente (objetivos, cuestionario de salud, hábitos). **También obligatorio** para esa pantalla.
+
 4. En el menú de la izquierda, entra a **Authentication > Users** y presiona **Add user > Create new user**. Pon tu correo y una contraseña. **No marques ninguna casilla especial.** Esta va a ser tu cuenta de administrador — el sistema la reconoce automáticamente como tal porque es la primera cuenta que se crea.
 
 5. Todavía en Supabase, ve a **Storage** y crea dos buckets (botón **New bucket**):
@@ -76,5 +78,6 @@ Un entrenador ya puede invitar clientes desde dentro de la aplicación (pantalla
 **Una diferencia a propósito frente a la vista previa que armamos antes**: ahí "Constructor" y "Planificación" eran dos sistemas separados. Acá quedaron conectados de verdad — primero planificas el programa y sus semanas, y después el Constructor arma las rutinas dentro de esas semanas. Es más fiel a cómo funciona de verdad una base de datos de este tipo, y evita que puedas crear una rutina "flotante" sin un programa detrás.
 
 - **Organizaciones y Usuarios** (Super Admin): crear organizaciones, invitar entrenadores desde la fila de cada organización (ya no hace falta hacerlo por SQL), suspender/reactivar organizaciones, y activar/desactivar cualquier usuario de la plataforma.
+- **Formulario de ingreso del cliente**: la primera vez que un cliente inicia sesión, el menú queda bloqueado hasta que complete el formulario (datos personales, objetivos, el cuestionario de salud PAR-Q+, hábitos y preferencias). El entrenador ve lo que completó en la ficha del cliente, con una alerta si marcó alguna señal de salud a revisar.
 
-**Todavía no está conectado**: Pagos, Reportes, Mensajes, formulario de ingreso del cliente, fotos de progreso, indicadores de carga, sugerencia de evaluaciones, importar rutina desde Excel/Word.
+**Todavía no está conectado**: Pagos, Reportes, Mensajes, fotos de progreso, indicadores de carga, sugerencia de evaluaciones, importar rutina desde Excel/Word.

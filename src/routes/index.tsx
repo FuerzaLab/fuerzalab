@@ -4,6 +4,7 @@ import AuthLayout from "./layouts/AuthLayout";
 import AppLayout from "./layouts/AppLayout";
 import RequireAuth from "./guards/RequireAuth";
 import RequireRole from "./guards/RequireRole";
+import RequireOnboarding from "./guards/RequireOnboarding";
 import RoleRedirect from "./RoleRedirect";
 
 import Login from "../pages/auth/Login";
@@ -76,6 +77,7 @@ export default function AppRoutes() {
 
         {/* Cliente */}
         <Route element={<RequireRole allow={["client"]} />}>
+          <Route element={<RequireOnboarding />}>
           <Route element={<AppLayout />}>
             <Route path={paths.clientDashboard} element={<ClientDashboard />} />
             <Route path={paths.clientRoutine} element={<ComingSoon title="Mi rutina" />} />
@@ -85,6 +87,7 @@ export default function AppRoutes() {
             <Route path={paths.clientMessages} element={<ComingSoon title="Mensajes" />} />
             <Route path={paths.clientPayments} element={<ComingSoon title="Pagos" />} />
             <Route path={paths.clientProfile} element={<ComingSoon title="Mi perfil" />} />
+          </Route>
           </Route>
         </Route>
       </Route>
