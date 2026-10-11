@@ -75,4 +75,6 @@ Un entrenador ya puede invitar clientes desde dentro de la aplicación (pantalla
 
 **Una diferencia a propósito frente a la vista previa que armamos antes**: ahí "Constructor" y "Planificación" eran dos sistemas separados. Acá quedaron conectados de verdad — primero planificas el programa y sus semanas, y después el Constructor arma las rutinas dentro de esas semanas. Es más fiel a cómo funciona de verdad una base de datos de este tipo, y evita que puedas crear una rutina "flotante" sin un programa detrás.
 
-**Todavía no está conectado**: Pagos, Reportes, Mensajes, formulario de ingreso del cliente, fotos de progreso, indicadores de carga, sugerencia de evaluaciones, importar rutina desde Excel/Word, y que el admin invite entrenadores desde la app (por ahora se hace por SQL, como ya hicimos juntos).
+- **Organizaciones y Usuarios** (Super Admin): crear organizaciones, invitar entrenadores desde la fila de cada organización (ya no hace falta hacerlo por SQL), suspender/reactivar organizaciones, y activar/desactivar cualquier usuario de la plataforma.
+
+**Todavía no está conectado**: Pagos, Reportes, Mensajes, formulario de ingreso del cliente, fotos de progreso, indicadores de carga, sugerencia de evaluaciones, importar rutina desde Excel/Word.

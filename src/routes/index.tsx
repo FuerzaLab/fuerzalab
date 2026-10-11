@@ -15,6 +15,8 @@ import NotFound from "../pages/shared/NotFound";
 import ComingSoon from "../pages/shared/ComingSoon";
 
 import AdminDashboard from "../pages/admin/Dashboard";
+import Organizations from "../pages/admin/Organizations";
+import Users from "../pages/admin/Users";
 import TrainerDashboard from "../pages/trainer/Dashboard";
 import ClientDashboard from "../pages/client/Dashboard";
 import ClientsList from "../pages/trainer/clients/ClientsList";
@@ -45,8 +47,8 @@ export default function AppRoutes() {
         <Route element={<RequireRole allow={["super_admin"]} />}>
           <Route element={<AppLayout />}>
             <Route path={paths.adminDashboard} element={<AdminDashboard />} />
-            <Route path={paths.adminOrgs} element={<ComingSoon title="Organizaciones" />} />
-            <Route path={paths.adminUsers} element={<ComingSoon title="Usuarios" />} />
+            <Route path={paths.adminOrgs} element={<Organizations />} />
+            <Route path={paths.adminUsers} element={<Users />} />
             <Route path={paths.adminExercises} element={<ExercisesPage scope="global" />} />
             <Route path={paths.adminSettings} element={<ComingSoon title="Configuración" />} />
           </Route>
