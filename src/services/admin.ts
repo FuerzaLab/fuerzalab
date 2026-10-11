@@ -50,6 +50,21 @@ export async function toggleOrganizationStatus(id: string, status: "active" | "s
   if (error) throw error;
 }
 
+/** Cuántos entrenadores/staff/clientes tiene la organización — sirve para no dejar borrar una que todavía tiene gente. */
+export async function countOrganizationMembers(id: string): Promise<number> {
+  const { count, error } = await supabase
+    .from("profiles")
+    .select("id", { count: "exact", head: true })
+    .eq("organization_id", id);
+  if (error) throw error;
+  return count ?? 0;
+}
+
+export async function deleteOrganization(id: string): Promise<void> {
+  const { error } = await supabase.from("organizations").delete().eq("id", id);
+  if (error) throw error;
+}
+
 export async function listUsers(): Promise<UserRow[]> {
   const { data, error } = await supabase
     .from("profiles")

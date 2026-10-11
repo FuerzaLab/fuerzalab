@@ -8,6 +8,8 @@ import {
   listOrganizations,
   createOrganization,
   toggleOrganizationStatus,
+  countOrganizationMembers,
+  deleteOrganization,
   inviteTrainer,
   type OrganizationRow,
 } from "../../services/admin";
@@ -20,6 +22,7 @@ export default function Organizations() {
   const [loading, setLoading] = useState(true);
   const [showNew, setShowNew] = useState(false);
   const [inviteFor, setInviteFor] = useState<OrganizationRow | null>(null);
+  const [deleteTarget, setDeleteTarget] = useState<OrganizationRow | null>(null);
 
   const load = async () => {
     setLoading(true);
@@ -89,6 +92,9 @@ export default function Organizations() {
                         <button className="btn ghost" style={{ padding: "5px 10px", fontSize: 13 }} onClick={() => toggleStatus(o)}>
                           {o.status === "active" ? "Suspender" : "Reactivar"}
                         </button>
+                        <button className="btn ghost" style={{ padding: "5px 10px", fontSize: 13, color: "var(--bad)" }} onClick={() => setDeleteTarget(o)}>
+                          Eliminar
+                        </button>
                       </div>
                     </td>
                   </tr>
@@ -122,7 +128,81 @@ export default function Organizations() {
           onClose={() => setInviteFor(null)}
         />
       )}
+
+      {deleteTarget && (
+        <DeleteOrgModal
+          org={deleteTarget}
+          onClose={() => setDeleteTarget(null)}
+          onDeleted={() => {
+            setOrgs((os) => os.filter((o) => o.id !== deleteTarget.id));
+            setDeleteTarget(null);
+            notify(`Organización "${deleteTarget.name}" eliminada.`);
+          }}
+        />
+      )}
     </div>
+  );
+}
+
+function DeleteOrgModal({ org, onClose, onDeleted }: { org: OrganizationRow; onClose: () => void; onDeleted: () => void }) {
+  const [memberCount, setMemberCount] = useState<number | null>(null);
+  const [confirmText, setConfirmText] = useState("");
+  const [error, setError] = useState("");
+  const [deleting, setDeleting] = useState(false);
+
+  useEffect(() => {
+    countOrganizationMembers(org.id).then(setMemberCount).catch((e) => setError(e.message));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  const blocked = memberCount !== null && memberCount > 0;
+
+  const submit = async () => {
+    if (confirmText.trim() !== org.name) {
+      setError("El nombre no coincide. Escríbelo exactamente igual para confirmar.");
+      return;
+    }
+    setError("");
+    setDeleting(true);
+    try {
+      await deleteOrganization(org.id);
+      onDeleted();
+    } catch (e: any) {
+      setError(e.message ?? "No pudimos eliminar la organización.");
+      setDeleting(false);
+    }
+  };
+
+  return (
+    <Modal title={`Eliminar "${org.name}"`} onClose={onClose}>
+      {memberCount === null ? (
+        <p className="note">Comprobando…</p>
+      ) : blocked ? (
+        <p>
+          Esta organización todavía tiene <b>{memberCount}</b> {memberCount === 1 ? "persona" : "personas"} (entrenadores,
+          staff o clientes). No se puede eliminar mientras tenga gente adentro — primero desactívalos o muévelos a otra
+          organización.
+        </p>
+      ) : (
+        <>
+          <p style={{ marginBottom: 14 }}>
+            Esta acción es <b>permanente</b> y no se puede deshacer. No tiene gente adentro, así que es segura, pero
+            confírmala escribiendo el nombre exacto de la organización:
+          </p>
+          <p className="note" style={{ marginBottom: 6 }}><b>{org.name}</b></p>
+          <input className="input" style={{ marginBottom: 12 }} value={confirmText} onChange={(e) => setConfirmText(e.target.value)} autoFocus />
+          {error && <p className="error-text" style={{ marginBottom: 12 }}>{error}</p>}
+          <button
+            className="btn"
+            style={{ background: "var(--bad)", borderColor: "var(--bad)" }}
+            onClick={submit}
+            disabled={deleting}
+          >
+            {deleting ? "Eliminando…" : "Eliminar definitivamente"}
+          </button>
+        </>
+      )}
+    </Modal>
   );
 }
 
