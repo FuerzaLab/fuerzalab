@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
-import { Plus } from "lucide-react";
+import { Plus, FileUp } from "lucide-react";
 import { useAuth } from "../../../contexts/AuthContext";
+import { useToast } from "../../../contexts/ToastContext";
 import {
   listExercises,
   listCatalog,
@@ -9,10 +10,12 @@ import {
   type CatalogItem,
 } from "../../../services/exercises";
 import NewExerciseModal from "./NewExerciseModal";
+import ImportExercisesModal from "./ImportExercisesModal";
 import Chip from "../../../components/ui/Chip";
 
 export default function ExercisesPage({ scope }: { scope: "global" | "trainer" }) {
   const { profile } = useAuth();
+  const { notify } = useToast();
   const [exercises, setExercises] = useState<ExerciseRow[]>([]);
   const [muscles, setMuscles] = useState<CatalogItem[]>([]);
   const [patterns, setPatterns] = useState<CatalogItem[]>([]);
@@ -24,6 +27,7 @@ export default function ExercisesPage({ scope }: { scope: "global" | "trainer" }
   const [bodyFilter, setBodyFilter] = useState<"all" | "Superior" | "Inferior" | "Full body">("all");
   const [selected, setSelected] = useState<ExerciseRow | null>(null);
   const [showNew, setShowNew] = useState(false);
+  const [showImport, setShowImport] = useState(false);
 
   const load = async () => {
     setLoading(true);
@@ -78,9 +82,14 @@ export default function ExercisesPage({ scope }: { scope: "global" | "trainer" }
           <h1 style={{ marginBottom: 4 }}>{title}</h1>
           <p className="note">{sub}</p>
         </div>
-        <button className="btn" onClick={() => setShowNew(true)}>
-          <Plus size={16} /> Nuevo ejercicio
-        </button>
+        <div style={{ display: "flex", gap: 8 }}>
+          <button className="btn ghost" onClick={() => setShowImport(true)}>
+            <FileUp size={16} /> Importar
+          </button>
+          <button className="btn" onClick={() => setShowNew(true)}>
+            <Plus size={16} /> Nuevo ejercicio
+          </button>
+        </div>
       </div>
 
       <div style={{ display: "flex", flexWrap: "wrap", gap: 10, marginBottom: 16 }}>
@@ -194,6 +203,24 @@ export default function ExercisesPage({ scope }: { scope: "global" | "trainer" }
             setExercises((xs) => [ex, ...xs]);
             setSelected(ex);
             setShowNew(false);
+          }}
+        />
+      )}
+
+      {showImport && (
+        <ImportExercisesModal
+          scope={scope}
+          organizationId={profile.organization_id}
+          ownerId={profile.id}
+          muscles={muscles}
+          patterns={patterns}
+          equipment={equipment}
+          onClose={() => setShowImport(false)}
+          onImported={(created) => {
+            setExercises((xs) => [...created, ...xs]);
+            if (created[0]) setSelected(created[0]);
+            setShowImport(false);
+            notify(`${created.length} ejercicio${created.length === 1 ? "" : "s"} importado${created.length === 1 ? "" : "s"}.`);
           }}
         />
       )}

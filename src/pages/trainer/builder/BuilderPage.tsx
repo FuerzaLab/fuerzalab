@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
-import { Plus, Trash2, X, Copy } from "lucide-react";
+import { Plus, Trash2, X, Copy, FileUp } from "lucide-react";
+import ImportRoutineModal, { applyImportedRows } from "./ImportRoutineModal";
 import { useToast } from "../../../contexts/ToastContext";
 import { listClients, type ClientRow } from "../../../services/clients";
 import { listPrograms, listWeeks, type ProgramRow, type WeekRow } from "../../../services/programs";
@@ -244,6 +245,7 @@ function SessionEditor({
   const [blocks, setBlocks] = useState<SessionBlockRow[]>([]);
   const [items, setItems] = useState<WorkoutExerciseRow[]>([]);
   const [selected, setSelected] = useState<string[]>([]);
+  const [showImport, setShowImport] = useState(false);
   const [bodyFilter, setBodyFilter] = useState<"all" | "Superior" | "Inferior" | "Full body">("all");
   const [muscleFilter, setMuscleFilter] = useState("all");
   const [search, setSearch] = useState("");
@@ -529,7 +531,12 @@ function SessionEditor({
       })}
 
       <div className="panel">
-        <div className="hd"><h3>Añadir ejercicio</h3></div>
+        <div className="hd">
+          <h3>Añadir ejercicio</h3>
+          <button className="btn ghost" onClick={() => setShowImport(true)}>
+            <FileUp size={15} /> Importar rutina
+          </button>
+        </div>
         <div className="bd">
           <label className="field-label">Tren del cuerpo a entrenar</label>
           <div style={{ display: "flex", gap: 6, marginBottom: 12, flexWrap: "wrap" }}>
@@ -575,6 +582,21 @@ function SessionEditor({
           </div>
         </div>
       </div>
+
+      {showImport && (
+        <ImportRoutineModal
+          blocks={blocks}
+          exercises={exercises}
+          existingCount={items.length}
+          onClose={() => setShowImport(false)}
+          onImport={async (rows) => {
+            const count = await applyImportedRows({ rows, sessionId, blocks, startSortOrder: items.length });
+            await load();
+            setShowImport(false);
+            notify(`${count} ejercicios importados a la rutina. Revísalos y ajusta lo que haga falta.`);
+          }}
+        />
+      )}
     </div>
   );
 }
