@@ -30,6 +30,7 @@ import TrainerMessagesPage from "../pages/trainer/messages/MessagesPage";
 import ClientPayments from "../pages/client/Payments";
 import ClientMessages from "../pages/client/Messages";
 import Settings from "../pages/shared/Settings";
+import ClientRoutine from "../pages/client/Routine";
 
 import { paths } from "./paths";
 
@@ -85,7 +86,7 @@ export default function AppRoutes() {
           <Route element={<RequireOnboarding />}>
           <Route element={<AppLayout />}>
             <Route path={paths.clientDashboard} element={<ClientDashboard />} />
-            <Route path={paths.clientRoutine} element={<ComingSoon title="Mi rutina" />} />
+            <Route path={paths.clientRoutine} element={<ClientRoutine />} />
             <Route path={paths.clientHistory} element={<ComingSoon title="Historial" />} />
             <Route path={paths.clientProgress} element={<ComingSoon title="Mi progreso" />} />
             <Route path={paths.clientAssessments} element={<ComingSoon title="Evaluaciones" />} />
