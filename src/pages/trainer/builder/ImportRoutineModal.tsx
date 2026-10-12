@@ -20,7 +20,7 @@ const ALIASES = {
   reps: ["repeticiones", "reps"],
   load: ["carga", "peso", "kg"],
   rest: ["descanso", "rest"],
-} as const;
+};
 type Field = keyof typeof ALIASES;
 
 interface DraftRow {

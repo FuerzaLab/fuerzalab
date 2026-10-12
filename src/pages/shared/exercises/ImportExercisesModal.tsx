@@ -20,7 +20,7 @@ const ALIASES = {
   goals: ["objetivo", "goal"],
   instructions: ["instruccion", "indicacion", "cue"],
   mistakes: ["error", "mistake"],
-} as const;
+};
 type Field = keyof typeof ALIASES;
 
 interface DraftRow {
