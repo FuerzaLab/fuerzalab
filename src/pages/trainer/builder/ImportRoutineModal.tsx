@@ -84,9 +84,9 @@ export default function ImportRoutineModal({
     try {
       const kind = fileKind(file);
       if (kind === "excel") {
-        setFromRecords(rowsToRecords(await parseExcelFile(file), ALIASES, "name"), " en el Excel");
+        setFromRecords(rowsToRecords<Field>(await parseExcelFile(file), ALIASES, "name"), " en el Excel");
       } else if (kind === "word") {
-        const tableRows = rowsToRecords(await parseWordTable(file), ALIASES, "name");
+        const tableRows = rowsToRecords<Field>(await parseWordTable(file), ALIASES, "name");
         if (tableRows.length) {
           setFromRecords(tableRows, " en el Word");
         } else {
