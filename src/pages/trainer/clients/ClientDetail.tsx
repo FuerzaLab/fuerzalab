@@ -11,6 +11,7 @@ import {
   upsertClientProfile,
   updateClientStatus,
   approveIntake,
+  resetOnboarding,
   getClientDeleteBlockers,
   deleteClient,
   PAR_Q_QUESTIONS,
@@ -166,21 +167,33 @@ export default function ClientDetail() {
         <div className="panel" style={{ marginBottom: 18 }}>
           <div className="hd">
             <h3>Formulario de ingreso</h3>
-            {intake.reviewed_at ? (
-              <Chip tone="ok">Revisado</Chip>
-            ) : (
+            <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
+              {intake.reviewed_at && <Chip tone="ok">Revisado</Chip>}
+              {!intake.reviewed_at && (
+                <button
+                  className="btn"
+                  style={{ padding: "6px 14px", fontSize: 13 }}
+                  onClick={async () => {
+                    await approveIntake(client.id);
+                    setIntake((i) => (i ? { ...i, reviewed_at: new Date().toISOString() } : i));
+                    notify(`Ingreso de ${client.full_name} aprobado. Ya puede ver el resto de la app.`);
+                  }}
+                >
+                  Aprobar ingreso
+                </button>
+              )}
               <button
-                className="btn"
+                className="btn ghost"
                 style={{ padding: "6px 14px", fontSize: 13 }}
                 onClick={async () => {
-                  await approveIntake(client.id);
-                  setIntake((i) => (i ? { ...i, reviewed_at: new Date().toISOString() } : i));
-                  notify(`Ingreso de ${client.full_name} aprobado. Ya puede ver el resto de la app.`);
+                  await resetOnboarding(client.id);
+                  setIntake((i) => (i ? { ...i, submitted_at: null, reviewed_at: null } : i));
+                  notify(`Se le pidió a ${client.full_name} que vuelva a completar el formulario. Va a ver el formulario bloqueado otra vez al entrar.`);
                 }}
               >
-                Aprobar ingreso
+                Solicitar que lo vuelva a completar
               </button>
-            )}
+            </div>
           </div>
           <div className="bd">
             {PAR_Q_QUESTIONS.some((q) => intake.par_q?.[q.key]) && (

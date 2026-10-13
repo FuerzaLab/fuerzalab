@@ -77,6 +77,21 @@ export async function getMyClientId(): Promise<string | null> {
   return (data as string) ?? null;
 }
 
+/**
+ * El entrenador le pide al cliente que vuelva a completar el formulario de
+ * ingreso: lo vacía de "enviado" y "revisado", así que al cliente se le
+ * vuelve a bloquear el resto de la app hasta que lo complete de nuevo.
+ * No borra lo que ya había escrito la vez anterior, sigue ahí como punto de
+ * partida; solo cambia si cuenta como "ya enviado" o no.
+ */
+export async function resetOnboarding(clientId: string): Promise<void> {
+  const { error } = await supabase
+    .from("client_profiles")
+    .update({ submitted_at: null, reviewed_at: null })
+    .eq("client_id", clientId);
+  if (error) throw error;
+}
+
 /** El entrenador confirma que revisó el formulario de ingreso; recién ahí se desbloquea el resto de la app para el cliente. */
 export async function approveIntake(clientId: string): Promise<void> {
   const { error } = await supabase
