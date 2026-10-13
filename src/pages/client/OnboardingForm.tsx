@@ -1,6 +1,8 @@
 import { useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { useAuth } from "../../contexts/AuthContext";
 import { useToast } from "../../contexts/ToastContext";
+import { paths } from "../../routes/paths";
 import {
   submitOnboarding,
   MAIN_GOALS,
@@ -9,8 +11,14 @@ import {
 } from "../../services/clients";
 
 export default function OnboardingForm({ clientId, onDone }: { clientId: string; onDone: () => void }) {
-  const { profile } = useAuth();
+  const { profile, signOut } = useAuth();
   const { notify } = useToast();
+  const navigate = useNavigate();
+
+  const handleLogout = async () => {
+    await signOut();
+    navigate(paths.login, { replace: true });
+  };
 
   const [birthDate, setBirthDate] = useState("");
   const [sex, setSex] = useState("");
@@ -83,7 +91,12 @@ export default function OnboardingForm({ clientId, onDone }: { clientId: string;
   return (
     <div className="auth-shell" style={{ alignItems: "flex-start", paddingTop: 40 }}>
       <div className="auth-card" style={{ maxWidth: 560 }}>
-        <h2 style={{ marginBottom: 6 }}>Antes de empezar, {profile?.full_name?.split(" ")[0]}</h2>
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 10, marginBottom: 6 }}>
+          <h2>Antes de empezar, {profile?.full_name?.split(" ")[0]}</h2>
+          <button type="button" className="btn ghost" style={{ padding: "5px 10px", fontSize: 13, flex: "none" }} onClick={handleLogout}>
+            Cerrar sesión
+          </button>
+        </div>
         <p className="note" style={{ marginBottom: 22 }}>
           Completa este formulario una sola vez. Tu entrenador lo necesita para armar tu plan de forma segura.
         </p>

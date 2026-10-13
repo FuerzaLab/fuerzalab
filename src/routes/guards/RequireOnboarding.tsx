@@ -1,14 +1,23 @@
 import { useEffect, useState } from "react";
-import { Outlet } from "react-router-dom";
+import { Outlet, useNavigate } from "react-router-dom";
+import { useAuth } from "../../contexts/AuthContext";
 import { getMyClientId, getClientProfile } from "../../services/clients";
 import OnboardingForm from "../../pages/client/OnboardingForm";
+import { paths } from "../paths";
 
 export default function RequireOnboarding() {
+  const { signOut } = useAuth();
+  const navigate = useNavigate();
   const [loading, setLoading] = useState(true);
   const [clientId, setClientId] = useState<string | null>(null);
   const [submitted, setSubmitted] = useState(false);
   const [reviewed, setReviewed] = useState(false);
   const [error, setError] = useState("");
+
+  const handleLogout = async () => {
+    await signOut();
+    navigate(paths.login, { replace: true });
+  };
 
   const check = async () => {
     setLoading(true);
@@ -42,7 +51,8 @@ export default function RequireOnboarding() {
     return (
       <div className="auth-shell">
         <div className="auth-card">
-          <p className="error-text">{error}</p>
+          <p className="error-text" style={{ marginBottom: 16 }}>{error}</p>
+          <button className="btn ghost" onClick={handleLogout}>Cerrar sesión</button>
         </div>
       </div>
     );
@@ -52,7 +62,8 @@ export default function RequireOnboarding() {
     return (
       <div className="auth-shell">
         <div className="auth-card">
-          <p>Tu cuenta todavía no está vinculada a una ficha de cliente. Avisa a tu entrenador.</p>
+          <p style={{ marginBottom: 16 }}>Tu cuenta todavía no está vinculada a una ficha de cliente. Avisa a tu entrenador.</p>
+          <button className="btn ghost" onClick={handleLogout}>Cerrar sesión</button>
         </div>
       </div>
     );
@@ -71,8 +82,11 @@ export default function RequireOnboarding() {
             Enviamos tu formulario. Tu entrenador lo está revisando — en cuanto lo confirme, vas a poder ver el resto
             de la app. No hace falta que hagas nada más por ahora.
           </p>
-          <button className="btn ghost" style={{ width: "100%", justifyContent: "center" }} onClick={check}>
+          <button className="btn ghost" style={{ width: "100%", justifyContent: "center", marginBottom: 10 }} onClick={check}>
             Ya me confirmaron, volver a intentar
+          </button>
+          <button className="btn ghost" style={{ width: "100%", justifyContent: "center" }} onClick={handleLogout}>
+            Cerrar sesión
           </button>
         </div>
       </div>
