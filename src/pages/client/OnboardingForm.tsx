@@ -20,6 +20,7 @@ export default function OnboardingForm({ clientId, onDone }: { clientId: string;
   const [secondaryGoals, setSecondaryGoals] = useState<string[]>([]);
   const [sportsHistory, setSportsHistory] = useState("");
   const [injuries, setInjuries] = useState("");
+  const [medicalNotes, setMedicalNotes] = useState("");
   const [parQ, setParQ] = useState<ParQAnswers>({
     heartCondition: false,
     chestPainActivity: false,
@@ -32,8 +33,15 @@ export default function OnboardingForm({ clientId, onDone }: { clientId: string;
   });
   const [sleepHours, setSleepHours] = useState("");
   const [activityLevel, setActivityLevel] = useState("");
+  const [nutritionQuality, setNutritionQuality] = useState("");
+  const [stressLevel, setStressLevel] = useState("");
   const [trainingDays, setTrainingDays] = useState("");
   const [sessionDuration, setSessionDuration] = useState("");
+  const [equipmentAccess, setEquipmentAccess] = useState("");
+  const [preferredTime, setPreferredTime] = useState("");
+  const [emergencyName, setEmergencyName] = useState("");
+  const [emergencyPhone, setEmergencyPhone] = useState("");
+  const [emergencyRelationship, setEmergencyRelationship] = useState("");
   const [consent, setConsent] = useState(false);
   const [error, setError] = useState("");
   const [saving, setSaving] = useState(false);
@@ -56,9 +64,11 @@ export default function OnboardingForm({ clientId, onDone }: { clientId: string;
         secondary_goals: secondaryGoals,
         sports_history: sportsHistory || null,
         injuries: injuries || null,
+        medical_notes: medicalNotes || null,
         par_q: parQ,
-        habits: { sleepHours, activityLevel },
-        preferences: { trainingDays, sessionDuration },
+        habits: { sleepHours, activityLevel, nutritionQuality, stressLevel },
+        preferences: { trainingDays, sessionDuration, equipmentAccess, preferredTime },
+        emergency_contact: emergencyName ? { name: emergencyName, phone: emergencyPhone, relationship: emergencyRelationship } : null,
       });
       notify("¡Listo! Ya puedes ver el resto de la app.");
       onDone();
@@ -161,7 +171,10 @@ export default function OnboardingForm({ clientId, onDone }: { clientId: string;
         <textarea className="input" style={{ minHeight: 60, marginBottom: 14 }} value={injuries} onChange={(e) => setInjuries(e.target.value)} />
 
         <label className="field-label">Historial deportivo</label>
-        <textarea className="input" style={{ minHeight: 60, marginBottom: 20 }} value={sportsHistory} onChange={(e) => setSportsHistory(e.target.value)} />
+        <textarea className="input" style={{ minHeight: 60, marginBottom: 14 }} value={sportsHistory} onChange={(e) => setSportsHistory(e.target.value)} />
+
+        <label className="field-label">Medicamentos, alergias o condiciones médicas</label>
+        <textarea className="input" style={{ minHeight: 60, marginBottom: 20 }} value={medicalNotes} onChange={(e) => setMedicalNotes(e.target.value)} placeholder="Ej. Alergia a la penicilina, hipotiroidismo, toma losartán" />
 
         <h3 style={{ marginBottom: 10 }}>Hábitos y preferencias</h3>
         <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(150px,1fr))", gap: 12, marginBottom: 20 }}>
@@ -180,12 +193,56 @@ export default function OnboardingForm({ clientId, onDone }: { clientId: string;
             </select>
           </div>
           <div>
+            <label className="field-label">Calidad de la alimentación</label>
+            <select className="input" value={nutritionQuality} onChange={(e) => setNutritionQuality(e.target.value)}>
+              <option value="">Selecciona</option>
+              <option value="desordenada">Desordenada</option>
+              <option value="regular">Regular</option>
+              <option value="cuidada">Cuidada</option>
+              <option value="con plan de un nutricionista">Con plan de un nutricionista</option>
+            </select>
+          </div>
+          <div>
+            <label className="field-label">Nivel de estrés habitual</label>
+            <select className="input" value={stressLevel} onChange={(e) => setStressLevel(e.target.value)}>
+              <option value="">Selecciona</option>
+              <option value="bajo">Bajo</option>
+              <option value="moderado">Moderado</option>
+              <option value="alto">Alto</option>
+            </select>
+          </div>
+          <div>
             <label className="field-label">Días disponibles para entrenar</label>
             <input className="input" value={trainingDays} onChange={(e) => setTrainingDays(e.target.value)} placeholder="Ej. Lunes, miércoles, viernes" />
           </div>
           <div>
             <label className="field-label">Duración preferida por sesión</label>
             <input className="input" value={sessionDuration} onChange={(e) => setSessionDuration(e.target.value)} placeholder="Ej. 60 minutos" />
+          </div>
+          <div>
+            <label className="field-label">Equipamiento al que tienes acceso</label>
+            <input className="input" value={equipmentAccess} onChange={(e) => setEquipmentAccess(e.target.value)} placeholder="Ej. Gimnasio completo, o solo mancuernas en casa" />
+          </div>
+          <div>
+            <label className="field-label">Horario preferido para entrenar</label>
+            <input className="input" value={preferredTime} onChange={(e) => setPreferredTime(e.target.value)} placeholder="Ej. Mañanas" />
+          </div>
+        </div>
+
+        <h3 style={{ marginBottom: 10 }}>Contacto de emergencia</h3>
+        <p className="note" style={{ marginBottom: 12 }}>Opcional, pero recomendado para entrenar con mayor seguridad.</p>
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(150px,1fr))", gap: 12, marginBottom: 20 }}>
+          <div>
+            <label className="field-label">Nombre</label>
+            <input className="input" value={emergencyName} onChange={(e) => setEmergencyName(e.target.value)} />
+          </div>
+          <div>
+            <label className="field-label">Teléfono</label>
+            <input className="input" value={emergencyPhone} onChange={(e) => setEmergencyPhone(e.target.value)} />
+          </div>
+          <div>
+            <label className="field-label">Relación</label>
+            <input className="input" value={emergencyRelationship} onChange={(e) => setEmergencyRelationship(e.target.value)} placeholder="Ej. Madre, pareja" />
           </div>
         </div>
 

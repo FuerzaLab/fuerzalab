@@ -86,6 +86,27 @@ export async function toggleUserActive(id: string, isActive: boolean): Promise<v
   if (error) throw error;
 }
 
+/** Cuántos clientes tiene asignados un entrenador — se usa para permitir moverlo de organización solo si no tiene ninguno. */
+export async function countClientsByTrainer(trainerIds: string[]): Promise<Record<string, number>> {
+  if (!trainerIds.length) return {};
+  const { data, error } = await supabase.from("clients").select("trainer_id").in("trainer_id", trainerIds);
+  if (error) throw error;
+  const out: Record<string, number> = {};
+  for (const row of data ?? []) out[row.trainer_id] = (out[row.trainer_id] ?? 0) + 1;
+  return out;
+}
+
+/**
+ * Mueve a un entrenador a otra organización. Solo tiene sentido (y solo lo
+ * permitimos) cuando no tiene clientes todavía: si los tuviera, perdería el
+ * acceso a ellos al instante, porque sus clientes se quedarían con la
+ * organización anterior mientras el entrenador pasa a la nueva.
+ */
+export async function moveTrainerToOrganization(trainerId: string, organizationId: string): Promise<void> {
+  const { error } = await supabase.from("profiles").update({ organization_id: organizationId }).eq("id", trainerId);
+  if (error) throw error;
+}
+
 export async function inviteTrainer(params: {
   organizationId: string;
   invitedBy: string;

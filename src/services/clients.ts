@@ -40,8 +40,9 @@ export interface ClientProfileRow {
   main_goal: string | null;
   secondary_goals: string[];
   par_q: ParQAnswers | null;
-  habits: { sleepHours: string; activityLevel: string } | null;
-  preferences: { trainingDays: string; sessionDuration: string } | null;
+  habits: { sleepHours: string; activityLevel: string; nutritionQuality: string; stressLevel: string } | null;
+  preferences: { trainingDays: string; sessionDuration: string; equipmentAccess: string; preferredTime: string } | null;
+  emergency_contact: { name: string; phone: string; relationship: string } | null;
   consent_accepted: boolean;
   submitted_at: string | null;
   reviewed_at: string | null;
@@ -139,6 +140,22 @@ export async function upsertClientProfile(
 
 export async function updateClientStatus(id: string, status: ClientStatus): Promise<void> {
   const { error } = await supabase.from("clients").update({ status }).eq("id", id);
+  if (error) throw error;
+}
+
+/** Cuántos programas y planes de pago tiene un cliente — se usa para no dejar eliminarlo mientras tenga algo de eso. */
+export async function getClientDeleteBlockers(clientId: string): Promise<{ programs: number; plans: number }> {
+  const [{ count: programs, error: progErr }, { count: plans, error: planErr }] = await Promise.all([
+    supabase.from("programs").select("id", { count: "exact", head: true }).eq("client_id", clientId),
+    supabase.from("client_plans").select("id", { count: "exact", head: true }).eq("client_id", clientId),
+  ]);
+  if (progErr) throw progErr;
+  if (planErr) throw planErr;
+  return { programs: programs ?? 0, plans: plans ?? 0 };
+}
+
+export async function deleteClient(id: string): Promise<void> {
+  const { error } = await supabase.from("clients").delete().eq("id", id);
   if (error) throw error;
 }
 

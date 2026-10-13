@@ -1,7 +1,16 @@
 import { useEffect, useState } from "react";
 import { useToast } from "../../contexts/ToastContext";
+import Modal from "../../components/ui/Modal";
 import Chip from "../../components/ui/Chip";
-import { listUsers, toggleUserActive, type UserRow } from "../../services/admin";
+import {
+  listUsers,
+  toggleUserActive,
+  listOrganizations,
+  countClientsByTrainer,
+  moveTrainerToOrganization,
+  type UserRow,
+  type OrganizationRow,
+} from "../../services/admin";
 import type { Role } from "../../types/auth";
 
 const ROLE_LABEL: Record<Role, string> = {
@@ -14,12 +23,19 @@ const ROLE_LABEL: Record<Role, string> = {
 export default function Users() {
   const { notify } = useToast();
   const [users, setUsers] = useState<UserRow[]>([]);
+  const [orgs, setOrgs] = useState<OrganizationRow[]>([]);
+  const [clientCounts, setClientCounts] = useState<Record<string, number>>({});
   const [loading, setLoading] = useState(true);
+  const [moveTarget, setMoveTarget] = useState<UserRow | null>(null);
 
   const load = async () => {
     setLoading(true);
     try {
-      setUsers(await listUsers());
+      const us = await listUsers();
+      setUsers(us);
+      setOrgs(await listOrganizations());
+      const trainerIds = us.filter((u) => u.role === "trainer").map((u) => u.id);
+      setClientCounts(await countClientsByTrainer(trainerIds));
     } catch (e: any) {
       notify(e.message);
     }
@@ -44,7 +60,12 @@ export default function Users() {
   return (
     <div className="page">
       <h1 style={{ marginBottom: 4 }}>Usuarios</h1>
-      <p className="note" style={{ marginBottom: 20 }}>Entrenadores, staff y clientes de todas las organizaciones.</p>
+      <p className="note" style={{ marginBottom: 6 }}>Entrenadores, staff y clientes de todas las organizaciones.</p>
+      <p className="note" style={{ marginBottom: 20 }}>
+        No es posible eliminar una cuenta por completo desde aquí (requeriría una pieza técnica adicional que
+        quedó fuera del alcance de este proyecto, igual que el envío automático de correos). "Desactivar" bloquea
+        por completo el acceso de esa persona, que es el efecto práctico que buscarías con un borrado.
+      </p>
 
       {loading ? (
         <p className="note">Cargando…</p>
@@ -74,9 +95,16 @@ export default function Users() {
                       <Chip tone={u.is_active ? "ok" : "bad"}>{u.is_active ? "Activo" : "Inactivo"}</Chip>
                     </td>
                     <td style={{ padding: "11px 16px" }}>
-                      <button className="btn ghost" style={{ padding: "5px 10px", fontSize: 13 }} onClick={() => toggle(u)}>
-                        {u.is_active ? "Desactivar" : "Activar"}
-                      </button>
+                      <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
+                        <button className="btn ghost" style={{ padding: "5px 10px", fontSize: 13 }} onClick={() => toggle(u)}>
+                          {u.is_active ? "Desactivar" : "Activar"}
+                        </button>
+                        {u.role === "trainer" && (
+                          <button className="btn ghost" style={{ padding: "5px 10px", fontSize: 13 }} onClick={() => setMoveTarget(u)}>
+                            Mover de organización
+                          </button>
+                        )}
+                      </div>
                     </td>
                   </tr>
                 ))}
@@ -90,6 +118,79 @@ export default function Users() {
           </div>
         </div>
       )}
+
+      {moveTarget && (
+        <MoveTrainerModal
+          trainer={moveTarget}
+          orgs={orgs}
+          clientCount={clientCounts[moveTarget.id] ?? 0}
+          onClose={() => setMoveTarget(null)}
+          onMoved={(orgId, orgName) => {
+            setUsers((us) => us.map((u) => (u.id === moveTarget.id ? { ...u, organization_id: orgId, organizations: { name: orgName } } : u)));
+            setMoveTarget(null);
+            notify(`${moveTarget.full_name} ahora pertenece a ${orgName}.`);
+          }}
+        />
+      )}
     </div>
+  );
+}
+
+function MoveTrainerModal({
+  trainer,
+  orgs,
+  clientCount,
+  onClose,
+  onMoved,
+}: {
+  trainer: UserRow;
+  orgs: OrganizationRow[];
+  clientCount: number;
+  onClose: () => void;
+  onMoved: (orgId: string, orgName: string) => void;
+}) {
+  const [orgId, setOrgId] = useState("");
+  const [error, setError] = useState("");
+  const [saving, setSaving] = useState(false);
+
+  const blocked = clientCount > 0;
+
+  const submit = async () => {
+    if (!orgId) {
+      setError("Elige la organización de destino.");
+      return;
+    }
+    setError("");
+    setSaving(true);
+    try {
+      await moveTrainerToOrganization(trainer.id, orgId);
+      onMoved(orgId, orgs.find((o) => o.id === orgId)?.name ?? "");
+    } catch (e: any) {
+      setError(e.message ?? "No pudimos mover a este entrenador.");
+    }
+    setSaving(false);
+  };
+
+  return (
+    <Modal title={`Mover a ${trainer.full_name}`} onClose={onClose}>
+      {blocked ? (
+        <p>
+          Este entrenador todavía tiene <b>{clientCount}</b> {clientCount === 1 ? "cliente asignado" : "clientes asignados"}.
+          No se puede mover mientras tenga clientes: perdería el acceso a ellos al instante, porque sus clientes se
+          quedarían en la organización anterior mientras él pasa a la nueva. Primero reasigna o da de baja a esos
+          clientes.
+        </p>
+      ) : (
+        <>
+          <label className="field-label">Nueva organización</label>
+          <select className="input" style={{ marginBottom: 16 }} value={orgId} onChange={(e) => setOrgId(e.target.value)}>
+            <option value="">Selecciona</option>
+            {orgs.map((o) => <option key={o.id} value={o.id}>{o.name}</option>)}
+          </select>
+          {error && <p className="error-text" style={{ marginBottom: 12 }}>{error}</p>}
+          <button className="btn" onClick={submit} disabled={saving}>{saving ? "Moviendo…" : "Mover"}</button>
+        </>
+      )}
+    </Modal>
   );
 }

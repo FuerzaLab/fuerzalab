@@ -3,6 +3,7 @@ import { useNavigate, useParams } from "react-router-dom";
 import { ArrowLeft } from "lucide-react";
 import { useToast } from "../../../contexts/ToastContext";
 import ConfirmModal from "../../../components/ui/ConfirmModal";
+import Modal from "../../../components/ui/Modal";
 import Chip from "../../../components/ui/Chip";
 import {
   getClient,
@@ -10,6 +11,8 @@ import {
   upsertClientProfile,
   updateClientStatus,
   approveIntake,
+  getClientDeleteBlockers,
+  deleteClient,
   PAR_Q_QUESTIONS,
   type ClientRow,
   type ClientProfileRow,
@@ -62,6 +65,7 @@ export default function ClientDetail() {
   const [loadError, setLoadError] = useState("");
   const [saving, setSaving] = useState(false);
   const [toArchive, setToArchive] = useState(false);
+  const [showDelete, setShowDelete] = useState(false);
 
   useEffect(() => {
     if (!id) return;
@@ -146,6 +150,9 @@ export default function ClientDetail() {
               Dar de baja
             </button>
           )}
+          <button className="btn ghost" style={{ color: "var(--bad)" }} onClick={() => setShowDelete(true)}>
+            Eliminar
+          </button>
         </div>
       </div>
 
@@ -187,15 +194,31 @@ export default function ClientDetail() {
                 {intake.par_q?.otherDetail && <p style={{ marginTop: 6 }}>Detalle: {intake.par_q.otherDetail}</p>}
               </div>
             )}
-            <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(180px,1fr))", gap: 10, marginBottom: 10 }}>
+            <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(180px,1fr))", gap: 10, marginBottom: 14 }}>
               <div><span className="note">Objetivo principal</span><div>{intake.main_goal || "—"}</div></div>
               <div><span className="note">Objetivos secundarios</span><div>{intake.secondary_goals.length ? intake.secondary_goals.join(", ") : "—"}</div></div>
               <div><span className="note">Peso</span><div>{intake.weight_kg ? `${intake.weight_kg} kg` : "—"}</div></div>
               <div><span className="note">Sueño</span><div>{intake.habits?.sleepHours ? `${intake.habits.sleepHours} h/noche` : "—"}</div></div>
               <div><span className="note">Actividad diaria</span><div>{intake.habits?.activityLevel || "—"}</div></div>
+              <div><span className="note">Alimentación</span><div>{intake.habits?.nutritionQuality || "—"}</div></div>
+              <div><span className="note">Estrés habitual</span><div>{intake.habits?.stressLevel || "—"}</div></div>
               <div><span className="note">Días disponibles</span><div>{intake.preferences?.trainingDays || "—"}</div></div>
               <div><span className="note">Duración preferida</span><div>{intake.preferences?.sessionDuration || "—"}</div></div>
+              <div><span className="note">Equipamiento disponible</span><div>{intake.preferences?.equipmentAccess || "—"}</div></div>
+              <div><span className="note">Horario preferido</span><div>{intake.preferences?.preferredTime || "—"}</div></div>
             </div>
+            {intake.medical_notes && (
+              <div style={{ marginBottom: 10 }}>
+                <span className="note">Medicamentos, alergias o condiciones</span>
+                <div>{intake.medical_notes}</div>
+              </div>
+            )}
+            {intake.emergency_contact?.name && (
+              <div style={{ marginBottom: 10 }}>
+                <span className="note">Contacto de emergencia</span>
+                <div>{intake.emergency_contact.name}{intake.emergency_contact.relationship ? ` (${intake.emergency_contact.relationship})` : ""}{intake.emergency_contact.phone ? ` — ${intake.emergency_contact.phone}` : ""}</div>
+              </div>
+            )}
             <p className="note">Completado el {new Date(intake.submitted_at).toLocaleDateString("es")}.</p>
           </div>
         </div>
@@ -264,6 +287,14 @@ export default function ClientDetail() {
           }}
         />
       )}
+
+      {showDelete && (
+        <DeleteClientModal
+          client={client}
+          onClose={() => setShowDelete(false)}
+          onDeleted={() => navigate(paths.trainerClients)}
+        />
+      )}
     </div>
   );
 }
@@ -290,4 +321,65 @@ function formToProfile(f: FormState) {
     injuries: f.injuries || null,
     medical_notes: f.medical_notes || null,
   };
+}
+
+function DeleteClientModal({ client, onClose, onDeleted }: { client: ClientRow; onClose: () => void; onDeleted: () => void }) {
+  const { notify } = useToast();
+  const [blockers, setBlockers] = useState<{ programs: number; plans: number } | null>(null);
+  const [confirmText, setConfirmText] = useState("");
+  const [error, setError] = useState("");
+  const [deleting, setDeleting] = useState(false);
+
+  useEffect(() => {
+    getClientDeleteBlockers(client.id).then(setBlockers).catch((e) => setError(e.message));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  const blocked = blockers !== null && (blockers.programs > 0 || blockers.plans > 0);
+
+  const submit = async () => {
+    if (confirmText.trim() !== client.full_name) {
+      setError("El nombre no coincide. Escríbelo exactamente igual para confirmar.");
+      return;
+    }
+    setError("");
+    setDeleting(true);
+    try {
+      await deleteClient(client.id);
+      notify(`${client.full_name} fue eliminado.`);
+      onDeleted();
+    } catch (e: any) {
+      setError(e.message ?? "No pudimos eliminar este cliente.");
+      setDeleting(false);
+    }
+  };
+
+  return (
+    <Modal title={`Eliminar a ${client.full_name}`} onClose={onClose}>
+      {blockers === null ? (
+        <p className="note">Comprobando…</p>
+      ) : blocked ? (
+        <p>
+          Este cliente todavía tiene {blockers.programs > 0 && <>{" "}<b>{blockers.programs}</b> programa{blockers.programs === 1 ? "" : "s"} (con sus rutinas)</>}
+          {blockers.programs > 0 && blockers.plans > 0 && " y"}
+          {blockers.plans > 0 && <>{" "}<b>{blockers.plans}</b> plan{blockers.plans === 1 ? "" : "es"} de pago</>}. No se puede
+          eliminar mientras tenga algo de eso — primero elimina sus programas desde Planificación, o usa "Dar de baja" en
+          vez de eliminarlo, que conserva todo su historial.
+        </p>
+      ) : (
+        <>
+          <p style={{ marginBottom: 14 }}>
+            Esta acción es <b>permanente</b> y no se puede deshacer. No tiene programas ni planes de pago, así que es
+            segura, pero confírmala escribiendo el nombre exacto del cliente:
+          </p>
+          <p className="note" style={{ marginBottom: 6 }}><b>{client.full_name}</b></p>
+          <input className="input" style={{ marginBottom: 12 }} value={confirmText} onChange={(e) => setConfirmText(e.target.value)} autoFocus />
+          {error && <p className="error-text" style={{ marginBottom: 12 }}>{error}</p>}
+          <button className="btn" style={{ background: "var(--bad)", borderColor: "var(--bad)" }} onClick={submit} disabled={deleting}>
+            {deleting ? "Eliminando…" : "Eliminar definitivamente"}
+          </button>
+        </>
+      )}
+    </Modal>
+  );
 }
