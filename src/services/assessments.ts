@@ -391,6 +391,86 @@ export async function deleteFlexibilityTest(id: string): Promise<void> {
   if (error) throw error;
 }
 
+// ---------- Estimación de % de grasa corporal ----------
+// Dos métodos bien establecidos en la literatura. No calculamos masa
+// muscular: no existe un método simple y confiable para eso a partir de
+// solo circunferencias y pliegues (los que existen necesitan correcciones
+// por etnia y son mucho menos precisos) — se sigue cargando a mano.
+
+export interface BodyFatEstimate {
+  value: number;
+  method: string;
+}
+
+function findCirc(circs: CircumferenceRow[], site: CircumferenceSite): number | null {
+  const row = circs.find((c) => c.site === site);
+  return row ? row.value_cm : null;
+}
+
+function findSkinfold(skinfolds: SkinfoldRow[], site: string): number | null {
+  const row = skinfolds.find((s) => s.site === site);
+  return row ? row.value_mm : null;
+}
+
+function ageFromBirthDate(birthDate: string): number {
+  const b = new Date(birthDate);
+  const now = new Date();
+  let age = now.getFullYear() - b.getFullYear();
+  const m = now.getMonth() - b.getMonth();
+  if (m < 0 || (m === 0 && now.getDate() < b.getDate())) age--;
+  return age;
+}
+
+/**
+ * Intenta estimar el % de grasa corporal con los datos ya cargados en esta
+ * evaluación, en este orden de preferencia: primero pliegues (Jackson-Pollock
+ * 3 sitios, más preciso), después circunferencias (método Naval, más simple).
+ * Devuelve null si no hay datos suficientes, sin inventar nada.
+ */
+export function estimateBodyFat(params: {
+  sex: "male" | "female" | "other" | null;
+  birthDate: string | null;
+  heightCm: number | null;
+  circumferences: CircumferenceRow[];
+  skinfolds: SkinfoldRow[];
+}): BodyFatEstimate | null {
+  const { sex, birthDate, heightCm, circumferences, skinfolds } = params;
+  if (sex !== "male" && sex !== "female") return null; // sin fórmula validada para "other"
+
+  // Jackson-Pollock, 3 pliegues
+  if (birthDate) {
+    const age = ageFromBirthDate(birthDate);
+    const sites = sex === "male" ? ["Pectoral", "Abdominal", "Muslo"] : ["Tríceps", "Suprailíaco", "Muslo"];
+    const values = sites.map((s) => findSkinfold(skinfolds, s));
+    if (values.every((v) => v != null)) {
+      const sum = (values as number[]).reduce((a, b) => a + b, 0);
+      const bd =
+        sex === "male"
+          ? 1.10938 - 0.0008267 * sum + 0.0000016 * sum * sum - 0.0002574 * age
+          : 1.0994921 - 0.0009929 * sum + 0.0000023 * sum * sum - 0.0001392 * age;
+      const bf = 495 / bd - 450;
+      if (bf > 0 && bf < 70) return { value: Math.round(bf * 10) / 10, method: `Jackson-Pollock, 3 pliegues (${sites.join(" + ")})` };
+    }
+  }
+
+  // Método Naval, por circunferencias
+  const waist = findCirc(circumferences, "waist");
+  const neck = findCirc(circumferences, "neck");
+  const hip = findCirc(circumferences, "hip");
+  if (waist != null && neck != null && heightCm) {
+    if (sex === "male" && waist > neck) {
+      const bf = 495 / (1.0324 - 0.19077 * Math.log10(waist - neck) + 0.15456 * Math.log10(heightCm)) - 450;
+      if (bf > 0 && bf < 70) return { value: Math.round(bf * 10) / 10, method: "Método Naval (cintura, cuello, estatura)" };
+    }
+    if (sex === "female" && hip != null && waist + hip > neck) {
+      const bf = 495 / (1.29579 - 0.35004 * Math.log10(waist + hip - neck) + 0.221 * Math.log10(heightCm)) - 450;
+      if (bf > 0 && bf < 70) return { value: Math.round(bf * 10) / 10, method: "Método Naval (cintura, cadera, cuello, estatura)" };
+    }
+  }
+
+  return null;
+}
+
 // ---------- Sugerencia de qué evaluar, según el perfil del cliente ----------
 export type AssessmentCategory = "body" | "circumferences" | "skinfolds" | "strength" | "power" | "endurance" | "mobility" | "flexibility";
 

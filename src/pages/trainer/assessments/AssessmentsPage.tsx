@@ -34,6 +34,7 @@ import {
   addFlexibilityTest,
   deleteFlexibilityTest,
   suggestAssessmentCategories,
+  estimateBodyFat,
   TYPE_LABEL,
   SITE_LABEL,
   SKINFOLD_SITES,
@@ -53,6 +54,7 @@ import {
   type EnduranceTestRow,
   type MobilityTestRow,
   type FlexibilityTestRow,
+  type BodyFatEstimate,
 } from "../../../services/assessments";
 
 const CATEGORY_ORDER: AssessmentCategory[] = ["body", "circumferences", "skinfolds", "strength", "power", "endurance", "mobility", "flexibility"];
@@ -163,6 +165,7 @@ export default function AssessmentsPage() {
         <AssessmentDetail
           key={selected.id}
           assessment={selected}
+          clientProfile={clientProfile}
           suggestedCategories={suggestion?.categories ?? null}
           onDelete={() => setToDelete(selected)}
         />
@@ -252,10 +255,12 @@ function NewAssessmentModal({
 
 function AssessmentDetail({
   assessment,
+  clientProfile,
   suggestedCategories,
   onDelete,
 }: {
   assessment: AssessmentRow;
+  clientProfile: ClientProfileRow | null;
   suggestedCategories: AssessmentCategory[] | null;
   onDelete: () => void;
 }) {
@@ -335,7 +340,16 @@ function AssessmentDetail({
         </button>
       </div>
 
-      {active === "body" && <BodySection assessmentId={assessment.id} body={body} onSaved={setBody} />}
+      {active === "body" && (
+        <BodySection
+          assessmentId={assessment.id}
+          body={body}
+          onSaved={setBody}
+          clientProfile={clientProfile}
+          circumferences={circs}
+          skinfolds={skinfolds}
+        />
+      )}
       {active === "circumferences" && <CircumferencesSection assessmentId={assessment.id} rows={circs} setRows={setCircs} />}
       {active === "skinfolds" && <SkinfoldsSection assessmentId={assessment.id} rows={skinfolds} setRows={setSkinfolds} />}
       {active === "strength" && <StrengthSection assessmentId={assessment.id} rows={strength} setRows={setStrength} exercises={exercises} />}
@@ -347,13 +361,48 @@ function AssessmentDetail({
   );
 }
 
-function BodySection({ assessmentId, body, onSaved }: { assessmentId: string; body: BodyMeasurementRow | null; onSaved: (b: BodyMeasurementRow) => void }) {
+function BodySection({
+  assessmentId,
+  body,
+  onSaved,
+  clientProfile,
+  circumferences,
+  skinfolds,
+}: {
+  assessmentId: string;
+  body: BodyMeasurementRow | null;
+  onSaved: (b: BodyMeasurementRow) => void;
+  clientProfile: ClientProfileRow | null;
+  circumferences: CircumferenceRow[];
+  skinfolds: SkinfoldRow[];
+}) {
   const { notify } = useToast();
   const [weight, setWeight] = useState(body?.weight_kg != null ? String(body.weight_kg) : "");
   const [height, setHeight] = useState(body?.height_cm != null ? String(body.height_cm) : "");
   const [bodyFat, setBodyFat] = useState(body?.body_fat_pct != null ? String(body.body_fat_pct) : "");
   const [muscleMass, setMuscleMass] = useState(body?.muscle_mass_kg != null ? String(body.muscle_mass_kg) : "");
   const [saving, setSaving] = useState(false);
+  const [estimate, setEstimate] = useState<BodyFatEstimate | null>(null);
+  const [estimateError, setEstimateError] = useState("");
+
+  const runEstimate = () => {
+    setEstimateError("");
+    const result = estimateBodyFat({
+      sex: clientProfile?.sex ?? null,
+      birthDate: clientProfile?.birth_date ?? null,
+      heightCm: height ? Number(height.replace(",", ".")) : clientProfile?.height_cm ?? null,
+      circumferences,
+      skinfolds,
+    });
+    if (!result) {
+      setEstimateError(
+        "Faltan datos para estimarlo. Para pliegues: fecha de nacimiento del cliente y los 3 pliegues correspondientes a su sexo (Pectoral, Abdominal y Muslo en hombres; Tríceps, Suprailíaco y Muslo en mujeres). Para circunferencias: sexo, estatura, cuello y cintura (y cadera en mujeres)."
+      );
+      setEstimate(null);
+      return;
+    }
+    setEstimate(result);
+  };
 
   const save = async () => {
     if (!weight) {
@@ -386,6 +435,26 @@ function BodySection({ assessmentId, body, onSaved }: { assessmentId: string; bo
           <div><label className="field-label">% grasa corporal</label><input className="input" value={bodyFat} onChange={(e) => setBodyFat(e.target.value)} /></div>
           <div><label className="field-label">Masa muscular (kg)</label><input className="input" value={muscleMass} onChange={(e) => setMuscleMass(e.target.value)} /></div>
         </div>
+
+        <div style={{ background: "var(--bg)", borderRadius: 8, padding: 14, marginBottom: 14 }}>
+          <p className="note" style={{ marginBottom: 10 }}>
+            Si ya cargaste circunferencias o pliegues en esta evaluación, podemos estimar el % de grasa corporal. No
+            calculamos la masa muscular: no hay un método simple y confiable para eso a partir de solo estas medidas.
+          </p>
+          <button type="button" className="btn ghost" onClick={runEstimate}>Estimar % de grasa corporal</button>
+          {estimateError && <p className="error-text" style={{ marginTop: 10 }}>{estimateError}</p>}
+          {estimate && (
+            <div style={{ marginTop: 10, display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
+              <span>
+                Estimado: <b>{estimate.value}%</b> <span className="note">({estimate.method})</span>
+              </span>
+              <button type="button" className="btn ghost" style={{ padding: "5px 10px", fontSize: 13 }} onClick={() => setBodyFat(String(estimate.value))}>
+                Usar este valor
+              </button>
+            </div>
+          )}
+        </div>
+
         <button className="btn" onClick={save} disabled={saving}>{saving ? "Guardando…" : "Guardar datos corporales"}</button>
       </div>
     </div>
