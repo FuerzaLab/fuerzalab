@@ -6,6 +6,7 @@ import Chip from "../../components/ui/Chip";
 import { paths } from "../../routes/paths";
 import { listClients, type ClientRow } from "../../services/clients";
 import { listTodayLogsForTrainer, wellnessScore, wellnessSemaforo, type WellnessLogRow } from "../../services/wellness";
+import { computeSuggestions } from "../../services/suggestions";
 
 export default function TrainerDashboard() {
   const { profile } = useAuth();
@@ -14,6 +15,7 @@ export default function TrainerDashboard() {
   const [clients, setClients] = useState<ClientRow[]>([]);
   const [todayLogs, setTodayLogs] = useState<WellnessLogRow[]>([]);
   const [loading, setLoading] = useState(true);
+  const [suggestionCount, setSuggestionCount] = useState<number | null>(null);
 
   useEffect(() => {
     Promise.all([listClients(), listTodayLogsForTrainer()])
@@ -23,6 +25,7 @@ export default function TrainerDashboard() {
       })
       .catch((e: any) => notify(e.message))
       .finally(() => setLoading(false));
+    computeSuggestions().then((s) => setSuggestionCount(s.length)).catch(() => setSuggestionCount(null));
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -75,6 +78,11 @@ export default function TrainerDashboard() {
                 </p>
               </div>
             </div>
+          )}
+          {suggestionCount !== null && suggestionCount > 0 && (
+            <p className="note" style={{ cursor: "pointer" }} onClick={() => navigate(paths.trainerSuggestions)}>
+              Hay {suggestionCount} sugerencia{suggestionCount === 1 ? "" : "s"} más esperando — ver Sugerencias.
+            </p>
           )}
         </>
       )}

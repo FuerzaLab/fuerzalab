@@ -38,6 +38,7 @@ import ReportsPage from "../pages/trainer/reports/ReportsPage";
 import ClientWellness from "../pages/client/Wellness";
 import ClientReports from "../pages/client/Reports";
 import ProgressPhotosPage from "../pages/trainer/progress-photos/ProgressPhotosPage";
+import SuggestionsPage from "../pages/trainer/suggestions/SuggestionsPage";
 import ClientProgressPhotos from "../pages/client/ProgressPhotos";
 
 import { paths } from "./paths";
@@ -84,7 +85,7 @@ export default function AppRoutes() {
             <Route path={paths.trainerBuilder} element={<BuilderPage />} />
             <Route path={paths.trainerTracking} element={<ComingSoon title="Seguimiento" />} />
             <Route path={paths.trainerAnalytics} element={<ComingSoon title="Analytics" />} />
-            <Route path={paths.trainerSuggestions} element={<ComingSoon title="Sugerencias" />} />
+            <Route path={paths.trainerSuggestions} element={<SuggestionsPage />} />
             <Route path={paths.trainerMessages} element={<TrainerMessagesPage />} />
             <Route path={paths.trainerPayments} element={<TrainerPaymentsPage />} />
             <Route path={paths.trainerReports} element={<ReportsPage />} />
