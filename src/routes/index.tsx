@@ -34,6 +34,7 @@ import ClientRoutine from "../pages/client/Routine";
 import TrainerAssessmentsPage from "../pages/trainer/assessments/AssessmentsPage";
 import ClientAssessments from "../pages/client/Assessments";
 import TrainerWellnessPage from "../pages/trainer/wellness/WellnessPage";
+import ReportsPage from "../pages/trainer/reports/ReportsPage";
 import ClientWellness from "../pages/client/Wellness";
 
 import { paths } from "./paths";
@@ -82,7 +83,7 @@ export default function AppRoutes() {
             <Route path={paths.trainerSuggestions} element={<ComingSoon title="Sugerencias" />} />
             <Route path={paths.trainerMessages} element={<TrainerMessagesPage />} />
             <Route path={paths.trainerPayments} element={<TrainerPaymentsPage />} />
-            <Route path={paths.trainerReports} element={<ComingSoon title="Reportes" />} />
+            <Route path={paths.trainerReports} element={<ReportsPage />} />
             <Route path={paths.trainerSettings} element={<Settings />} />
           </Route>
         </Route>

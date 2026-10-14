@@ -57,5 +57,38 @@ create trigger b_guard_client_update before update on public.wellness_logs
     'sleep_hours', 'sleep_quality', 'fatigue', 'energy', 'stress', 'soreness',
     'pain_location', 'notes', 'updated_at');
 
-select public._apply_data_policies('wellness_logs', 'health', p_super => false,
-  p_client_insert => 'true', p_client_update => 'true');
+-- El script original arma todas sus políticas con una función ayudante
+-- (_apply_data_policies) y después la borra a propósito al terminar —
+-- es una herramienta de armado, no algo pensado para quedar disponible
+-- en producción. Por eso acá escribimos la política directamente, con
+-- las mismas funciones de permisos que usa el resto de la base de
+-- datos, en vez de llamar a una función que ya no existe.
+alter table public.wellness_logs enable row level security;
+
+create policy p_select on public.wellness_logs for select to authenticated using (
+  public.is_trainer_scope(organization_id, trainer_id)
+  or (organization_id = public.auth_org() and public.staff_can(trainer_id, 'health', 'read'))
+  or public.is_own_client(client_id, organization_id)
+);
+
+create policy p_insert on public.wellness_logs for insert to authenticated with check (
+  public.is_trainer_scope(organization_id, trainer_id)
+  or (organization_id = public.auth_org() and public.staff_can(trainer_id, 'health', 'write'))
+  or public.is_own_client(client_id, organization_id)
+);
+
+create policy p_update on public.wellness_logs for update to authenticated
+  using (
+    public.is_trainer_scope(organization_id, trainer_id)
+    or (organization_id = public.auth_org() and public.staff_can(trainer_id, 'health', 'write'))
+    or public.is_own_client(client_id, organization_id)
+  )
+  with check (
+    public.is_trainer_scope(organization_id, trainer_id)
+    or (organization_id = public.auth_org() and public.staff_can(trainer_id, 'health', 'write'))
+    or public.is_own_client(client_id, organization_id)
+  );
+
+create policy p_delete on public.wellness_logs for delete to authenticated using (
+  public.is_trainer_scope(organization_id, trainer_id)
+);
