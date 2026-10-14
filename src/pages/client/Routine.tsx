@@ -23,6 +23,8 @@ import {
   type WorkoutLogRow,
   type SetLogRow,
 } from "../../services/training";
+import { getTodayLog } from "../../services/wellness";
+import WellnessForm from "../../components/WellnessForm";
 
 const STATUS_LABEL: Record<WorkoutLogRow["status"], string> = {
   pending: "Pendiente",
@@ -40,7 +42,19 @@ export default function ClientRoutine() {
   const [sessions, setSessions] = useState<SessionRow[]>([]);
   const [statuses, setStatuses] = useState<Record<string, WorkoutLogRow["status"]>>({});
   const [activeSessionId, setActiveSessionId] = useState<string | null>(null);
+  const [pendingSessionId, setPendingSessionId] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
+
+  const startSession = async (sessionId: string) => {
+    if (!clientId) return;
+    try {
+      const today = await getTodayLog(clientId);
+      if (today) setActiveSessionId(sessionId);
+      else setPendingSessionId(sessionId);
+    } catch (e: any) {
+      notify(e.message);
+    }
+  };
 
   const loadSessions = async (wId: string) => {
     const ss = await listSessions(wId);
@@ -81,6 +95,24 @@ export default function ClientRoutine() {
     if (weekId) loadSessions(weekId);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [weekId]);
+
+  if (pendingSessionId && clientId) {
+    return (
+      <div className="page" style={{ maxWidth: 520 }}>
+        <h1 style={{ marginBottom: 4 }}>Antes de empezar</h1>
+        <WellnessForm
+          clientId={clientId}
+          intro="Un check-in rápido antes de entrenar hoy. Tu entrenador lo va a ver."
+          submitLabel="Enviar y empezar a entrenar"
+          onSubmitted={() => {
+            const sId = pendingSessionId;
+            setPendingSessionId(null);
+            setActiveSessionId(sId);
+          }}
+        />
+      </div>
+    );
+  }
 
   if (activeSessionId) {
     return (
@@ -130,7 +162,7 @@ export default function ClientRoutine() {
                       <b>{s.name}</b>
                       <div className="note">{STATUS_LABEL[status]}</div>
                     </div>
-                    <button className="btn" onClick={() => setActiveSessionId(s.id)} disabled={status === "completed"}>
+                    <button className="btn" onClick={() => startSession(s.id)} disabled={status === "completed"}>
                       {status === "completed" ? "Completada" : status === "in_progress" ? "Continuar" : "Entrenar"}
                     </button>
                   </div>

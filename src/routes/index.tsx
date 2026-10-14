@@ -33,6 +33,8 @@ import Settings from "../pages/shared/Settings";
 import ClientRoutine from "../pages/client/Routine";
 import TrainerAssessmentsPage from "../pages/trainer/assessments/AssessmentsPage";
 import ClientAssessments from "../pages/client/Assessments";
+import TrainerWellnessPage from "../pages/trainer/wellness/WellnessPage";
+import ClientWellness from "../pages/client/Wellness";
 
 import { paths } from "./paths";
 
@@ -73,6 +75,7 @@ export default function AppRoutes() {
             <Route path={paths.trainerTemplates} element={<ComingSoon title="Plantillas" />} />
             <Route path={paths.trainerPrograms} element={<ProgramsPage />} />
             <Route path={paths.trainerAssessments} element={<TrainerAssessmentsPage />} />
+            <Route path={paths.trainerWellness} element={<TrainerWellnessPage />} />
             <Route path={paths.trainerBuilder} element={<BuilderPage />} />
             <Route path={paths.trainerTracking} element={<ComingSoon title="Seguimiento" />} />
             <Route path={paths.trainerAnalytics} element={<ComingSoon title="Analytics" />} />
@@ -96,6 +99,7 @@ export default function AppRoutes() {
             <Route path={paths.clientMessages} element={<ClientMessages />} />
             <Route path={paths.clientPayments} element={<ClientPayments />} />
             <Route path={paths.clientProfile} element={<Settings />} />
+            <Route path={paths.clientWellness} element={<ClientWellness />} />
           </Route>
           </Route>
         </Route>

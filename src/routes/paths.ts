@@ -20,6 +20,7 @@ export const paths = {
   trainerTemplates: "/t/plantillas",
   trainerPrograms: "/t/programas",
   trainerAssessments: "/t/evaluaciones",
+  trainerWellness: "/t/bienestar",
   trainerBuilder: "/t/constructor",
   trainerTracking: "/t/seguimiento",
   trainerAnalytics: "/t/analytics",
@@ -37,4 +38,5 @@ export const paths = {
   clientMessages: "/c/mensajes",
   clientPayments: "/c/pagos",
   clientProfile: "/c/perfil",
+  clientWellness: "/c/bienestar",
 } as const;
