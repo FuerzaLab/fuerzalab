@@ -156,6 +156,20 @@ function TrainSession({ sessionId, onExit }: { sessionId: string; onExit: () => 
   const [rpe, setRpe] = useState("");
   const [comments, setComments] = useState("");
   const [saving, setSaving] = useState(false);
+  const [restTotal, setRestTotal] = useState(0);
+  const [restRemaining, setRestRemaining] = useState(0);
+
+  useEffect(() => {
+    if (restRemaining <= 0) return;
+    const t = window.setInterval(() => setRestRemaining((s) => Math.max(0, s - 1)), 1000);
+    return () => window.clearInterval(t);
+  }, [restRemaining > 0]);
+
+  const startRest = (seconds: number) => {
+    if (!seconds || seconds <= 0) return;
+    setRestTotal(seconds);
+    setRestRemaining(seconds);
+  };
 
   const load = async () => {
     setLoading(true);
@@ -184,6 +198,7 @@ function TrainSession({ sessionId, onExit }: { sessionId: string; onExit: () => 
   const saveSet = async (ex: WorkoutExerciseRow, setNumber: number, fields: { reps: number; loadKg: number | null; rir: number | null; completed: boolean }) => {
     if (!log) return;
     const existing = logFor(ex.id, setNumber);
+    const justCompleted = fields.completed && !existing?.completed;
     try {
       const saved = await upsertSetLog({
         existingId: existing?.id,
@@ -194,6 +209,7 @@ function TrainSession({ sessionId, onExit }: { sessionId: string; onExit: () => 
         ...fields,
       });
       setSetLogs((sls) => (existing ? sls.map((s) => (s.id === saved.id ? saved : s)) : [...sls, saved]));
+      if (justCompleted && ex.rest_s) startRest(ex.rest_s);
     } catch (e: any) {
       notify(e.message);
     }
@@ -219,6 +235,38 @@ function TrainSession({ sessionId, onExit }: { sessionId: string; onExit: () => 
       <button onClick={onExit} style={{ border: 0, background: "none", color: "var(--pri)", padding: 0, marginBottom: 14, display: "flex", alignItems: "center", gap: 6, cursor: "pointer" }}>
         <ArrowLeft size={16} /> Volver a mi rutina
       </button>
+
+      {restRemaining > 0 && (
+        <div
+          style={{
+            position: "sticky",
+            top: 0,
+            zIndex: 20,
+            background: "var(--nav)",
+            color: "#fff",
+            borderRadius: 10,
+            padding: "12px 16px",
+            marginBottom: 18,
+          }}
+        >
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 8, flexWrap: "wrap", gap: 8 }}>
+            <span style={{ fontFamily: "'Barlow Condensed',sans-serif", fontSize: 28, fontWeight: 700 }}>
+              Descanso: {Math.floor(restRemaining / 60)}:{String(restRemaining % 60).padStart(2, "0")}
+            </span>
+            <div style={{ display: "flex", gap: 8 }}>
+              <button className="btn ghost" style={{ padding: "5px 10px", fontSize: 13, color: "#fff", borderColor: "rgba(255,255,255,.4)" }} onClick={() => setRestRemaining((s) => s + 15)}>
+                +15 s
+              </button>
+              <button className="btn ghost" style={{ padding: "5px 10px", fontSize: 13, color: "#fff", borderColor: "rgba(255,255,255,.4)" }} onClick={() => setRestRemaining(0)}>
+                Saltar
+              </button>
+            </div>
+          </div>
+          <div style={{ height: 6, background: "rgba(255,255,255,.2)", borderRadius: 99, overflow: "hidden" }}>
+            <div style={{ height: "100%", width: `${(restRemaining / Math.max(1, restTotal)) * 100}%`, background: "#8FA6F5", transition: "width 1s linear" }} />
+          </div>
+        </div>
+      )}
 
       {finishing ? (
         <div className="panel" style={{ maxWidth: 420 }}>
@@ -303,7 +351,10 @@ function ExerciseTrainer({
     <div className="panel" style={{ marginBottom: 10 }}>
       <div className="hd">
         <h3 style={{ fontSize: 16 }}>{ex.exercise_name}</h3>
-        <span className="note">Objetivo: {sets}×{repsTarget}{ex.load_value ? ` @ ${ex.load_value} kg` : ""}{ex.rir != null ? ` · RIR ${ex.rir}` : ""}</span>
+        <span className="note">
+          Objetivo: {sets}×{repsTarget}{ex.load_value ? ` @ ${ex.load_value} kg` : ""}{ex.rir != null ? ` · RIR ${ex.rir}` : ""}
+          {ex.rest_s ? ` · Descanso ${ex.rest_s}s` : ""}{ex.tempo ? ` · Tempo ${ex.tempo}` : ""}
+        </span>
       </div>
       <div style={{ overflowX: "auto" }}>
         <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 14 }}>
