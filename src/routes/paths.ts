@@ -39,4 +39,5 @@ export const paths = {
   clientPayments: "/c/pagos",
   clientProfile: "/c/perfil",
   clientWellness: "/c/bienestar",
+  clientReports: "/c/reportes",
 } as const;

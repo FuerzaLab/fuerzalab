@@ -36,6 +36,7 @@ import ClientAssessments from "../pages/client/Assessments";
 import TrainerWellnessPage from "../pages/trainer/wellness/WellnessPage";
 import ReportsPage from "../pages/trainer/reports/ReportsPage";
 import ClientWellness from "../pages/client/Wellness";
+import ClientReports from "../pages/client/Reports";
 
 import { paths } from "./paths";
 
@@ -101,6 +102,7 @@ export default function AppRoutes() {
             <Route path={paths.clientPayments} element={<ClientPayments />} />
             <Route path={paths.clientProfile} element={<Settings />} />
             <Route path={paths.clientWellness} element={<ClientWellness />} />
+            <Route path={paths.clientReports} element={<ClientReports />} />
           </Route>
           </Route>
         </Route>
