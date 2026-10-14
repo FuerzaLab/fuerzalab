@@ -15,6 +15,7 @@ import {
   Home,
   Activity,
   Ruler,
+  Camera,
 } from "lucide-react";
 import { useAuth } from "../../contexts/AuthContext";
 import { paths } from "../paths";
@@ -42,6 +43,7 @@ const NAV: Record<Role, NavItem[]> = {
     { to: paths.trainerPrograms, label: "Planificación", icon: CalendarRange },
     { to: paths.trainerAssessments, label: "Evaluaciones", icon: Ruler },
     { to: paths.trainerWellness, label: "Bienestar", icon: Activity },
+    { to: paths.trainerProgressPhotos, label: "Fotos", icon: Camera },
     { to: paths.trainerSuggestions, label: "Sugerencias", icon: Lightbulb },
     { to: paths.trainerPayments, label: "Pagos", icon: CreditCard },
     { to: paths.trainerMessages, label: "Mensajes", icon: MessageSquare },

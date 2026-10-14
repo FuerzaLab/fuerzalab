@@ -37,6 +37,8 @@ import TrainerWellnessPage from "../pages/trainer/wellness/WellnessPage";
 import ReportsPage from "../pages/trainer/reports/ReportsPage";
 import ClientWellness from "../pages/client/Wellness";
 import ClientReports from "../pages/client/Reports";
+import ProgressPhotosPage from "../pages/trainer/progress-photos/ProgressPhotosPage";
+import ClientProgressPhotos from "../pages/client/ProgressPhotos";
 
 import { paths } from "./paths";
 
@@ -78,6 +80,7 @@ export default function AppRoutes() {
             <Route path={paths.trainerPrograms} element={<ProgramsPage />} />
             <Route path={paths.trainerAssessments} element={<TrainerAssessmentsPage />} />
             <Route path={paths.trainerWellness} element={<TrainerWellnessPage />} />
+            <Route path={paths.trainerProgressPhotos} element={<ProgressPhotosPage />} />
             <Route path={paths.trainerBuilder} element={<BuilderPage />} />
             <Route path={paths.trainerTracking} element={<ComingSoon title="Seguimiento" />} />
             <Route path={paths.trainerAnalytics} element={<ComingSoon title="Analytics" />} />
@@ -96,7 +99,7 @@ export default function AppRoutes() {
             <Route path={paths.clientDashboard} element={<ClientDashboard />} />
             <Route path={paths.clientRoutine} element={<ClientRoutine />} />
             <Route path={paths.clientHistory} element={<ComingSoon title="Historial" />} />
-            <Route path={paths.clientProgress} element={<ComingSoon title="Mi progreso" />} />
+            <Route path={paths.clientProgress} element={<ClientProgressPhotos />} />
             <Route path={paths.clientAssessments} element={<ClientAssessments />} />
             <Route path={paths.clientMessages} element={<ClientMessages />} />
             <Route path={paths.clientPayments} element={<ClientPayments />} />

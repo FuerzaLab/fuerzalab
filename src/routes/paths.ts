@@ -21,6 +21,7 @@ export const paths = {
   trainerPrograms: "/t/programas",
   trainerAssessments: "/t/evaluaciones",
   trainerWellness: "/t/bienestar",
+  trainerProgressPhotos: "/t/fotos",
   trainerBuilder: "/t/constructor",
   trainerTracking: "/t/seguimiento",
   trainerAnalytics: "/t/analytics",
