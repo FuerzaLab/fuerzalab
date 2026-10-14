@@ -7,12 +7,15 @@ import {
   getBodyMeasurement,
   listCircumferences,
   listStrengthTests,
+  listSkinfolds,
+  sumSkinfolds8,
   TYPE_LABEL,
   SITE_LABEL,
   type AssessmentRow,
   type BodyMeasurementRow,
   type CircumferenceRow,
   type StrengthTestRow,
+  type SkinfoldRow,
 } from "../../services/assessments";
 
 export default function ClientAssessments() {
@@ -22,6 +25,7 @@ export default function ClientAssessments() {
   const [body, setBody] = useState<BodyMeasurementRow | null>(null);
   const [circs, setCircs] = useState<CircumferenceRow[]>([]);
   const [strength, setStrength] = useState<StrengthTestRow[]>([]);
+  const [skinfolds, setSkinfolds] = useState<SkinfoldRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [loadingDetail, setLoadingDetail] = useState(false);
 
@@ -47,11 +51,12 @@ export default function ClientAssessments() {
   useEffect(() => {
     if (!selectedId) return;
     setLoadingDetail(true);
-    Promise.all([getBodyMeasurement(selectedId), listCircumferences(selectedId), listStrengthTests(selectedId)])
-      .then(([b, c, s]) => {
+    Promise.all([getBodyMeasurement(selectedId), listCircumferences(selectedId), listStrengthTests(selectedId), listSkinfolds(selectedId)])
+      .then(([b, c, s, sf]) => {
         setBody(b);
         setCircs(c);
         setStrength(s);
+        setSkinfolds(sf);
       })
       .catch((e: any) => notify(e.message))
       .finally(() => setLoadingDetail(false));
@@ -116,6 +121,25 @@ export default function ClientAssessments() {
                         </div>
                       ))}
                     </div>
+                  </div>
+                </div>
+              )}
+
+              {skinfolds.length > 0 && (
+                <div className="panel" style={{ marginBottom: 16 }}>
+                  <div className="hd"><h3>Pliegues cutáneos</h3></div>
+                  <div className="bd">
+                    <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(140px,1fr))", gap: 10, marginBottom: 12 }}>
+                      {skinfolds.map((s) => (
+                        <div key={s.id}>
+                          <span className="note">{s.site}{s.side ? ` (${s.side === "left" ? "izq." : "der."})` : ""}</span>
+                          <div>{s.value_mm} mm</div>
+                        </div>
+                      ))}
+                    </div>
+                    {sumSkinfolds8(skinfolds).complete && (
+                      <p className="note">Σ8 (suma de los 8 pliegues): <b>{sumSkinfolds8(skinfolds).sum} mm</b></p>
+                    )}
                   </div>
                 </div>
               )}

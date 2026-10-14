@@ -213,7 +213,10 @@ export async function deleteStrengthTest(id: string): Promise<void> {
 }
 
 // ---------- Pliegues cutáneos ----------
-export const SKINFOLD_SITES = ["Tríceps", "Subescapular", "Suprailíaco", "Abdominal", "Muslo", "Pectoral", "Axilar media", "Otro"];
+export const SKINFOLD_SITES = ["Tríceps", "Subescapular", "Suprailíaco", "Abdominal", "Muslo", "Pectoral", "Axilar media", "Bíceps", "Pantorrilla medial", "Otro"];
+
+/** Los 8 pliegues estándar del protocolo ISAK (todos salvo "Otro"), usados para la Σ8 de seguimiento. */
+export const ISAK_8_SITES = ["Tríceps", "Subescapular", "Suprailíaco", "Abdominal", "Muslo", "Pectoral", "Axilar media", "Bíceps", "Pantorrilla medial"];
 
 export interface SkinfoldRow {
   id: string;
@@ -238,6 +241,18 @@ export async function addSkinfold(params: { assessmentId: string; site: string; 
     .single();
   if (error) throw error;
   return data as SkinfoldRow;
+}
+
+/**
+ * Suma de los 8 pliegues ISAK ya cargados en la evaluación (Σ8), y cuántos
+ * de los 8 faltan. Útil para comparar la misma evaluación entre sí misma a
+ * lo largo del tiempo, sin pasar por ninguna ecuación de conversión a %.
+ */
+export function sumSkinfolds8(skinfolds: SkinfoldRow[]): { sum: number; complete: boolean; missing: string[] } {
+  const bySite = new Map(skinfolds.map((s) => [s.site, s.value_mm]));
+  const missing = ISAK_8_SITES.filter((site) => !bySite.has(site));
+  const sum = ISAK_8_SITES.reduce((t, site) => t + (bySite.get(site) ?? 0), 0);
+  return { sum: Math.round(sum * 10) / 10, complete: missing.length === 0, missing };
 }
 
 export async function deleteSkinfold(id: string): Promise<void> {

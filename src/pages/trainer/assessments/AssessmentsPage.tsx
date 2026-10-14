@@ -21,6 +21,7 @@ import {
   listSkinfolds,
   addSkinfold,
   deleteSkinfold,
+  sumSkinfolds8,
   listPowerTests,
   addPowerTest,
   deletePowerTest,
@@ -546,10 +547,24 @@ function SkinfoldsSection({ assessmentId, rows, setRows }: { assessmentId: strin
     }
   };
 
+  const sum8 = sumSkinfolds8(rows);
+
   return (
     <div className="panel">
       <div className="hd"><h3>Pliegues cutáneos</h3></div>
       <div className="bd">
+        <div style={{ background: "var(--bg)", borderRadius: 8, padding: 12, marginBottom: 14 }}>
+          {sum8.complete ? (
+            <span>
+              <b>Σ8 (suma de los 8 pliegues ISAK): {sum8.sum} mm.</b>{" "}
+              <span className="note">Compara esta suma con la de evaluaciones anteriores del mismo cliente para ver la tendencia real, sin pasar por ninguna fórmula de conversión a %.</span>
+            </span>
+          ) : (
+            <span className="note">
+              Σ8 todavía incompleta ({8 - sum8.missing.length} de 8 pliegues ISAK cargados). Faltan: {sum8.missing.join(", ")}.
+            </span>
+          )}
+        </div>
         {rows.length > 0 && (
           <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 14, marginBottom: 14 }}>
             <tbody>
