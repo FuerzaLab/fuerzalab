@@ -40,6 +40,7 @@ const NAV: Record<Role, NavItem[]> = {
     { to: paths.trainerClients, label: "Clientes", icon: Users },
     { to: paths.trainerExercises, label: "Ejercicios", icon: Dumbbell },
     { to: paths.trainerBuilder, label: "Constructor de rutinas", icon: ClipboardList },
+    { to: paths.trainerRunSession, label: "Entrenar con cliente", icon: Dumbbell },
     { to: paths.trainerPrograms, label: "Planificación", icon: CalendarRange },
     { to: paths.trainerAssessments, label: "Evaluaciones", icon: Ruler },
     { to: paths.trainerWellness, label: "Bienestar", icon: Activity },

@@ -177,7 +177,7 @@ export default function ClientRoutine() {
   );
 }
 
-function TrainSession({ sessionId, onExit }: { sessionId: string; onExit: () => void }) {
+export function TrainSession({ sessionId, onExit, backLabel = "Volver a mi rutina" }: { sessionId: string; onExit: () => void; backLabel?: string }) {
   const { notify } = useToast();
   const [log, setLog] = useState<WorkoutLogRow | null>(null);
   const [blocks, setBlocks] = useState<SessionBlockRow[]>([]);
@@ -265,7 +265,7 @@ function TrainSession({ sessionId, onExit }: { sessionId: string; onExit: () => 
   return (
     <div className="page">
       <button onClick={onExit} style={{ border: 0, background: "none", color: "var(--pri)", padding: 0, marginBottom: 14, display: "flex", alignItems: "center", gap: 6, cursor: "pointer" }}>
-        <ArrowLeft size={16} /> Volver a mi rutina
+        <ArrowLeft size={16} /> {backLabel}
       </button>
 
       {restRemaining > 0 && (

@@ -47,8 +47,6 @@ export default function ProgramsPage() {
   const [showNew, setShowNew] = useState(false);
   const [loading, setLoading] = useState(false);
   const [deleteTarget, setDeleteTarget] = useState<ProgramRow | null>(null);
-  const [extendValue, setExtendValue] = useState("");
-  const [extending, setExtending] = useState(false);
 
   useEffect(() => {
     listClients().then(setClients).catch((e) => notify(e.message));
@@ -95,24 +93,18 @@ export default function ProgramsPage() {
   const program = programs.find((p) => p.id === programId) ?? null;
   const meso = mesos[selMeso];
   const assignedWeeks = mesos.reduce((t, m) => t + (m.duration_weeks ?? 0), 0);
-  const totalWeeks = weeks.length;
 
   const weekSeries = useMemo(() => buildWeekSeries(mesos), [mesos]);
 
   const patchMeso = async (field: keyof MesocycleRow, value: any) => {
     if (!meso) return;
-    if (field === "duration_weeks") {
-      const others = mesos.reduce((t, m, i) => t + (i === selMeso ? 0 : m.duration_weeks ?? 0), 0);
-      const max = Math.max(1, totalWeeks - others);
-      if (value > max) {
-        notify(`No puede superar las ${totalWeeks} semanas programadas en total (ya hay ${others} asignadas en las demás ${program?.method === "atr" ? "fases" : "bloques"}). Se ajustó a ${max}.`);
-        value = max;
-      }
-    }
+    if (field === "duration_weeks") value = Math.max(1, value);
     setMesos((ms) => ms.map((m, i) => (i === selMeso ? { ...m, [field]: value } : m)));
     try {
       await updateMesocycle(meso.id, { [field]: value });
       if (field === "duration_weeks") {
+        const newTotal = mesos.reduce((t, m, i) => t + (i === selMeso ? value : m.duration_weeks ?? 0), 0);
+        await extendProgramWeeks(programId, newTotal);
         await syncWeekBlocks(programId);
         await loadProgramDetail(programId);
       }
@@ -207,34 +199,10 @@ export default function ProgramsPage() {
                   </div>
                 </div>
               </div>
-              <label className="field-label">Duración actual: {totalWeeks} semanas</label>
-              <p className="note" style={{ marginBottom: 10 }}>
-                Solo puedes alargar el programa, nunca acortarlo: reducirlo podría borrar semanas que ya tengan rutinas armadas en el Constructor. Si necesitas uno más corto, crea un programa nuevo.
+              <label className="field-label">Duración total: {assignedWeeks} semana{assignedWeeks === 1 ? "" : "s"}</label>
+              <p className="note">
+                Es la suma de los bloques de abajo — crece sola a medida que añades bloques o alargas uno existente. Si acortás un bloque, las semanas ya creadas no se borran (podrían tener rutinas armadas en el Constructor).
               </p>
-              <div style={{ display: "flex", gap: 8, alignItems: "flex-end", flexWrap: "wrap" }}>
-                <div>
-                  <label className="field-label">Nueva duración total (semanas)</label>
-                  <input className="input" style={{ maxWidth: 110 }} inputMode="numeric" value={extendValue} onChange={(e) => setExtendValue(e.target.value.replace(/\D/g, ""))} placeholder={String(totalWeeks)} />
-                </div>
-                <button
-                  className="btn ghost"
-                  disabled={extending || !extendValue || Number(extendValue) <= totalWeeks}
-                  onClick={async () => {
-                    setExtending(true);
-                    try {
-                      await extendProgramWeeks(program.id, Number(extendValue));
-                      await loadProgramDetail(program.id);
-                      setExtendValue("");
-                      notify(`Programa extendido a ${extendValue} semanas.`);
-                    } catch (e: any) {
-                      notify(e.message);
-                    }
-                    setExtending(false);
-                  }}
-                >
-                  Extender
-                </button>
-              </div>
             </div>
           </div>
 
@@ -299,8 +267,7 @@ export default function ProgramsPage() {
                   </div>
 
                   <p className="note" style={{ marginTop: 10 }}>
-                    {assignedWeeks} de {totalWeeks} semanas asignadas
-                    {assignedWeeks < totalWeeks ? ` (quedan ${totalWeeks - assignedWeeks} por repartir)` : ""}.
+                    {assignedWeeks} semana{assignedWeeks === 1 ? "" : "s"} en total.
                   </p>
 
                   {program.method !== "atr" && (
@@ -308,13 +275,11 @@ export default function ProgramsPage() {
                       <button
                         className="btn ghost"
                         onClick={async () => {
-                          const remaining = totalWeeks - assignedWeeks;
-                          if (remaining <= 0) {
-                            notify(`Ya asignaste las ${totalWeeks} semanas del programa entre los bloques existentes. Reduce la duración de otro bloque, o extiende la duración total, antes de añadir uno nuevo.`);
-                            return;
-                          }
                           const macro = mesos[0];
-                          const created = await addMesocycle(program.id, macro.macrocycle_id, mesos.length, remaining);
+                          const defaultDuration = 2;
+                          const created = await addMesocycle(program.id, macro.macrocycle_id, mesos.length, defaultDuration);
+                          await extendProgramWeeks(program.id, assignedWeeks + defaultDuration);
+                          await syncWeekBlocks(program.id);
                           setMesos((ms) => [...ms, created]);
                           setSelMeso(mesos.length);
                           notify("Bloque añadido. Complétalo abajo.");
@@ -352,21 +317,11 @@ export default function ProgramsPage() {
                   <button
                     className="btn ghost"
                     onClick={async () => {
-                      const remaining = totalWeeks - assignedWeeks;
-                      if (remaining <= 0) {
-                        notify(`Ya asignaste las ${totalWeeks} semanas del programa entre los bloques existentes. Reduce la duración de otro bloque, o extiende la duración total, antes de duplicar uno.`);
-                        return;
-                      }
                       const created = await duplicateMesocycle(program.id, meso, mesos.length);
-                      if ((created.duration_weeks ?? 0) > remaining) {
-                        await updateMesocycle(created.id, { duration_weeks: remaining });
-                        await syncWeekBlocks(program.id);
-                        created.duration_weeks = remaining;
-                        notify(`Bloque duplicado. Solo quedaban ${remaining} semanas libres, así que se ajustó su duración a eso — revísala.`);
-                      } else {
-                        notify("Bloque duplicado. Ajusta lo que cambie.");
-                      }
+                      await extendProgramWeeks(program.id, assignedWeeks + (created.duration_weeks ?? 0));
+                      await syncWeekBlocks(program.id);
                       setMesos((ms) => [...ms, created]);
+                      notify("Bloque duplicado. Ajusta lo que cambie.");
                     }}
                   >
                     <Copy size={14} /> Duplicar bloque
@@ -469,7 +424,6 @@ function NewProgramModal({
 }) {
   const [name, setName] = useState("");
   const [method, setMethod] = useState<ProgramMethod>("atr");
-  const [weeks, setWeeks] = useState("9");
   const [error, setError] = useState("");
   const [saving, setSaving] = useState(false);
 
@@ -487,7 +441,6 @@ function NewProgramModal({
         clientId,
         name: name.trim(),
         method,
-        totalWeeks: Math.max(1, Number(weeks) || 8),
       });
       onCreated(p);
     } catch (e: any) {
@@ -507,10 +460,9 @@ function NewProgramModal({
           <option key={k} value={k}>{l}</option>
         ))}
       </select>
-      <p className="note" style={{ marginBottom: 12 }}>El método no se podrá cambiar después de crear el programa.</p>
-
-      <label className="field-label">Duración (semanas)</label>
-      <input className="input" style={{ marginBottom: 18, maxWidth: 100 }} inputMode="numeric" value={weeks} onChange={(e) => setWeeks(e.target.value.replace(/\D/g, ""))} />
+      <p className="note" style={{ marginBottom: 18 }}>
+        El método no se podrá cambiar después de crear el programa. La duración no se pide ahora — va a ser la suma de los bloques que armes después, dentro del programa.
+      </p>
 
       {error && <p className="error-text" style={{ marginBottom: 12 }}>{error}</p>}
       <button className="btn" onClick={submit} disabled={saving}>

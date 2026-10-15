@@ -132,7 +132,6 @@ export async function createProgram(params: {
   clientId: string;
   name: string;
   method: ProgramMethod;
-  totalWeeks: number;
 }): Promise<ProgramRow> {
   const { data: program, error: progErr } = await supabase
     .from("programs")
@@ -163,7 +162,7 @@ export async function createProgram(params: {
             name: "Bloque 1",
             phase: "other" as Phase,
             objective: null,
-            duration_weeks: params.totalWeeks,
+            duration_weeks: 1,
             frequency: null,
             volume_focus: null,
             intensity_focus: null,
@@ -183,7 +182,8 @@ export async function createProgram(params: {
     await supabase.from("training_blocks").insert({ mesocycle_id: meso.id, name: seed.name });
   }
 
-  const weekRows = Array.from({ length: params.totalWeeks }, (_, i) => ({
+  const totalWeeks = mesoSeeds.reduce((t, s) => t + (s.duration_weeks ?? 0), 0);
+  const weekRows = Array.from({ length: totalWeeks }, (_, i) => ({
     program_id: program.id,
     week_number: i + 1,
   }));
@@ -207,17 +207,18 @@ export async function deleteProgram(id: string): Promise<void> {
 }
 
 /**
- * Agrega más semanas al final del programa (solo permite alargarlo, nunca
- * acortarlo): acortar borraría semanas que ya podrían tener rutinas
- * armadas en el Constructor, así que esa operación no está disponible —
- * si hace falta un programa más corto, conviene crear uno nuevo.
+ * Asegura que existan al menos `neededTotal` semanas para el programa,
+ * creando las que falten al final. Nunca borra semanas existentes —
+ * acortar podría perder rutinas que ya estén armadas en el Constructor —
+ * así que si `neededTotal` es menor o igual a las que ya hay, no hace
+ * nada (de ahí que la duración total del programa solo pueda crecer:
+ * es la suma de sus bloques, y esa suma puede bajar en la pantalla sin
+ * que eso borre ninguna semana real por debajo).
  */
-export async function extendProgramWeeks(programId: string, newTotal: number): Promise<void> {
+export async function extendProgramWeeks(programId: string, neededTotal: number): Promise<void> {
   const current = await listWeeks(programId);
-  if (newTotal <= current.length) {
-    throw new Error(`La nueva duración debe ser mayor a las ${current.length} semanas actuales.`);
-  }
-  const toAdd = Array.from({ length: newTotal - current.length }, (_, i) => ({
+  if (neededTotal <= current.length) return;
+  const toAdd = Array.from({ length: neededTotal - current.length }, (_, i) => ({
     program_id: programId,
     week_number: current.length + i + 1,
   }));

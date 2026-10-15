@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { Plus, Trash2, X, Copy, FileUp } from "lucide-react";
+import { Plus, Trash2, X, Copy, FileUp, ChevronLeft, ChevronRight } from "lucide-react";
 import ImportRoutineModal, { applyImportedRows } from "./ImportRoutineModal";
 import { useToast } from "../../../contexts/ToastContext";
 import { listClients, type ClientRow } from "../../../services/clients";
@@ -15,6 +15,8 @@ import {
   listSessions,
   createSession,
   deleteSession,
+  duplicateSession,
+  swapSessionOrder,
   updateSessionName,
   updateSessionStrengthType,
   listSessionBlocks,
@@ -156,10 +158,50 @@ export default function BuilderPage() {
       {weekId && (
         <>
           <div style={{ display: "flex", flexWrap: "wrap", gap: 8, alignItems: "center", marginBottom: 18 }}>
-            {sessions.map((s) => (
-              <span key={s.id} className="chip" style={{ background: s.id === sessionId ? "var(--pri)" : "#fff", color: s.id === sessionId ? "#fff" : "var(--muted)", border: "1px solid var(--line)", display: "inline-flex", alignItems: "center", gap: 6 }}>
+            {sessions.map((s, i) => (
+              <span key={s.id} className="chip" style={{ background: s.id === sessionId ? "var(--pri)" : "#fff", color: s.id === sessionId ? "#fff" : "var(--muted)", border: "1px solid var(--line)", display: "inline-flex", alignItems: "center", gap: 4 }}>
+                {i > 0 && (
+                  <button
+                    aria-label={`Mover ${s.name} antes`}
+                    onClick={async (e) => {
+                      e.stopPropagation();
+                      await swapSessionOrder(s, sessions[i - 1]);
+                      await loadSessions(weekId);
+                    }}
+                    style={{ border: 0, background: "none", color: "inherit", cursor: "pointer", display: "inline-flex", opacity: 0.8 }}
+                  >
+                    <ChevronLeft size={13} />
+                  </button>
+                )}
                 <button onClick={() => setSessionId(s.id)} style={{ border: 0, background: "none", color: "inherit", cursor: "pointer", font: "inherit" }}>
                   {s.name}
+                </button>
+                {i < sessions.length - 1 && (
+                  <button
+                    aria-label={`Mover ${s.name} después`}
+                    onClick={async (e) => {
+                      e.stopPropagation();
+                      await swapSessionOrder(s, sessions[i + 1]);
+                      await loadSessions(weekId);
+                    }}
+                    style={{ border: 0, background: "none", color: "inherit", cursor: "pointer", display: "inline-flex", opacity: 0.8 }}
+                  >
+                    <ChevronRight size={13} />
+                  </button>
+                )}
+                <button
+                  aria-label={`Duplicar ${s.name}`}
+                  title="Duplicar en esta misma semana"
+                  onClick={async (e) => {
+                    e.stopPropagation();
+                    const created = await duplicateSession(s, sessions.length);
+                    await loadSessions(weekId);
+                    setSessionId(created.id);
+                    notify(`"${s.name}" duplicada.`);
+                  }}
+                  style={{ border: 0, background: "none", color: "inherit", cursor: "pointer", display: "inline-flex" }}
+                >
+                  <Copy size={12} />
                 </button>
                 {sessions.length > 1 && (
                   <button

@@ -244,6 +244,54 @@ export async function applyStrengthSuggestion(sessionId: string, strengthType: S
  * Copia todas las sesiones (con sus bloques y ejercicios) de una semana a
  * otra, subiendo la carga de los ejercicios de fuerza un incremento fijo.
  */
+/** Duplica una rutina dentro de la misma semana, con todos sus bloques y ejercicios, sin cambiar las cargas. */
+export async function duplicateSession(session: SessionRow, newSortOrder: number): Promise<SessionRow> {
+  const newSession = await createSession(session.week_id, `${session.name} (copia)`, newSortOrder);
+  if (session.strength_type) await updateSessionStrengthType(newSession.id, session.strength_type);
+
+  const [oldBlocks, newBlocks, exercises] = await Promise.all([
+    listSessionBlocks(session.id),
+    listSessionBlocks(newSession.id),
+    listWorkoutExercises(session.id),
+  ]);
+  const blockKindToNewId = new Map(newBlocks.map((b) => [b.kind, b.id]));
+  const oldBlockIdToKind = new Map(oldBlocks.map((b) => [b.id, b.kind]));
+
+  for (const ex of exercises) {
+    const kind = ex.block_id ? oldBlockIdToKind.get(ex.block_id) : undefined;
+    const newBlockId = kind ? blockKindToNewId.get(kind) : newBlocks[0]?.id;
+    if (!newBlockId) continue;
+    await supabase.from("workout_exercises").insert({
+      session_id: newSession.id,
+      block_id: newBlockId,
+      exercise_id: ex.exercise_id,
+      sort_order: ex.sort_order,
+      sets: ex.sets,
+      reps_min: ex.reps_min,
+      reps_max: ex.reps_max,
+      load_value: ex.load_value,
+      rir: ex.rir,
+      rest_s: ex.rest_s,
+      tempo: ex.tempo,
+      superset_group: ex.superset_group,
+      duration_min: ex.duration_min,
+      distance_km: ex.distance_km,
+      steps_target: ex.steps_target,
+      hr_zone: ex.hr_zone,
+      prescription_type: ex.duration_min != null ? "time" : "reps",
+    });
+  }
+  return newSession;
+}
+
+/** Intercambia el orden de dos rutinas de la misma semana. */
+export async function swapSessionOrder(a: SessionRow, b: SessionRow): Promise<void> {
+  await Promise.all([
+    supabase.from("sessions").update({ sort_order: b.sort_order }).eq("id", a.id),
+    supabase.from("sessions").update({ sort_order: a.sort_order }).eq("id", b.id),
+  ]);
+}
+
 export async function copyWeek(programId: string, fromWeekId: string, toWeekId: string, loadIncrement = 2.5): Promise<void> {
   const sessions = await listSessions(fromWeekId);
   for (const [sIdx, session] of sessions.entries()) {

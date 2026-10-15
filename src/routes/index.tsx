@@ -39,6 +39,7 @@ import ClientWellness from "../pages/client/Wellness";
 import ClientReports from "../pages/client/Reports";
 import ProgressPhotosPage from "../pages/trainer/progress-photos/ProgressPhotosPage";
 import SuggestionsPage from "../pages/trainer/suggestions/SuggestionsPage";
+import RunSessionPage from "../pages/trainer/run-session/RunSessionPage";
 import ClientProgressPhotos from "../pages/client/ProgressPhotos";
 
 import { paths } from "./paths";
@@ -82,6 +83,7 @@ export default function AppRoutes() {
             <Route path={paths.trainerAssessments} element={<TrainerAssessmentsPage />} />
             <Route path={paths.trainerWellness} element={<TrainerWellnessPage />} />
             <Route path={paths.trainerProgressPhotos} element={<ProgressPhotosPage />} />
+            <Route path={paths.trainerRunSession} element={<RunSessionPage />} />
             <Route path={paths.trainerBuilder} element={<BuilderPage />} />
             <Route path={paths.trainerTracking} element={<ComingSoon title="Seguimiento" />} />
             <Route path={paths.trainerAnalytics} element={<ComingSoon title="Analytics" />} />
