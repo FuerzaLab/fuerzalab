@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { Check, ArrowLeft } from "lucide-react";
 import { useToast } from "../../contexts/ToastContext";
+import Modal from "../../components/ui/Modal";
 import { getMyClientId } from "../../services/clients";
 import { listWeeks, type ProgramRow, type WeekRow } from "../../services/programs";
 import {
@@ -20,10 +21,10 @@ import {
   upsertSetLog,
   completeWorkout,
   getSessionStatuses,
+  getTodayCompletedSessionName,
   type WorkoutLogRow,
   type SetLogRow,
 } from "../../services/training";
-import { getTodayLog } from "../../services/wellness";
 import WellnessForm from "../../components/WellnessForm";
 
 const STATUS_LABEL: Record<WorkoutLogRow["status"], string> = {
@@ -44,16 +45,23 @@ export default function ClientRoutine() {
   const [activeSessionId, setActiveSessionId] = useState<string | null>(null);
   const [pendingSessionId, setPendingSessionId] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
+  const [blockedByDailyLimit, setBlockedByDailyLimit] = useState<string | null>(null);
 
   const startSession = async (sessionId: string) => {
     if (!clientId) return;
-    try {
-      const today = await getTodayLog(clientId);
-      if (today) setActiveSessionId(sessionId);
-      else setPendingSessionId(sessionId);
-    } catch (e: any) {
-      notify(e.message);
+    if (!program?.allow_multiple_sessions_per_day) {
+      try {
+        const doneToday = await getTodayCompletedSessionName(clientId);
+        if (doneToday) {
+          setBlockedByDailyLimit(doneToday);
+          return;
+        }
+      } catch (e: any) {
+        notify(e.message);
+        return;
+      }
     }
+    setPendingSessionId(sessionId);
   };
 
   const loadSessions = async (wId: string) => {
@@ -172,6 +180,14 @@ export default function ClientRoutine() {
             {sessions.length === 0 && <p className="note">Esta semana todavía no tiene rutinas armadas.</p>}
           </div>
         </>
+      )}
+
+      {blockedByDailyLimit && (
+        <Modal title="Ya entrenaste hoy" onClose={() => setBlockedByDailyLimit(null)}>
+          <p>
+            Ya completaste "{blockedByDailyLimit}" hoy. Tu entrenador no habilitó más de una rutina por día en este programa — si hoy te toca otra, avisale.
+          </p>
+        </Modal>
       )}
     </div>
   );

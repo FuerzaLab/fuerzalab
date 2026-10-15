@@ -12,6 +12,7 @@ export interface ProgramRow {
   method: ProgramMethod;
   status: "draft" | "active" | "completed" | "archived";
   is_template: boolean;
+  allow_multiple_sessions_per_day: boolean;
   created_at: string;
 }
 
@@ -198,6 +199,12 @@ export async function createProgram(params: {
 
 export async function updateProgramName(id: string, name: string): Promise<void> {
   const { error } = await supabase.from("programs").update({ name }).eq("id", id);
+  if (error) throw error;
+}
+
+/** Por defecto, un cliente solo puede completar una rutina por día. Esto lo habilita a hacer más, para este programa en particular (ej. dobles turnos, AM/PM). */
+export async function setAllowMultipleSessionsPerDay(id: string, allow: boolean): Promise<void> {
+  const { error } = await supabase.from("programs").update({ allow_multiple_sessions_per_day: allow }).eq("id", id);
   if (error) throw error;
 }
 

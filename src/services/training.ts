@@ -39,6 +39,23 @@ export async function getActiveProgramForClient(clientId: string): Promise<Progr
   return data as ProgramRow | null;
 }
 
+/** Si el cliente ya completó alguna rutina hoy, devuelve el nombre de esa sesión; si no, null. Para el límite de una rutina por día. */
+export async function getTodayCompletedSessionName(clientId: string): Promise<string | null> {
+  const todayStart = new Date();
+  todayStart.setHours(0, 0, 0, 0);
+  const { data, error } = await supabase
+    .from("workout_logs")
+    .select("completed_at, sessions(name)")
+    .eq("client_id", clientId)
+    .eq("status", "completed")
+    .gte("completed_at", todayStart.toISOString())
+    .order("completed_at", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+  if (error) throw error;
+  return (data as any)?.sessions?.name ?? null;
+}
+
 /** Trae (o crea si no existe) el registro de ejecución de una sesión. Una sesión solo puede tener un registro. */
 export async function getOrCreateWorkoutLog(sessionId: string): Promise<WorkoutLogRow> {
   const { data: existing, error: selErr } = await supabase

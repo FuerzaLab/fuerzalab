@@ -12,6 +12,7 @@ import {
   listWeeks,
   createProgram,
   updateProgramName,
+  setAllowMultipleSessionsPerDay,
   updateMesocycle,
   addMesocycle,
   removeMesocycle,
@@ -200,9 +201,22 @@ export default function ProgramsPage() {
                 </div>
               </div>
               <label className="field-label">Duración total: {assignedWeeks} semana{assignedWeeks === 1 ? "" : "s"}</label>
-              <p className="note">
+              <p className="note" style={{ marginBottom: 14 }}>
                 Es la suma de los bloques de abajo — crece sola a medida que añades bloques o alargas uno existente. Si acortás un bloque, las semanas ya creadas no se borran (podrían tener rutinas armadas en el Constructor).
               </p>
+              <label style={{ display: "flex", alignItems: "center", gap: 8, cursor: "pointer" }}>
+                <input
+                  type="checkbox"
+                  checked={program.allow_multiple_sessions_per_day}
+                  onChange={async (e) => {
+                    const allow = e.target.checked;
+                    setPrograms((ps) => ps.map((p) => (p.id === program.id ? { ...p, allow_multiple_sessions_per_day: allow } : p)));
+                    await setAllowMultipleSessionsPerDay(program.id, allow);
+                  }}
+                />
+                <span>Permitir más de una rutina por día (ej. doble turno)</span>
+              </label>
+              <p className="note">Por defecto, el cliente solo puede completar una rutina por día en este programa.</p>
             </div>
           </div>
 
