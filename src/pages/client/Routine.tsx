@@ -320,12 +320,17 @@ function TrainSession({ sessionId, onExit }: { sessionId: string; onExit: () => 
             const block = blockByKind[kind];
             const rows = exercises.filter((e) => block && e.block_id === block.id);
             if (!rows.length) return null;
+            const groups = groupBySuperset(rows);
             return (
               <div key={kind} style={{ marginBottom: 18 }}>
                 <h3 style={{ marginBottom: 10 }}>{BLOCK_LABEL[kind]}</h3>
-                {rows.map((ex) => (
-                  <ExerciseTrainer key={ex.id} ex={ex} logFor={logFor} onSaveSet={saveSet} />
-                ))}
+                {groups.map((g) =>
+                  g.length > 1 && g.every((ex) => !isCardioExercise(ex)) ? (
+                    <SupersetTrainer key={g[0].superset_group} exercises={g} logFor={logFor} onSaveSet={saveSet} />
+                  ) : (
+                    g.map((ex) => <ExerciseTrainer key={ex.id} ex={ex} logFor={logFor} onSaveSet={saveSet} />)
+                  )
+                )}
               </div>
             );
           })}
@@ -335,6 +340,127 @@ function TrainSession({ sessionId, onExit }: { sessionId: string; onExit: () => 
           </button>
         </>
       )}
+    </div>
+  );
+}
+
+function isCardioExercise(ex: WorkoutExerciseRow): boolean {
+  return ex.duration_min != null || ex.distance_km != null || ex.steps_target != null;
+}
+
+/** Junta los ejercicios de un mismo bloque en grupos: los que comparten superset_group van juntos (biserie/triserie/serie gigante), el resto queda solo en su propio grupo. Conserva el orden original. */
+function groupBySuperset(rows: WorkoutExerciseRow[]): WorkoutExerciseRow[][] {
+  const groups: WorkoutExerciseRow[][] = [];
+  const seen = new Set<number>();
+  for (const ex of rows) {
+    if (ex.superset_group != null) {
+      if (seen.has(ex.superset_group)) continue;
+      seen.add(ex.superset_group);
+      groups.push(rows.filter((r) => r.superset_group === ex.superset_group));
+    } else {
+      groups.push([ex]);
+    }
+  }
+  return groups;
+}
+
+const SUPERSET_LETTERS = "ABCDEFGH";
+
+function SupersetTrainer({
+  exercises,
+  logFor,
+  onSaveSet,
+}: {
+  exercises: WorkoutExerciseRow[];
+  logFor: (workoutExerciseId: string, setNumber: number) => SetLogRow | undefined;
+  onSaveSet: (ex: WorkoutExerciseRow, setNumber: number, fields: { reps: number; loadKg: number | null; rir: number | null; completed: boolean }) => void;
+}) {
+  const label = exercises.length === 2 ? "Biserie" : exercises.length === 3 ? "Triserie" : "Serie gigante";
+  const maxSets = Math.max(...exercises.map((ex) => ex.sets ?? 3));
+  const rounds = Array.from({ length: maxSets }, (_, i) => i + 1);
+
+  return (
+    <div className="panel" style={{ marginBottom: 10, borderLeft: "4px solid var(--pri)" }}>
+      <div className="hd">
+        <h3 style={{ fontSize: 16 }}>
+          {label}: {exercises.map((ex) => ex.exercise_name).join(" + ")}
+        </h3>
+      </div>
+      <div className="bd">
+        <p className="note" style={{ marginBottom: 14 }}>
+          Hacé una serie de cada ejercicio, en orden, sin descansar entre ellos — el descanso va después de completar la ronda entera.
+        </p>
+        {rounds.map((roundNumber) => (
+          <div key={roundNumber} style={{ marginBottom: 16, paddingBottom: 16, borderBottom: roundNumber < rounds.length ? "1px dashed var(--line)" : "none" }}>
+            <div className="note" style={{ marginBottom: 8, fontWeight: 600 }}>Ronda {roundNumber}</div>
+            <div style={{ display: "grid", gap: 8 }}>
+              {exercises.map((ex, i) => {
+                if (roundNumber > (ex.sets ?? 3)) return null;
+                const existing = logFor(ex.id, roundNumber);
+                const repsTarget = ex.reps_min && ex.reps_max ? `${ex.reps_min}–${ex.reps_max}` : ex.reps_min ?? ex.reps_max ?? "—";
+                return (
+                  <div key={ex.id} style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap", background: existing?.completed ? "var(--ok-soft)" : "var(--bg)", borderRadius: 8, padding: 8 }}>
+                    <span style={{ minWidth: 26, fontWeight: 700, color: "var(--pri)" }}>{SUPERSET_LETTERS[i]}{roundNumber}</span>
+                    <span style={{ flex: 1, minWidth: 120 }}>{ex.exercise_name}</span>
+                    <span className="note" style={{ fontSize: 12.5 }}>Obj: {repsTarget}{ex.load_value ? ` @ ${ex.load_value}kg` : ""}</span>
+                    <MiniSetInputs
+                      defaultReps={ex.reps_max ?? ex.reps_min ?? 0}
+                      defaultLoad={ex.load_value}
+                      defaultRir={ex.rir}
+                      existing={existing}
+                      onSave={(fields) => onSaveSet(ex, roundNumber, fields)}
+                    />
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        ))}
+        {exercises[0].rest_s ? <p className="note">Descanso entre rondas: {exercises[0].rest_s}s</p> : null}
+      </div>
+    </div>
+  );
+}
+
+function MiniSetInputs({
+  defaultReps,
+  defaultLoad,
+  defaultRir,
+  existing,
+  onSave,
+}: {
+  defaultReps: number;
+  defaultLoad: number | null;
+  defaultRir: number | null;
+  existing: SetLogRow | undefined;
+  onSave: (fields: { reps: number; loadKg: number | null; rir: number | null; completed: boolean }) => void;
+}) {
+  const [reps, setReps] = useState(String(existing?.reps ?? defaultReps ?? ""));
+  const [load, setLoad] = useState(existing?.load_kg != null ? String(existing.load_kg) : defaultLoad != null ? String(defaultLoad) : "");
+  const [rir, setRir] = useState(existing?.rir != null ? String(existing.rir) : defaultRir != null ? String(defaultRir) : "");
+  const completed = existing?.completed ?? false;
+
+  const commit = (over?: Partial<{ completed: boolean }>) => {
+    onSave({
+      reps: Number(reps) || 0,
+      loadKg: load === "" ? null : Number(load.replace(",", ".")) || 0,
+      rir: rir === "" ? null : Number(rir.replace(",", ".")) || 0,
+      completed: over?.completed ?? completed,
+    });
+  };
+
+  return (
+    <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+      <input className="input" style={{ width: 50, padding: "5px 4px", textAlign: "center" }} value={reps} onChange={(e) => setReps(e.target.value)} onBlur={() => commit()} aria-label="Reps" />
+      <input className="input" style={{ width: 55, padding: "5px 4px", textAlign: "center" }} value={load} onChange={(e) => setLoad(e.target.value)} onBlur={() => commit()} aria-label="Carga" />
+      <input className="input" style={{ width: 45, padding: "5px 4px", textAlign: "center" }} value={rir} onChange={(e) => setRir(e.target.value)} onBlur={() => commit()} aria-label="RIR" />
+      <button
+        className="btn ghost"
+        style={{ padding: "4px 8px", fontSize: 12.5, background: completed ? "var(--ok-soft)" : undefined }}
+        onClick={() => commit({ completed: !completed })}
+      >
+        <Check size={13} />
+      </button>
     </div>
   );
 }
