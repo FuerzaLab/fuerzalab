@@ -165,10 +165,14 @@ export default function BuilderPage() {
                     aria-label={`Mover ${s.name} antes`}
                     onClick={async (e) => {
                       e.stopPropagation();
-                      const ids = sessions.map((x) => x.id);
-                      [ids[i - 1], ids[i]] = [ids[i], ids[i - 1]];
-                      await reorderSessions(ids);
-                      await loadSessions(weekId);
+                      try {
+                        const ids = sessions.map((x) => x.id);
+                        [ids[i - 1], ids[i]] = [ids[i], ids[i - 1]];
+                        await reorderSessions(ids);
+                        await loadSessions(weekId);
+                      } catch (err: any) {
+                        notify(err.message ?? "No pudimos mover esta rutina.");
+                      }
                     }}
                     style={{ border: 0, background: "none", color: "inherit", cursor: "pointer", display: "inline-flex", opacity: 0.8 }}
                   >
@@ -183,10 +187,14 @@ export default function BuilderPage() {
                     aria-label={`Mover ${s.name} después`}
                     onClick={async (e) => {
                       e.stopPropagation();
-                      const ids = sessions.map((x) => x.id);
-                      [ids[i], ids[i + 1]] = [ids[i + 1], ids[i]];
-                      await reorderSessions(ids);
-                      await loadSessions(weekId);
+                      try {
+                        const ids = sessions.map((x) => x.id);
+                        [ids[i], ids[i + 1]] = [ids[i + 1], ids[i]];
+                        await reorderSessions(ids);
+                        await loadSessions(weekId);
+                      } catch (err: any) {
+                        notify(err.message ?? "No pudimos mover esta rutina.");
+                      }
                     }}
                     style={{ border: 0, background: "none", color: "inherit", cursor: "pointer", display: "inline-flex", opacity: 0.8 }}
                   >

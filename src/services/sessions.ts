@@ -293,7 +293,9 @@ export async function duplicateSession(session: SessionRow, newSortOrder: number
  * rutinas con el mismo número no se mueven entre sí.
  */
 export async function reorderSessions(orderedIds: string[]): Promise<void> {
-  await Promise.all(orderedIds.map((id, i) => supabase.from("sessions").update({ sort_order: i }).eq("id", id)));
+  const results = await Promise.all(orderedIds.map((id, i) => supabase.from("sessions").update({ sort_order: i }).eq("id", id)));
+  const firstError = results.find((r) => r.error)?.error;
+  if (firstError) throw firstError;
 }
 
 export async function copyWeek(programId: string, fromWeekId: string, toWeekId: string, loadIncrement = 2.5): Promise<void> {
