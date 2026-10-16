@@ -26,6 +26,7 @@ import {
   type SetLogRow,
 } from "../../services/training";
 import WellnessForm from "../../components/WellnessForm";
+import { getExerciseMediaUrl } from "../../services/exercises";
 
 const STATUS_LABEL: Record<WorkoutLogRow["status"], string> = {
   pending: "Pendiente",
@@ -375,6 +376,39 @@ function RestTimer({ remaining, total, onAddTime, onSkip }: { remaining: number;
   );
 }
 
+function ExerciseMedia({ mediaPath, mediaType, label }: { mediaPath: string | null; mediaType: "image" | "video" | null; label?: string }) {
+  const [open, setOpen] = useState(false);
+  const [url, setUrl] = useState("");
+
+  if (!mediaPath) return null;
+
+  const toggle = async () => {
+    if (!open && !url) {
+      try {
+        setUrl(await getExerciseMediaUrl(mediaPath));
+      } catch {
+        return;
+      }
+    }
+    setOpen((o) => !o);
+  };
+
+  return (
+    <div style={{ marginBottom: 8 }}>
+      <button type="button" className="btn ghost" style={{ padding: "4px 10px", fontSize: 12.5 }} onClick={toggle}>
+        {open ? `Ocultar${label ? ` — ${label}` : ""}` : `Ver demostración${label ? ` — ${label}` : ""}`}
+      </button>
+      {open && url && (
+        mediaType === "video" ? (
+          <video src={url} controls style={{ width: "100%", maxHeight: 220, borderRadius: 8, background: "#000", marginTop: 8 }} />
+        ) : (
+          <img src={url} alt="" style={{ width: "100%", maxHeight: 220, objectFit: "contain", borderRadius: 8, marginTop: 8 }} />
+        )
+      )}
+    </div>
+  );
+}
+
 function isCardioExercise(ex: WorkoutExerciseRow): boolean {
   return ex.duration_min != null || ex.distance_km != null || ex.steps_target != null;
 }
@@ -428,6 +462,13 @@ function SupersetTrainer({
         </h3>
       </div>
       <div className="bd">
+        {exercises.some((ex) => ex.media_path) && (
+          <div style={{ display: "flex", flexWrap: "wrap", gap: 6, marginBottom: 10 }}>
+            {exercises.map((ex, i) => (
+              <ExerciseMedia key={ex.id} mediaPath={ex.media_path} mediaType={ex.media_type} label={`${SUPERSET_LETTERS[i]} — ${ex.exercise_name}`} />
+            ))}
+          </div>
+        )}
         <p className="note" style={{ marginBottom: 14 }}>
           Hacé una serie de cada ejercicio, en orden, sin descansar entre ellos — el descanso va después de completar la ronda entera.
         </p>
@@ -553,6 +594,9 @@ function ExerciseTrainer({
             <Check size={14} /> {existing?.completed ? "Hecho" : "Marcar hecho"}
           </button>
         </div>
+        <div className="bd" style={{ paddingTop: 0 }}>
+          <ExerciseMedia mediaPath={ex.media_path} mediaType={ex.media_type} />
+        </div>
         {showRestHere && <RestTimer remaining={restRemaining} total={restTotal} onAddTime={onAddRestTime} onSkip={onSkipRest} />}
       </div>
     );
@@ -569,6 +613,9 @@ function ExerciseTrainer({
           Objetivo: {sets}×{repsTarget}{ex.load_value ? ` @ ${ex.load_value} kg` : ""}{ex.rir != null ? ` · RIR ${ex.rir}` : ""}
           {ex.rest_s ? ` · Descanso ${ex.rest_s}s` : ""}{ex.tempo ? ` · Tempo ${ex.tempo}` : ""}
         </span>
+      </div>
+      <div className="bd" style={{ paddingBottom: 0 }}>
+        <ExerciseMedia mediaPath={ex.media_path} mediaType={ex.media_type} />
       </div>
       <div style={{ overflowX: "auto" }}>
         <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 14 }}>

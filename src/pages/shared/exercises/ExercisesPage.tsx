@@ -1,11 +1,14 @@
-import { useEffect, useMemo, useState } from "react";
-import { Plus, FileUp } from "lucide-react";
+import { useEffect, useMemo, useRef, useState, type ChangeEvent } from "react";
+import { Plus, FileUp, Film, Trash2 } from "lucide-react";
 import { useAuth } from "../../../contexts/AuthContext";
 import { useToast } from "../../../contexts/ToastContext";
 import {
   listExercises,
   listCatalog,
   bodyRegionOf,
+  uploadExerciseMedia,
+  removeExerciseMedia,
+  getExerciseMediaUrl,
   type ExerciseRow,
   type CatalogItem,
 } from "../../../services/exercises";
@@ -28,6 +31,46 @@ export default function ExercisesPage({ scope }: { scope: "global" | "trainer" }
   const [selected, setSelected] = useState<ExerciseRow | null>(null);
   const [showNew, setShowNew] = useState(false);
   const [showImport, setShowImport] = useState(false);
+  const [mediaUrl, setMediaUrl] = useState("");
+  const [uploadingMedia, setUploadingMedia] = useState(false);
+  const mediaInputRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    if (selected?.media_path) {
+      getExerciseMediaUrl(selected.media_path).then(setMediaUrl).catch(() => setMediaUrl(""));
+    } else {
+      setMediaUrl("");
+    }
+  }, [selected?.media_path]);
+
+  const pickMedia = async (e: ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file || !selected || !profile) return;
+    setUploadingMedia(true);
+    try {
+      const folderPrefix = scope === "global" ? "global" : profile.organization_id!;
+      const { path, type } = await uploadExerciseMedia({ exerciseId: selected.id, folderPrefix, uploaderId: profile.id, file });
+      setExercises((es) => es.map((x) => (x.id === selected.id ? { ...x, media_path: path, media_type: type } : x)));
+      setSelected((s) => (s ? { ...s, media_path: path, media_type: type } : s));
+      notify("Archivo subido.");
+    } catch (err: any) {
+      notify(err.message);
+    }
+    setUploadingMedia(false);
+    if (mediaInputRef.current) mediaInputRef.current.value = "";
+  };
+
+  const clearMedia = async () => {
+    if (!selected?.media_path) return;
+    try {
+      await removeExerciseMedia(selected.id, selected.media_path);
+      setExercises((es) => es.map((x) => (x.id === selected.id ? { ...x, media_path: null, media_type: null } : x)));
+      setSelected((s) => (s ? { ...s, media_path: null, media_type: null } : s));
+      notify("Archivo quitado.");
+    } catch (err: any) {
+      notify(err.message);
+    }
+  };
 
   const load = async () => {
     setLoading(true);
@@ -170,6 +213,27 @@ export default function ExercisesPage({ scope }: { scope: "global" | "trainer" }
                 <h3>{selected.name}</h3>
               </div>
               <div className="bd">
+                <div style={{ marginBottom: 14 }}>
+                  {selected.media_path && mediaUrl ? (
+                    <div>
+                      {selected.media_type === "video" ? (
+                        <video src={mediaUrl} controls style={{ width: "100%", maxHeight: 280, borderRadius: 8, background: "#000" }} />
+                      ) : (
+                        <img src={mediaUrl} alt={selected.name} style={{ width: "100%", maxHeight: 280, objectFit: "contain", borderRadius: 8 }} />
+                      )}
+                      <button className="btn ghost" style={{ padding: "4px 10px", fontSize: 12.5, marginTop: 8 }} onClick={clearMedia}>
+                        <Trash2 size={13} /> Quitar
+                      </button>
+                    </div>
+                  ) : (
+                    <div>
+                      <input ref={mediaInputRef} type="file" accept="image/*,video/mp4,video/webm" onChange={pickMedia} style={{ display: "none" }} />
+                      <button className="btn ghost" style={{ padding: "6px 14px", fontSize: 13 }} onClick={() => mediaInputRef.current?.click()} disabled={uploadingMedia}>
+                        <Film size={14} /> {uploadingMedia ? "Subiendo…" : "Subir foto o video de demostración"}
+                      </button>
+                    </div>
+                  )}
+                </div>
                 <div style={{ display: "flex", flexWrap: "wrap", gap: 6, marginBottom: 12 }}>
                   {selected.goals.map((g) => (
                     <Chip key={g} tone="pri">{g}</Chip>

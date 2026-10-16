@@ -19,6 +19,8 @@ export interface ExerciseRow {
   common_mistakes: string | null;
   is_active: boolean;
   created_at: string;
+  media_path: string | null;
+  media_type: "image" | "video" | null;
 }
 
 export interface CatalogItem {
@@ -41,6 +43,40 @@ export function bodyRegionOf(muscleKey: string | null): "Superior" | "Inferior" 
   return "Superior";
 }
 
+/**
+ * Sube una foto o video de demostración para un ejercicio. `folderPrefix`
+ * es "global" para la biblioteca global (solo el Super Admin puede) o el
+ * id de la organización para la biblioteca de un entrenador — tiene que
+ * coincidir con cómo ya está configurado el permiso de este espacio de
+ * almacenamiento desde el script original.
+ */
+export async function uploadExerciseMedia(params: {
+  exerciseId: string;
+  folderPrefix: string;
+  uploaderId: string;
+  file: File;
+}): Promise<{ path: string; type: "image" | "video" }> {
+  const type: "image" | "video" = params.file.type.startsWith("video/") ? "video" : "image";
+  const path = `${params.folderPrefix}/${params.uploaderId}/${Date.now()}-${params.file.name}`;
+  const { error: upErr } = await supabase.storage.from("exercise-media").upload(path, params.file, { upsert: false });
+  if (upErr) throw upErr;
+  const { error } = await supabase.from("exercises").update({ media_path: path, media_type: type }).eq("id", params.exerciseId);
+  if (error) throw error;
+  return { path, type };
+}
+
+export async function removeExerciseMedia(exerciseId: string, mediaPath: string): Promise<void> {
+  const { error } = await supabase.from("exercises").update({ media_path: null, media_type: null }).eq("id", exerciseId);
+  if (error) throw error;
+  await supabase.storage.from("exercise-media").remove([mediaPath]);
+}
+
+export async function getExerciseMediaUrl(path: string): Promise<string> {
+  const { data, error } = await supabase.storage.from("exercise-media").createSignedUrl(path, 60 * 60);
+  if (error) throw error;
+  return data.signedUrl;
+}
+
 export async function listCatalog(kind: string): Promise<CatalogItem[]> {
   const { data, error } = await supabase
     .from("catalog_items")
@@ -56,7 +92,7 @@ export async function listExercises(): Promise<ExerciseRow[]> {
   const { data, error } = await supabase
     .from("exercises")
     .select(
-      "id, organization_id, owner_id, scope, name, description, primary_muscle_id, movement_pattern_id, equipment_ids, difficulty, goals, instructions, technical_cues, common_mistakes, is_active, created_at"
+      "id, organization_id, owner_id, scope, name, description, primary_muscle_id, movement_pattern_id, equipment_ids, difficulty, goals, instructions, technical_cues, common_mistakes, is_active, created_at, media_path, media_type"
     )
     .eq("is_active", true)
     .order("name");

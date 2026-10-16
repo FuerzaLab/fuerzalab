@@ -107,6 +107,8 @@ export interface WorkoutExerciseRow {
   distance_km: number | null;
   steps_target: number | null;
   hr_zone: string | null;
+  media_path: string | null;
+  media_type: "image" | "video" | null;
 }
 
 export async function listSessions(weekId: string): Promise<SessionRow[]> {
@@ -161,7 +163,7 @@ export async function listWorkoutExercises(sessionId: string): Promise<WorkoutEx
   const { data, error } = await supabase
     .from("workout_exercises")
     .select(
-      "id, session_id, block_id, exercise_id, sort_order, sets, reps_min, reps_max, load_value, rir, rest_s, tempo, superset_group, duration_min, distance_km, steps_target, hr_zone, exercises(name)"
+      "id, session_id, block_id, exercise_id, sort_order, sets, reps_min, reps_max, load_value, rir, rest_s, tempo, superset_group, duration_min, distance_km, steps_target, hr_zone, exercises(name, media_path, media_type)"
     )
     .eq("session_id", sessionId)
     .order("sort_order");
@@ -169,6 +171,8 @@ export async function listWorkoutExercises(sessionId: string): Promise<WorkoutEx
   return (data ?? []).map((row: any) => ({
     ...row,
     exercise_name: row.exercises?.name ?? "(ejercicio eliminado)",
+    media_path: row.exercises?.media_path ?? null,
+    media_type: row.exercises?.media_type ?? null,
   })) as WorkoutExerciseRow[];
 }
 
@@ -192,11 +196,11 @@ export async function addWorkoutExercise(params: {
       ...base,
     })
     .select(
-      "id, session_id, block_id, exercise_id, sort_order, sets, reps_min, reps_max, load_value, rir, rest_s, tempo, superset_group, duration_min, distance_km, steps_target, hr_zone, exercises(name)"
+      "id, session_id, block_id, exercise_id, sort_order, sets, reps_min, reps_max, load_value, rir, rest_s, tempo, superset_group, duration_min, distance_km, steps_target, hr_zone, exercises(name, media_path, media_type)"
     )
     .single();
   if (error) throw error;
-  return { ...(data as any), exercise_name: (data as any).exercises?.name ?? "" } as WorkoutExerciseRow;
+  return { ...(data as any), exercise_name: (data as any).exercises?.name ?? "", media_path: (data as any).exercises?.media_path ?? null, media_type: (data as any).exercises?.media_type ?? null } as WorkoutExerciseRow;
 }
 
 export async function updateWorkoutExercise(id: string, fields: Partial<WorkoutExerciseRow>): Promise<void> {
