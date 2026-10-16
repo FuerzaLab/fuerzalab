@@ -67,6 +67,7 @@ export async function createPaymentPlan(params: {
   trainerId: string;
   name: string;
   price: number;
+  currency: string;
   billingPeriod: PaymentPlanRow["billing_period"];
   description: string;
 }): Promise<PaymentPlanRow> {
@@ -77,6 +78,7 @@ export async function createPaymentPlan(params: {
       trainer_id: params.trainerId,
       name: params.name,
       price: params.price,
+      currency: params.currency,
       billing_period: params.billingPeriod,
       description: params.description || null,
     })
@@ -84,6 +86,26 @@ export async function createPaymentPlan(params: {
     .single();
   if (error) throw error;
   return data as PaymentPlanRow;
+}
+
+export async function updatePaymentPlan(id: string, fields: {
+  name: string;
+  price: number;
+  currency: string;
+  billingPeriod: PaymentPlanRow["billing_period"];
+  description: string;
+}): Promise<void> {
+  const { error } = await supabase
+    .from("payment_plans")
+    .update({
+      name: fields.name,
+      price: fields.price,
+      currency: fields.currency,
+      billing_period: fields.billingPeriod,
+      description: fields.description || null,
+    })
+    .eq("id", id);
+  if (error) throw error;
 }
 
 export async function listPayments(clientId?: string): Promise<PaymentRow[]> {
@@ -107,6 +129,7 @@ export async function createPayment(params: {
   trainerId: string;
   clientId: string;
   amount: number;
+  currency: string;
   dueDate: string;
   status: PaymentStatus;
   method: PaymentMethod | null;
@@ -121,6 +144,7 @@ export async function createPayment(params: {
       client_id: params.clientId,
       client_plan_id: params.clientPlanId ?? null,
       amount: params.amount,
+      currency: params.currency,
       due_date: params.dueDate,
       status: params.status,
       method: params.method,
@@ -131,6 +155,29 @@ export async function createPayment(params: {
     .single();
   if (error) throw error;
   return { ...(data as any), plan_name: (data as any).client_plans?.payment_plans?.name ?? null } as PaymentRow;
+}
+
+export async function updatePayment(id: string, fields: {
+  amount: number;
+  currency: string;
+  dueDate: string;
+  status: PaymentStatus;
+  method: PaymentMethod | null;
+  notes: string;
+}): Promise<void> {
+  const { error } = await supabase
+    .from("payments")
+    .update({
+      amount: fields.amount,
+      currency: fields.currency,
+      due_date: fields.dueDate,
+      status: fields.status,
+      method: fields.method,
+      notes: fields.notes || null,
+      paid_at: fields.status === "paid" ? new Date().toISOString() : null,
+    })
+    .eq("id", id);
+  if (error) throw error;
 }
 
 export async function markPaymentPaid(id: string): Promise<void> {
