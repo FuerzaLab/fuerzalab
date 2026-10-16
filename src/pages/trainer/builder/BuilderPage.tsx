@@ -451,6 +451,15 @@ function SessionEditor({
                 className="btn"
                 style={{ padding: "6px 12px", fontSize: 13 }}
                 onClick={async () => {
+                  if (selected.length >= 3) {
+                    const order = items.map((it) => it.id);
+                    const positions = selected.map((id) => order.indexOf(id)).sort((a, b) => a - b);
+                    const isContiguous = positions.every((pos, i) => i === 0 || pos === positions[i - 1] + 1);
+                    if (!isContiguous) {
+                      notify("Para armar una serie gigante (3 o más ejercicios), tienen que estar uno justo después del otro en la lista, sin ningún otro ejercicio en el medio. Para una biserie (2 ejercicios) no hace falta que estén seguidos.");
+                      return;
+                    }
+                  }
                   await groupAsSuperset(selected);
                   setSelected([]);
                   await load();
