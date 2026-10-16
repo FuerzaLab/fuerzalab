@@ -206,6 +206,7 @@ export function TrainSession({ sessionId, onExit, backLabel = "Volver a mi rutin
   const [saving, setSaving] = useState(false);
   const [restTotal, setRestTotal] = useState(0);
   const [restRemaining, setRestRemaining] = useState(0);
+  const [restAnchor, setRestAnchor] = useState<string | null>(null);
 
   useEffect(() => {
     if (restRemaining <= 0) return;
@@ -213,10 +214,11 @@ export function TrainSession({ sessionId, onExit, backLabel = "Volver a mi rutin
     return () => window.clearInterval(t);
   }, [restRemaining > 0]);
 
-  const startRest = (seconds: number) => {
+  const startRest = (seconds: number, anchor: string) => {
     if (!seconds || seconds <= 0) return;
     setRestTotal(seconds);
     setRestRemaining(seconds);
+    setRestAnchor(anchor);
   };
 
   const load = async () => {
@@ -257,7 +259,7 @@ export function TrainSession({ sessionId, onExit, backLabel = "Volver a mi rutin
         ...fields,
       });
       setSetLogs((sls) => (existing ? sls.map((s) => (s.id === saved.id ? saved : s)) : [...sls, saved]));
-      if (justCompleted && ex.rest_s) startRest(ex.rest_s);
+      if (justCompleted && ex.rest_s) startRest(ex.rest_s, `${ex.id}:${setNumber}`);
     } catch (e: any) {
       notify(e.message);
     }
@@ -283,38 +285,6 @@ export function TrainSession({ sessionId, onExit, backLabel = "Volver a mi rutin
       <button onClick={onExit} style={{ border: 0, background: "none", color: "var(--pri)", padding: 0, marginBottom: 14, display: "flex", alignItems: "center", gap: 6, cursor: "pointer" }}>
         <ArrowLeft size={16} /> {backLabel}
       </button>
-
-      {restRemaining > 0 && (
-        <div
-          style={{
-            position: "sticky",
-            top: 0,
-            zIndex: 20,
-            background: "var(--nav)",
-            color: "#fff",
-            borderRadius: 10,
-            padding: "12px 16px",
-            marginBottom: 18,
-          }}
-        >
-          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 8, flexWrap: "wrap", gap: 8 }}>
-            <span style={{ fontFamily: "'Barlow Condensed',sans-serif", fontSize: 28, fontWeight: 700 }}>
-              Descanso: {Math.floor(restRemaining / 60)}:{String(restRemaining % 60).padStart(2, "0")}
-            </span>
-            <div style={{ display: "flex", gap: 8 }}>
-              <button className="btn ghost" style={{ padding: "5px 10px", fontSize: 13, color: "#fff", borderColor: "rgba(255,255,255,.4)" }} onClick={() => setRestRemaining((s) => s + 15)}>
-                +15 s
-              </button>
-              <button className="btn ghost" style={{ padding: "5px 10px", fontSize: 13, color: "#fff", borderColor: "rgba(255,255,255,.4)" }} onClick={() => setRestRemaining(0)}>
-                Saltar
-              </button>
-            </div>
-          </div>
-          <div style={{ height: 6, background: "rgba(255,255,255,.2)", borderRadius: 99, overflow: "hidden" }}>
-            <div style={{ height: "100%", width: `${(restRemaining / Math.max(1, restTotal)) * 100}%`, background: "#8FA6F5", transition: "width 1s linear" }} />
-          </div>
-        </div>
-      )}
 
       {finishing ? (
         <div className="panel" style={{ maxWidth: 420 }}>
@@ -342,9 +312,31 @@ export function TrainSession({ sessionId, onExit, backLabel = "Volver a mi rutin
                 <h3 style={{ marginBottom: 10 }}>{BLOCK_LABEL[kind]}</h3>
                 {groups.map((g) =>
                   g.length > 1 && g.every((ex) => !isCardioExercise(ex)) ? (
-                    <SupersetTrainer key={g[0].superset_group} exercises={g} logFor={logFor} onSaveSet={saveSet} />
+                    <SupersetTrainer
+                      key={g[0].superset_group}
+                      exercises={g}
+                      logFor={logFor}
+                      onSaveSet={saveSet}
+                      restAnchor={restAnchor}
+                      restRemaining={restRemaining}
+                      restTotal={restTotal}
+                      onAddRestTime={() => setRestRemaining((s) => s + 15)}
+                      onSkipRest={() => setRestRemaining(0)}
+                    />
                   ) : (
-                    g.map((ex) => <ExerciseTrainer key={ex.id} ex={ex} logFor={logFor} onSaveSet={saveSet} />)
+                    g.map((ex) => (
+                      <ExerciseTrainer
+                        key={ex.id}
+                        ex={ex}
+                        logFor={logFor}
+                        onSaveSet={saveSet}
+                        restAnchor={restAnchor}
+                        restRemaining={restRemaining}
+                        restTotal={restTotal}
+                        onAddRestTime={() => setRestRemaining((s) => s + 15)}
+                        onSkipRest={() => setRestRemaining(0)}
+                      />
+                    ))
                   )
                 )}
               </div>
@@ -356,6 +348,29 @@ export function TrainSession({ sessionId, onExit, backLabel = "Volver a mi rutin
           </button>
         </>
       )}
+    </div>
+  );
+}
+
+function RestTimer({ remaining, total, onAddTime, onSkip }: { remaining: number; total: number; onAddTime: () => void; onSkip: () => void }) {
+  return (
+    <div style={{ background: "var(--nav)", color: "#fff", borderRadius: 10, padding: "10px 14px", marginTop: 8, marginBottom: 4 }}>
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 6, flexWrap: "wrap", gap: 8 }}>
+        <span style={{ fontFamily: "'Barlow Condensed',sans-serif", fontSize: 24, fontWeight: 700 }}>
+          Descanso: {Math.floor(remaining / 60)}:{String(remaining % 60).padStart(2, "0")}
+        </span>
+        <div style={{ display: "flex", gap: 8 }}>
+          <button className="btn ghost" style={{ padding: "4px 10px", fontSize: 12.5, color: "#fff", borderColor: "rgba(255,255,255,.4)" }} onClick={onAddTime}>
+            +15 s
+          </button>
+          <button className="btn ghost" style={{ padding: "4px 10px", fontSize: 12.5, color: "#fff", borderColor: "rgba(255,255,255,.4)" }} onClick={onSkip}>
+            Saltar
+          </button>
+        </div>
+      </div>
+      <div style={{ height: 5, background: "rgba(255,255,255,.2)", borderRadius: 99, overflow: "hidden" }}>
+        <div style={{ height: "100%", width: `${(remaining / Math.max(1, total)) * 100}%`, background: "#8FA6F5", transition: "width 1s linear" }} />
+      </div>
     </div>
   );
 }
@@ -386,10 +401,20 @@ function SupersetTrainer({
   exercises,
   logFor,
   onSaveSet,
+  restAnchor,
+  restRemaining,
+  restTotal,
+  onAddRestTime,
+  onSkipRest,
 }: {
   exercises: WorkoutExerciseRow[];
   logFor: (workoutExerciseId: string, setNumber: number) => SetLogRow | undefined;
   onSaveSet: (ex: WorkoutExerciseRow, setNumber: number, fields: { reps: number; loadKg: number | null; rir: number | null; completed: boolean }) => void;
+  restAnchor: string | null;
+  restRemaining: number;
+  restTotal: number;
+  onAddRestTime: () => void;
+  onSkipRest: () => void;
 }) {
   const label = exercises.length === 2 ? "Biserie" : exercises.length === 3 ? "Triserie" : "Serie gigante";
   const maxSets = Math.max(...exercises.map((ex) => ex.sets ?? 3));
@@ -406,33 +431,36 @@ function SupersetTrainer({
         <p className="note" style={{ marginBottom: 14 }}>
           Hacé una serie de cada ejercicio, en orden, sin descansar entre ellos — el descanso va después de completar la ronda entera.
         </p>
-        {rounds.map((roundNumber) => (
-          <div key={roundNumber} style={{ marginBottom: 16, paddingBottom: 16, borderBottom: roundNumber < rounds.length ? "1px dashed var(--line)" : "none" }}>
-            <div className="note" style={{ marginBottom: 8, fontWeight: 600 }}>Ronda {roundNumber}</div>
-            <div style={{ display: "grid", gap: 8 }}>
-              {exercises.map((ex, i) => {
-                if (roundNumber > (ex.sets ?? 3)) return null;
-                const existing = logFor(ex.id, roundNumber);
-                const repsTarget = ex.reps_min && ex.reps_max ? `${ex.reps_min}–${ex.reps_max}` : ex.reps_min ?? ex.reps_max ?? "—";
-                return (
-                  <div key={ex.id} style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap", background: existing?.completed ? "var(--ok-soft)" : "var(--bg)", borderRadius: 8, padding: 8 }}>
-                    <span style={{ minWidth: 26, fontWeight: 700, color: "var(--pri)" }}>{SUPERSET_LETTERS[i]}{roundNumber}</span>
-                    <span style={{ flex: 1, minWidth: 120 }}>{ex.exercise_name}</span>
-                    <span className="note" style={{ fontSize: 12.5 }}>Obj: {repsTarget}{ex.load_value ? ` @ ${ex.load_value}kg` : ""}</span>
-                    <MiniSetInputs
-                      defaultReps={ex.reps_max ?? ex.reps_min ?? 0}
-                      defaultLoad={ex.load_value}
-                      defaultRir={ex.rir}
-                      existing={existing}
-                      onSave={(fields) => onSaveSet(ex, roundNumber, fields)}
-                    />
-                  </div>
-                );
-              })}
+        {rounds.map((roundNumber) => {
+          const showRestHere = restRemaining > 0 && exercises.some((ex) => restAnchor === `${ex.id}:${roundNumber}`);
+          return (
+            <div key={roundNumber} style={{ marginBottom: 16, paddingBottom: 16, borderBottom: roundNumber < rounds.length ? "1px dashed var(--line)" : "none" }}>
+              <div className="note" style={{ marginBottom: 8, fontWeight: 600 }}>Ronda {roundNumber}</div>
+              <div style={{ display: "grid", gap: 8 }}>
+                {exercises.map((ex, i) => {
+                  if (roundNumber > (ex.sets ?? 3)) return null;
+                  const existing = logFor(ex.id, roundNumber);
+                  const repsTarget = ex.reps_min && ex.reps_max ? `${ex.reps_min}–${ex.reps_max}` : ex.reps_min ?? ex.reps_max ?? "—";
+                  return (
+                    <div key={ex.id} style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap", background: existing?.completed ? "var(--ok-soft)" : "var(--bg)", borderRadius: 8, padding: 8 }}>
+                      <span style={{ minWidth: 26, fontWeight: 700, color: "var(--pri)" }}>{SUPERSET_LETTERS[i]}{roundNumber}</span>
+                      <span style={{ flex: 1, minWidth: 120 }}>{ex.exercise_name}</span>
+                      <span className="note" style={{ fontSize: 12.5 }}>Obj: {repsTarget}{ex.load_value ? ` @ ${ex.load_value}kg` : ""}</span>
+                      <MiniSetInputs
+                        defaultReps={ex.reps_max ?? ex.reps_min ?? 0}
+                        defaultLoad={ex.load_value}
+                        defaultRir={ex.rir}
+                        existing={existing}
+                        onSave={(fields) => onSaveSet(ex, roundNumber, fields)}
+                      />
+                    </div>
+                  );
+                })}
+              </div>
+              {showRestHere && <RestTimer remaining={restRemaining} total={restTotal} onAddTime={onAddRestTime} onSkip={onSkipRest} />}
             </div>
-          </div>
-        ))}
-        {exercises[0].rest_s ? <p className="note">Descanso entre rondas: {exercises[0].rest_s}s</p> : null}
+          );
+        })}
       </div>
     </div>
   );
@@ -485,11 +513,22 @@ function ExerciseTrainer({
   ex,
   logFor,
   onSaveSet,
+  restAnchor,
+  restRemaining,
+  restTotal,
+  onAddRestTime,
+  onSkipRest,
 }: {
   ex: WorkoutExerciseRow;
   logFor: (workoutExerciseId: string, setNumber: number) => SetLogRow | undefined;
   onSaveSet: (ex: WorkoutExerciseRow, setNumber: number, fields: { reps: number; loadKg: number | null; rir: number | null; completed: boolean }) => void;
+  restAnchor: string | null;
+  restRemaining: number;
+  restTotal: number;
+  onAddRestTime: () => void;
+  onSkipRest: () => void;
 }) {
+  const showRestHere = restRemaining > 0 && restAnchor != null && restAnchor.startsWith(`${ex.id}:`);
   const isCardio = ex.duration_min != null || ex.distance_km != null || ex.steps_target != null;
 
   if (isCardio) {
@@ -514,6 +553,7 @@ function ExerciseTrainer({
             <Check size={14} /> {existing?.completed ? "Hecho" : "Marcar hecho"}
           </button>
         </div>
+        {showRestHere && <RestTimer remaining={restRemaining} total={restTotal} onAddTime={onAddRestTime} onSkip={onSkipRest} />}
       </div>
     );
   }
@@ -559,6 +599,7 @@ function ExerciseTrainer({
           </tbody>
         </table>
       </div>
+      {showRestHere && <RestTimer remaining={restRemaining} total={restTotal} onAddTime={onAddRestTime} onSkip={onSkipRest} />}
     </div>
   );
 }
