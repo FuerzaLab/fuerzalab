@@ -284,12 +284,16 @@ export async function duplicateSession(session: SessionRow, newSortOrder: number
   return newSession;
 }
 
-/** Intercambia el orden de dos rutinas de la misma semana. */
-export async function swapSessionOrder(a: SessionRow, b: SessionRow): Promise<void> {
-  await Promise.all([
-    supabase.from("sessions").update({ sort_order: b.sort_order }).eq("id", a.id),
-    supabase.from("sessions").update({ sort_order: a.sort_order }).eq("id", b.id),
-  ]);
+/**
+ * Reasigna el orden de TODAS las rutinas de la semana al orden exacto de
+ * `orderedIds` (0, 1, 2...). Se usa en vez de un simple intercambio de a
+ * dos porque, de paso, corrige solo cualquier número de orden repetido
+ * que haya quedado de antes (por ejemplo, de una rutina duplicada con
+ * una versión más vieja de la app) — con un intercambio simple, dos
+ * rutinas con el mismo número no se mueven entre sí.
+ */
+export async function reorderSessions(orderedIds: string[]): Promise<void> {
+  await Promise.all(orderedIds.map((id, i) => supabase.from("sessions").update({ sort_order: i }).eq("id", id)));
 }
 
 export async function copyWeek(programId: string, fromWeekId: string, toWeekId: string, loadIncrement = 2.5): Promise<void> {

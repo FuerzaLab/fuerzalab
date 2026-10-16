@@ -16,7 +16,7 @@ import {
   createSession,
   deleteSession,
   duplicateSession,
-  swapSessionOrder,
+  reorderSessions,
   updateSessionName,
   updateSessionStrengthType,
   listSessionBlocks,
@@ -165,7 +165,9 @@ export default function BuilderPage() {
                     aria-label={`Mover ${s.name} antes`}
                     onClick={async (e) => {
                       e.stopPropagation();
-                      await swapSessionOrder(s, sessions[i - 1]);
+                      const ids = sessions.map((x) => x.id);
+                      [ids[i - 1], ids[i]] = [ids[i], ids[i - 1]];
+                      await reorderSessions(ids);
                       await loadSessions(weekId);
                     }}
                     style={{ border: 0, background: "none", color: "inherit", cursor: "pointer", display: "inline-flex", opacity: 0.8 }}
@@ -181,7 +183,9 @@ export default function BuilderPage() {
                     aria-label={`Mover ${s.name} después`}
                     onClick={async (e) => {
                       e.stopPropagation();
-                      await swapSessionOrder(s, sessions[i + 1]);
+                      const ids = sessions.map((x) => x.id);
+                      [ids[i], ids[i + 1]] = [ids[i + 1], ids[i]];
+                      await reorderSessions(ids);
                       await loadSessions(weekId);
                     }}
                     style={{ border: 0, background: "none", color: "inherit", cursor: "pointer", display: "inline-flex", opacity: 0.8 }}
@@ -194,7 +198,8 @@ export default function BuilderPage() {
                   title="Duplicar en esta misma semana"
                   onClick={async (e) => {
                     e.stopPropagation();
-                    const created = await duplicateSession(s, sessions.length);
+                    const nextOrder = Math.max(-1, ...sessions.map((x) => x.sort_order)) + 1;
+                    const created = await duplicateSession(s, nextOrder);
                     await loadSessions(weekId);
                     setSessionId(created.id);
                     notify(`"${s.name}" duplicada.`);
@@ -222,7 +227,8 @@ export default function BuilderPage() {
               className="btn ghost"
               style={{ padding: "5px 10px", fontSize: 13 }}
               onClick={async () => {
-                const created = await createSession(weekId, `Rutina ${sessions.length + 1}`, sessions.length);
+                const nextOrder = Math.max(-1, ...sessions.map((x) => x.sort_order)) + 1;
+                const created = await createSession(weekId, `Rutina ${sessions.length + 1}`, nextOrder);
                 await loadSessions(weekId);
                 setSessionId(created.id);
               }}
