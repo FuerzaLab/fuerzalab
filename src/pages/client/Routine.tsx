@@ -25,8 +25,10 @@ import {
   completeWorkout,
   getSessionStatuses,
   getTodayCompletedSessionName,
+  getLastPerformance,
   type WorkoutLogRow,
   type SetLogRow,
+  type LastPerformance,
 } from "../../services/training";
 import WellnessForm from "../../components/WellnessForm";
 import { getExerciseMediaUrl } from "../../services/exercises";
@@ -218,6 +220,7 @@ export function TrainSession({ sessionId, onExit, backLabel = "Volver a mi rutin
   const [restTotal, setRestTotal] = useState(0);
   const [restRemaining, setRestRemaining] = useState(0);
   const [restAnchor, setRestAnchor] = useState<string | null>(null);
+  const [lastPerf, setLastPerf] = useState<Record<string, LastPerformance | null>>({});
 
   useEffect(() => {
     if (restRemaining <= 0) return;
@@ -241,6 +244,12 @@ export function TrainSession({ sessionId, onExit, backLabel = "Volver a mi rutin
       setBlocks(bl);
       setExercises(ex);
       setSetLogs(sl);
+
+      const uniqueExerciseIds = [...new Set(ex.map((e) => e.exercise_id))];
+      const perfEntries = await Promise.all(
+        uniqueExerciseIds.map(async (exId) => [exId, await getLastPerformance(l.client_id, exId, l.id).catch(() => null)] as const)
+      );
+      setLastPerf(Object.fromEntries(perfEntries));
     } catch (e: any) {
       notify(e.message);
     }
@@ -333,6 +342,7 @@ export function TrainSession({ sessionId, onExit, backLabel = "Volver a mi rutin
                       restTotal={restTotal}
                       onAddRestTime={() => setRestRemaining((s) => s + 15)}
                       onSkipRest={() => setRestRemaining(0)}
+                      lastPerf={lastPerf}
                     />
                   ) : (
                     g.map((ex) => (
@@ -346,6 +356,7 @@ export function TrainSession({ sessionId, onExit, backLabel = "Volver a mi rutin
                         restTotal={restTotal}
                         onAddRestTime={() => setRestRemaining((s) => s + 15)}
                         onSkipRest={() => setRestRemaining(0)}
+                        lastPerf={lastPerf[ex.exercise_id] ?? null}
                       />
                     ))
                   )
@@ -419,6 +430,16 @@ function ExerciseMedia({ mediaPath, mediaType, label }: { mediaPath: string | nu
   );
 }
 
+function LastPerformanceNote({ perf }: { perf: LastPerformance | null }) {
+  if (!perf) return null;
+  const sets = Object.entries(perf.bySet).sort(([a], [b]) => Number(a) - Number(b));
+  return (
+    <p className="note" style={{ marginBottom: 8 }}>
+      Última vez ({new Date(perf.date).toLocaleDateString("es")}): {sets.map(([n, s]) => `S${n}: ${s.loadKg ?? "—"}kg×${s.reps}`).join(" · ")}
+    </p>
+  );
+}
+
 function isCardioExercise(ex: WorkoutExerciseRow): boolean {
   return ex.duration_min != null || ex.distance_km != null || ex.steps_target != null;
 }
@@ -450,6 +471,7 @@ function SupersetTrainer({
   restTotal,
   onAddRestTime,
   onSkipRest,
+  lastPerf,
 }: {
   exercises: WorkoutExerciseRow[];
   logFor: (workoutExerciseId: string, setNumber: number) => SetLogRow | undefined;
@@ -459,6 +481,7 @@ function SupersetTrainer({
   restTotal: number;
   onAddRestTime: () => void;
   onSkipRest: () => void;
+  lastPerf: Record<string, LastPerformance | null>;
 }) {
   const label = exercises.length === 2 ? "Biserie" : exercises.length === 3 ? "Triserie" : "Serie gigante";
   const maxSets = Math.max(...exercises.map((ex) => ex.sets ?? 3));
@@ -479,6 +502,9 @@ function SupersetTrainer({
             ))}
           </div>
         )}
+        {exercises.map((ex) => (
+          <LastPerformanceNote key={ex.id} perf={lastPerf[ex.exercise_id] ?? null} />
+        ))}
         <p className="note" style={{ marginBottom: 14 }}>
           Hacé una serie de cada ejercicio, en orden, sin descansar entre ellos — el descanso va después de completar la ronda entera.
         </p>
@@ -569,6 +595,7 @@ function ExerciseTrainer({
   restTotal,
   onAddRestTime,
   onSkipRest,
+  lastPerf,
 }: {
   ex: WorkoutExerciseRow;
   logFor: (workoutExerciseId: string, setNumber: number) => SetLogRow | undefined;
@@ -578,6 +605,7 @@ function ExerciseTrainer({
   restTotal: number;
   onAddRestTime: () => void;
   onSkipRest: () => void;
+  lastPerf: LastPerformance | null;
 }) {
   const showRestHere = restRemaining > 0 && restAnchor != null && restAnchor.startsWith(`${ex.id}:`);
   const isCardio = ex.duration_min != null || ex.distance_km != null || ex.steps_target != null;
@@ -606,6 +634,7 @@ function ExerciseTrainer({
         </div>
         <div className="bd" style={{ paddingTop: 0 }}>
           <ExerciseMedia mediaPath={ex.media_path} mediaType={ex.media_type} />
+          <LastPerformanceNote perf={lastPerf} />
         </div>
         {showRestHere && <RestTimer remaining={restRemaining} total={restTotal} onAddTime={onAddRestTime} onSkip={onSkipRest} />}
       </div>
@@ -626,6 +655,7 @@ function ExerciseTrainer({
       </div>
       <div className="bd" style={{ paddingBottom: 0 }}>
         <ExerciseMedia mediaPath={ex.media_path} mediaType={ex.media_type} />
+        <LastPerformanceNote perf={lastPerf} />
       </div>
       <div style={{ overflowX: "auto" }}>
         <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 14 }}>
