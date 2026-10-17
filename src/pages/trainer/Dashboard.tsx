@@ -7,6 +7,14 @@ import { paths } from "../../routes/paths";
 import { listClients, type ClientRow } from "../../services/clients";
 import { listTodayLogsForTrainer, wellnessScore, wellnessSemaforo, type WellnessLogRow } from "../../services/wellness";
 import { computeSuggestions } from "../../services/suggestions";
+import { getTodaysSessionForClient, type TodaysSession } from "../../services/sessions";
+
+const SESSION_STATUS_LABEL: Record<TodaysSession["status"], string> = {
+  pending: "Todavía no la empezó",
+  in_progress: "La está haciendo ahora",
+  completed: "Ya la completó",
+  skipped: "La saltó",
+};
 
 export default function TrainerDashboard() {
   const { profile } = useAuth();
@@ -16,12 +24,16 @@ export default function TrainerDashboard() {
   const [todayLogs, setTodayLogs] = useState<WellnessLogRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [suggestionCount, setSuggestionCount] = useState<number | null>(null);
+  const [todaysSessions, setTodaysSessions] = useState<TodaysSession[] | null>(null);
 
   useEffect(() => {
     Promise.all([listClients(), listTodayLogsForTrainer()])
-      .then(([c, l]) => {
+      .then(async ([c, l]) => {
         setClients(c);
         setTodayLogs(l);
+        const active = c.filter((x) => x.status === "active");
+        const results = await Promise.all(active.map((x) => getTodaysSessionForClient(x.id).catch(() => null)));
+        setTodaysSessions(results.filter((r): r is TodaysSession => r != null));
       })
       .catch((e: any) => notify(e.message))
       .finally(() => setLoading(false));
@@ -42,6 +54,23 @@ export default function TrainerDashboard() {
         <p className="note">Cargando…</p>
       ) : (
         <>
+          {todaysSessions && todaysSessions.length > 0 && (
+            <div className="panel" style={{ marginBottom: 20 }}>
+              <div className="hd"><h3>Hoy</h3></div>
+              <div className="bd">
+                {todaysSessions.map((t) => (
+                  <div key={t.session.id} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "6px 0", borderBottom: "1px solid var(--line)" }}>
+                    <span><b>{nameFor(t.clientId)}</b> — {t.session.name}</span>
+                    <Chip tone={t.status === "completed" ? "ok" : t.status === "in_progress" ? "warn" : ""}>{SESSION_STATUS_LABEL[t.status]}</Chip>
+                  </div>
+                ))}
+                <p className="note" style={{ marginTop: 10, marginBottom: 0 }}>
+                  Solo aparecen acá los clientes cuyo programa tiene fecha de inicio puesta (en Planificación) y una rutina asignada al día de hoy.
+                </p>
+              </div>
+            </div>
+          )}
+
           {(redToday.length > 0 || yellowToday.length > 0) && (
             <div className="panel" style={{ marginBottom: 20, borderLeft: `4px solid ${redToday.length > 0 ? "var(--bad)" : "var(--warn)"}` }}>
               <div className="hd"><h3>Alertas de bienestar — hoy</h3></div>

@@ -1,4 +1,6 @@
 import { supabase } from "../lib/supabase";
+import { getActiveProgramForClient, getSessionStatuses } from "./training";
+import { listWeeks } from "./programs";
 
 export type BlockKind = "warmup" | "main" | "cardio" | "mobility" | "flexibility" | "cooldown";
 
@@ -127,6 +129,45 @@ export interface WorkoutExerciseRow {
   hr_zone: string | null;
   media_path: string | null;
   media_type: "image" | "video" | null;
+}
+
+export interface TodaysSession {
+  clientId: string;
+  session: SessionRow;
+  status: "pending" | "in_progress" | "completed" | "skipped";
+}
+
+/**
+ * Si el programa activo del cliente tiene fecha de inicio real (puesta en
+ * la semana 1, en Planificación), calcula en qué semana está hoy y busca
+ * si alguna rutina de esa semana tiene asignado el día de hoy. Si el
+ * programa no tiene fecha de inicio puesta, no hay forma de saber en qué
+ * semana está "hoy" — devuelve null sin inventar nada.
+ */
+export async function getTodaysSessionForClient(clientId: string): Promise<TodaysSession | null> {
+  const program = await getActiveProgramForClient(clientId);
+  if (!program) return null;
+
+  const weeks = await listWeeks(program.id);
+  const week1 = weeks.find((w) => w.week_number === 1);
+  if (!week1?.start_date) return null;
+
+  const start = new Date(week1.start_date + "T00:00:00");
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  const daysSince = Math.floor((today.getTime() - start.getTime()) / 86400000);
+  if (daysSince < 0) return null;
+  const currentWeekNumber = Math.floor(daysSince / 7) + 1;
+
+  const currentWeek = weeks.find((w) => w.week_number === currentWeekNumber);
+  if (!currentWeek) return null;
+
+  const sessions = await listSessions(currentWeek.id);
+  const todaysSession = sessions.find((s) => s.day_of_week === todayDayOfWeek());
+  if (!todaysSession) return null;
+
+  const statuses = await getSessionStatuses([todaysSession.id]);
+  return { clientId, session: todaysSession, status: statuses[todaysSession.id] ?? "pending" };
 }
 
 export async function listSessions(weekId: string): Promise<SessionRow[]> {

@@ -43,6 +43,13 @@ export interface WeekRow {
   program_id: string;
   block_id: string | null;
   week_number: number;
+  start_date: string | null;
+}
+
+/** Fija la fecha real en la que arranca una semana — normalmente solo hace falta ponerla en la semana 1, las demás se calculan solas a partir de esa. */
+export async function updateWeekStartDate(weekId: string, startDate: string | null): Promise<void> {
+  const { error } = await supabase.from("weeks").update({ start_date: startDate }).eq("id", weekId);
+  if (error) throw error;
 }
 
 export const METHOD_LABEL: Record<ProgramMethod, string> = {

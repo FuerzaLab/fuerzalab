@@ -10,6 +10,7 @@ import {
   listPrograms,
   listMesocycles,
   listWeeks,
+  updateWeekStartDate,
   createProgram,
   updateProgramName,
   setAllowMultipleSessionsPerDay,
@@ -216,7 +217,24 @@ export default function ProgramsPage() {
                 />
                 <span>Permitir más de una rutina por día (ej. doble turno)</span>
               </label>
-              <p className="note">Por defecto, el cliente solo puede completar una rutina por día en este programa.</p>
+              <p className="note" style={{ marginBottom: 14 }}>Por defecto, el cliente solo puede completar una rutina por día en este programa.</p>
+
+              <label className="field-label">Fecha de inicio real (opcional)</label>
+              <input
+                type="date"
+                className="input"
+                style={{ maxWidth: 180, marginBottom: 8 }}
+                value={weeks[0]?.start_date ?? ""}
+                onChange={async (e) => {
+                  const date = e.target.value || null;
+                  if (!weeks[0]) return;
+                  await updateWeekStartDate(weeks[0].id, date);
+                  setWeeks((ws) => ws.map((w, i) => (i === 0 ? { ...w, start_date: date } : w)));
+                }}
+              />
+              <p className="note">
+                Con esto fijado, el panel de Inicio puede mostrarte qué rutina le toca a cada cliente hoy. Las demás semanas se calculan solas a partir de esta fecha — no hace falta ponerla en cada una.
+              </p>
             </div>
           </div>
 
