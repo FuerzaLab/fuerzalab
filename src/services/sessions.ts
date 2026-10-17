@@ -79,6 +79,24 @@ export interface SessionRow {
   name: string;
   strength_type: StrengthType | null;
   sort_order: number;
+  day_of_week: number | null;
+}
+
+/** 1 = lunes ... 7 = domingo, el estándar ISO que ya usa la columna. */
+export const DAY_OF_WEEK_LABEL: Record<number, string> = {
+  1: "Lunes",
+  2: "Martes",
+  3: "Miércoles",
+  4: "Jueves",
+  5: "Viernes",
+  6: "Sábado",
+  7: "Domingo",
+};
+
+/** El día de hoy en el mismo estándar que day_of_week (1=lunes...7=domingo). */
+export function todayDayOfWeek(): number {
+  const jsDay = new Date().getDay(); // 0=domingo...6=sábado
+  return jsDay === 0 ? 7 : jsDay;
 }
 
 export interface SessionBlockRow {
@@ -114,7 +132,7 @@ export interface WorkoutExerciseRow {
 export async function listSessions(weekId: string): Promise<SessionRow[]> {
   const { data, error } = await supabase
     .from("sessions")
-    .select("id, week_id, program_id, name, strength_type, sort_order")
+    .select("id, week_id, program_id, name, strength_type, sort_order, day_of_week")
     .eq("week_id", weekId)
     .order("sort_order");
   if (error) throw error;
@@ -125,7 +143,7 @@ export async function createSession(weekId: string, name: string, sortOrder: num
   const { data, error } = await supabase
     .from("sessions")
     .insert({ week_id: weekId, name, sort_order: sortOrder })
-    .select("id, week_id, program_id, name, strength_type, sort_order")
+    .select("id, week_id, program_id, name, strength_type, sort_order, day_of_week")
     .single();
   if (error) throw error;
   // Crea de una vez los bloques estándar, para no tener que ir creándolos sobre la marcha.
@@ -146,6 +164,11 @@ export async function updateSessionName(id: string, name: string): Promise<void>
 
 export async function updateSessionStrengthType(id: string, strengthType: StrengthType): Promise<void> {
   const { error } = await supabase.from("sessions").update({ strength_type: strengthType }).eq("id", id);
+  if (error) throw error;
+}
+
+export async function updateSessionDay(id: string, dayOfWeek: number | null): Promise<void> {
+  const { error } = await supabase.from("sessions").update({ day_of_week: dayOfWeek }).eq("id", id);
   if (error) throw error;
 }
 

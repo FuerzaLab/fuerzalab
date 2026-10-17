@@ -19,6 +19,8 @@ import {
   reorderSessions,
   updateSessionName,
   updateSessionStrengthType,
+  updateSessionDay,
+  DAY_OF_WEEK_LABEL,
   listSessionBlocks,
   listWorkoutExercises,
   addWorkoutExercise,
@@ -181,6 +183,7 @@ export default function BuilderPage() {
                 )}
                 <button onClick={() => setSessionId(s.id)} style={{ border: 0, background: "none", color: "inherit", cursor: "pointer", font: "inherit" }}>
                   {s.name}
+                  {s.day_of_week && <span style={{ opacity: 0.75 }}> · {DAY_OF_WEEK_LABEL[s.day_of_week].slice(0, 3)}</span>}
                 </button>
                 {i < sessions.length - 1 && (
                   <button
@@ -396,6 +399,24 @@ function SessionEditor({
               onRenamed();
             }}
           />
+
+          <label className="field-label">Día de la semana (opcional)</label>
+          <select
+            className="input"
+            style={{ marginBottom: 10, maxWidth: 260 }}
+            value={session.day_of_week ?? ""}
+            onChange={async (e) => {
+              const day = e.target.value ? Number(e.target.value) : null;
+              await updateSessionDay(sessionId, day);
+              setSession((s) => (s ? { ...s, day_of_week: day } : s));
+            }}
+          >
+            <option value="">Sin día asignado</option>
+            {Object.entries(DAY_OF_WEEK_LABEL).map(([k, l]) => (
+              <option key={k} value={k}>{l}</option>
+            ))}
+          </select>
+          <p className="note" style={{ marginBottom: 14 }}>Si le asignás un día, el cliente la ve marcada como "Hoy" cuando corresponda, en vez de tener que adivinar cuál le toca.</p>
 
           <label className="field-label">Tipo de fuerza a trabajar</label>
           <select

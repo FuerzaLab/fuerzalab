@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import { Check, ArrowLeft } from "lucide-react";
 import { useToast } from "../../contexts/ToastContext";
 import Modal from "../../components/ui/Modal";
+import Chip from "../../components/ui/Chip";
 import { getMyClientId } from "../../services/clients";
 import { listWeeks, type ProgramRow, type WeekRow } from "../../services/programs";
 import {
@@ -10,6 +11,8 @@ import {
   listWorkoutExercises,
   BLOCK_LABEL,
   BLOCK_ORDER,
+  DAY_OF_WEEK_LABEL,
+  todayDayOfWeek,
   type SessionRow,
   type SessionBlockRow,
   type WorkoutExerciseRow,
@@ -164,12 +167,19 @@ export default function ClientRoutine() {
           <div style={{ display: "grid", gap: 12 }}>
             {sessions.map((s) => {
               const status = statuses[s.id] ?? "pending";
+              const isToday = s.day_of_week === todayDayOfWeek();
               return (
-                <div key={s.id} className="panel">
+                <div key={s.id} className="panel" style={isToday ? { borderLeft: "4px solid var(--pri)" } : undefined}>
                   <div className="bd" style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 10 }}>
                     <div>
-                      <b>{s.name}</b>
-                      <div className="note">{STATUS_LABEL[status]}</div>
+                      <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                        <b>{s.name}</b>
+                        {isToday && <Chip tone="pri">Hoy</Chip>}
+                      </div>
+                      <div className="note">
+                        {STATUS_LABEL[status]}
+                        {s.day_of_week ? ` · ${DAY_OF_WEEK_LABEL[s.day_of_week]}` : ""}
+                      </div>
                     </div>
                     <button className="btn" onClick={() => startSession(s.id)} disabled={status === "completed"}>
                       {status === "completed" ? "Completada" : status === "in_progress" ? "Continuar" : "Entrenar"}
