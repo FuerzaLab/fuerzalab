@@ -60,6 +60,10 @@ export default function BuilderPage() {
   const [exercises, setExercises] = useState<ExerciseRow[]>([]);
   const [muscles, setMuscles] = useState<CatalogItem[]>([]);
 
+  const [autoRegPreview, setAutoRegPreview] = useState<AutoregulationSuggestion[] | null>(null);
+  const [autoRegTarget, setAutoRegTarget] = useState<{ fromWeekId: string; toWeek: WeekRow } | null>(null);
+  const [loadingAutoReg, setLoadingAutoReg] = useState(false);
+
   useEffect(() => {
     listClients().then(setClients).catch((e) => notify(e.message));
     listExercises().then(setExercises).catch((e) => notify(e.message));
@@ -290,6 +294,25 @@ export default function BuilderPage() {
           )}
         </>
       )}
+
+      {autoRegPreview && autoRegTarget && (
+        <AutoregulationModal
+          preview={autoRegPreview}
+          sourceWeekLabel={weeks.find((w) => w.id === autoRegTarget.fromWeekId)?.week_number}
+          targetWeekLabel={autoRegTarget.toWeek.week_number}
+          onClose={() => {
+            setAutoRegPreview(null);
+            setAutoRegTarget(null);
+          }}
+          onConfirm={async (overrides) => {
+            await copyWeek(programId, autoRegTarget.fromWeekId, autoRegTarget.toWeek.id, 2.5, overrides);
+            notify(`Semana ${autoRegTarget.toWeek.week_number} completada, con cargas ajustadas según el rendimiento real.`);
+            setWeekId(autoRegTarget.toWeek.id);
+            setAutoRegPreview(null);
+            setAutoRegTarget(null);
+          }}
+        />
+      )}
     </div>
   );
 }
@@ -314,9 +337,6 @@ function SessionEditor({
   const [blocks, setBlocks] = useState<SessionBlockRow[]>([]);
   const [items, setItems] = useState<WorkoutExerciseRow[]>([]);
   const [selected, setSelected] = useState<string[]>([]);
-  const [autoRegPreview, setAutoRegPreview] = useState<AutoregulationSuggestion[] | null>(null);
-  const [autoRegTarget, setAutoRegTarget] = useState<{ fromWeekId: string; toWeek: WeekRow } | null>(null);
-  const [loadingAutoReg, setLoadingAutoReg] = useState(false);
   const [showImport, setShowImport] = useState(false);
   const [bodyFilter, setBodyFilter] = useState<"all" | "Superior" | "Inferior" | "Full body">("all");
   const [muscleFilter, setMuscleFilter] = useState("all");
@@ -693,25 +713,6 @@ function SessionEditor({
             await load();
             setShowImport(false);
             notify(`${count} ejercicios importados a la rutina. Revísalos y ajusta lo que haga falta.`);
-          }}
-        />
-      )}
-
-      {autoRegPreview && autoRegTarget && (
-        <AutoregulationModal
-          preview={autoRegPreview}
-          sourceWeekLabel={weeks.find((w) => w.id === autoRegTarget.fromWeekId)?.week_number}
-          targetWeekLabel={autoRegTarget.toWeek.week_number}
-          onClose={() => {
-            setAutoRegPreview(null);
-            setAutoRegTarget(null);
-          }}
-          onConfirm={async (overrides) => {
-            await copyWeek(programId, autoRegTarget.fromWeekId, autoRegTarget.toWeek.id, 2.5, overrides);
-            notify(`Semana ${autoRegTarget.toWeek.week_number} completada, con cargas ajustadas según el rendimiento real.`);
-            setWeekId(autoRegTarget.toWeek.id);
-            setAutoRegPreview(null);
-            setAutoRegTarget(null);
           }}
         />
       )}

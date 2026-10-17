@@ -4,6 +4,7 @@ import type { ProgramRow } from "./programs";
 export interface WorkoutLogRow {
   id: string;
   session_id: string;
+  client_id: string;
   status: "pending" | "in_progress" | "completed" | "skipped";
   started_at: string | null;
   completed_at: string | null;
@@ -60,7 +61,7 @@ export async function getTodayCompletedSessionName(clientId: string): Promise<st
 export async function getOrCreateWorkoutLog(sessionId: string): Promise<WorkoutLogRow> {
   const { data: existing, error: selErr } = await supabase
     .from("workout_logs")
-    .select("id, session_id, status, started_at, completed_at, session_rpe, sensations, comments, duration_min")
+    .select("id, session_id, client_id, status, started_at, completed_at, session_rpe, sensations, comments, duration_min")
     .eq("session_id", sessionId)
     .maybeSingle();
   if (selErr) throw selErr;
@@ -69,10 +70,43 @@ export async function getOrCreateWorkoutLog(sessionId: string): Promise<WorkoutL
   const { data: created, error: insErr } = await supabase
     .from("workout_logs")
     .insert({ session_id: sessionId, status: "in_progress", started_at: new Date().toISOString() })
-    .select("id, session_id, status, started_at, completed_at, session_rpe, sensations, comments, duration_min")
+    .select("id, session_id, client_id, status, started_at, completed_at, session_rpe, sensations, comments, duration_min")
     .single();
   if (insErr) throw insErr;
   return created as WorkoutLogRow;
+}
+
+export interface LastPerformance {
+  date: string;
+  bySet: Record<number, { reps: number; loadKg: number | null }>;
+}
+
+/**
+ * Busca la sesión anterior más reciente (distinta a la actual) donde el
+ * cliente entrenó este mismo ejercicio, y devuelve lo que hizo en cada
+ * serie — para que lo vea mientras entrena y decida si repetir o subir.
+ * null si nunca lo entrenó antes.
+ */
+export async function getLastPerformance(clientId: string, exerciseId: string, excludeWorkoutLogId: string): Promise<LastPerformance | null> {
+  const { data, error } = await supabase
+    .from("workout_set_logs")
+    .select("workout_log_id, set_number, reps, load_kg, performed_at")
+    .eq("client_id", clientId)
+    .eq("exercise_id", exerciseId)
+    .eq("completed", true)
+    .neq("workout_log_id", excludeWorkoutLogId)
+    .order("performed_at", { ascending: false })
+    .limit(50);
+  if (error) throw error;
+  if (!data?.length) return null;
+
+  const mostRecentLogId = data[0].workout_log_id;
+  const bySet: Record<number, { reps: number; loadKg: number | null }> = {};
+  for (const row of data) {
+    if (row.workout_log_id !== mostRecentLogId) continue;
+    bySet[row.set_number] = { reps: row.reps, loadKg: row.load_kg };
+  }
+  return { date: data[0].performed_at, bySet };
 }
 
 export async function listSetLogs(workoutLogId: string): Promise<SetLogRow[]> {
