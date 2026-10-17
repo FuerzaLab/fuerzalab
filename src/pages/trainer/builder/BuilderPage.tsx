@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { Plus, Trash2, X, Copy, FileUp, ChevronLeft, ChevronRight } from "lucide-react";
 import ImportRoutineModal, { applyImportedRows } from "./ImportRoutineModal";
+import Modal from "../../../components/ui/Modal";
 import { useToast } from "../../../contexts/ToastContext";
 import { listClients, type ClientRow } from "../../../services/clients";
 import { listPrograms, listWeeks, type ProgramRow, type WeekRow } from "../../../services/programs";
@@ -17,6 +18,8 @@ import {
   deleteSession,
   duplicateSession,
   reorderSessions,
+  getAutoregulationPreview,
+  type AutoregulationSuggestion,
   updateSessionName,
   updateSessionStrengthType,
   updateSessionDay,
@@ -257,12 +260,19 @@ export default function BuilderPage() {
                     notify("Esta es la última semana del programa; no hay una siguiente para copiar.");
                     return;
                   }
-                  await copyWeek(programId, weekId, nextWeek.id);
-                  notify(`Semana ${nextWeek.week_number} completada a partir de la semana ${weeks[idx].week_number} (+2,5 kg en cargas).`);
-                  setWeekId(nextWeek.id);
+                  setLoadingAutoReg(true);
+                  try {
+                    const preview = await getAutoregulationPreview(weekId, clientId);
+                    setAutoRegPreview(preview);
+                    setAutoRegTarget({ fromWeekId: weekId, toWeek: nextWeek });
+                  } catch (e: any) {
+                    notify(e.message);
+                  }
+                  setLoadingAutoReg(false);
                 }}
+                disabled={loadingAutoReg}
               >
-                <Copy size={14} /> Copiar a la semana siguiente
+                <Copy size={14} /> {loadingAutoReg ? "Calculando…" : "Copiar a la semana siguiente"}
               </button>
             )}
           </div>
@@ -304,6 +314,9 @@ function SessionEditor({
   const [blocks, setBlocks] = useState<SessionBlockRow[]>([]);
   const [items, setItems] = useState<WorkoutExerciseRow[]>([]);
   const [selected, setSelected] = useState<string[]>([]);
+  const [autoRegPreview, setAutoRegPreview] = useState<AutoregulationSuggestion[] | null>(null);
+  const [autoRegTarget, setAutoRegTarget] = useState<{ fromWeekId: string; toWeek: WeekRow } | null>(null);
+  const [loadingAutoReg, setLoadingAutoReg] = useState(false);
   const [showImport, setShowImport] = useState(false);
   const [bodyFilter, setBodyFilter] = useState<"all" | "Superior" | "Inferior" | "Full body">("all");
   const [muscleFilter, setMuscleFilter] = useState("all");
@@ -683,7 +696,99 @@ function SessionEditor({
           }}
         />
       )}
+
+      {autoRegPreview && autoRegTarget && (
+        <AutoregulationModal
+          preview={autoRegPreview}
+          sourceWeekLabel={weeks.find((w) => w.id === autoRegTarget.fromWeekId)?.week_number}
+          targetWeekLabel={autoRegTarget.toWeek.week_number}
+          onClose={() => {
+            setAutoRegPreview(null);
+            setAutoRegTarget(null);
+          }}
+          onConfirm={async (overrides) => {
+            await copyWeek(programId, autoRegTarget.fromWeekId, autoRegTarget.toWeek.id, 2.5, overrides);
+            notify(`Semana ${autoRegTarget.toWeek.week_number} completada, con cargas ajustadas según el rendimiento real.`);
+            setWeekId(autoRegTarget.toWeek.id);
+            setAutoRegPreview(null);
+            setAutoRegTarget(null);
+          }}
+        />
+      )}
     </div>
+  );
+}
+
+function AutoregulationModal({
+  preview,
+  sourceWeekLabel,
+  targetWeekLabel,
+  onClose,
+  onConfirm,
+}: {
+  preview: AutoregulationSuggestion[];
+  sourceWeekLabel: number | undefined;
+  targetWeekLabel: number;
+  onClose: () => void;
+  onConfirm: (overrides: Record<string, number>) => Promise<void>;
+}) {
+  const [values, setValues] = useState<Record<string, string>>(
+    Object.fromEntries(preview.map((p) => [p.workoutExerciseId, String(p.suggestedLoad ?? p.currentLoad ?? "")]))
+  );
+  const [saving, setSaving] = useState(false);
+
+  const confirm = async () => {
+    setSaving(true);
+    const overrides: Record<string, number> = {};
+    for (const p of preview) {
+      const v = values[p.workoutExerciseId];
+      if (v !== "" && v != null) overrides[p.workoutExerciseId] = Number(v.replace(",", "."));
+    }
+    await onConfirm(overrides);
+    setSaving(false);
+  };
+
+  return (
+    <Modal title={`Copiar semana ${sourceWeekLabel ?? "?"} → semana ${targetWeekLabel}`} onClose={onClose}>
+      <p className="note" style={{ marginBottom: 14 }}>
+        Carga sugerida según el RIR real que logró el cliente contra el que prescribiste. Revisá y ajustá lo que haga falta antes de confirmar — los ejercicios sin series registradas usan el incremento estándar de +2,5 kg.
+      </p>
+      {preview.length === 0 ? (
+        <p className="note" style={{ marginBottom: 16 }}>Esta semana no tiene ejercicios con carga para progresar.</p>
+      ) : (
+        <div style={{ maxHeight: 360, overflowY: "auto", marginBottom: 16 }}>
+          <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 13.5 }}>
+            <thead>
+              <tr style={{ textAlign: "left", color: "var(--muted)", fontSize: 12 }}>
+                <th style={{ padding: "4px 6px" }}>Ejercicio</th>
+                <th style={{ padding: "4px 6px" }}>Actual</th>
+                <th style={{ padding: "4px 6px" }}>Nueva carga</th>
+              </tr>
+            </thead>
+            <tbody>
+              {preview.map((p) => (
+                <tr key={p.workoutExerciseId} style={{ borderTop: "1px solid var(--line)" }}>
+                  <td style={{ padding: "6px" }}>
+                    {p.exerciseName}
+                    <div className="note" style={{ fontSize: 11.5 }}>{p.reason}</div>
+                  </td>
+                  <td style={{ padding: "6px" }}>{p.currentLoad ?? "—"} kg</td>
+                  <td style={{ padding: "6px" }}>
+                    <input
+                      className="input"
+                      style={{ width: 80, padding: "4px 6px" }}
+                      value={values[p.workoutExerciseId] ?? ""}
+                      onChange={(e) => setValues((v) => ({ ...v, [p.workoutExerciseId]: e.target.value }))}
+                    />
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+      <button className="btn" onClick={confirm} disabled={saving}>{saving ? "Copiando…" : `Confirmar y crear semana ${targetWeekLabel}`}</button>
+    </Modal>
   );
 }
 

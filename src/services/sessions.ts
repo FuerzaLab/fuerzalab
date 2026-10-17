@@ -366,7 +366,73 @@ export async function reorderSessions(orderedIds: string[]): Promise<void> {
   if (firstError) throw firstError;
 }
 
-export async function copyWeek(programId: string, fromWeekId: string, toWeekId: string, loadIncrement = 2.5): Promise<void> {
+export interface AutoregulationSuggestion {
+  workoutExerciseId: string;
+  exerciseName: string;
+  currentLoad: number | null;
+  prescribedRir: number | null;
+  achievedRir: number | null;
+  suggestedLoad: number | null;
+  reason: string;
+}
+
+/**
+ * Compara el RIR que el cliente logró de verdad contra el que prescribiste,
+ * y sugiere cuánto ajustar la carga para la próxima semana — en vez del
+ * +2,5 kg plano de siempre para todos los ejercicios por igual. Si un
+ * ejercicio no tiene series registradas todavía, no hay con qué autorregular
+ * y se usa el incremento estándar, como antes.
+ */
+export async function getAutoregulationPreview(fromWeekId: string, clientId: string): Promise<AutoregulationSuggestion[]> {
+  const sessions = await listSessions(fromWeekId);
+  const out: AutoregulationSuggestion[] = [];
+  for (const session of sessions) {
+    const exercises = await listWorkoutExercises(session.id);
+    for (const ex of exercises) {
+      if (ex.load_value == null) continue; // ejercicios de cardio u otros sin carga quedan afuera
+      const { data: logs, error } = await supabase
+        .from("workout_set_logs")
+        .select("rir")
+        .eq("workout_exercise_id", ex.id)
+        .eq("client_id", clientId)
+        .eq("completed", true)
+        .not("rir", "is", null);
+      if (error) throw error;
+      const rirs = (logs ?? []).map((l: any) => Number(l.rir));
+      const achievedRir = rirs.length ? Math.round((rirs.reduce((a, b) => a + b, 0) / rirs.length) * 10) / 10 : null;
+      const { suggestedLoad, reason } = suggestNextLoad(ex.load_value, ex.rir, achievedRir);
+      out.push({
+        workoutExerciseId: ex.id,
+        exerciseName: ex.exercise_name,
+        currentLoad: ex.load_value,
+        prescribedRir: ex.rir,
+        achievedRir,
+        suggestedLoad,
+        reason,
+      });
+    }
+  }
+  return out;
+}
+
+function suggestNextLoad(currentLoad: number, prescribedRir: number | null, achievedRir: number | null): { suggestedLoad: number; reason: string } {
+  if (achievedRir == null || prescribedRir == null) {
+    return { suggestedLoad: currentLoad + 2.5, reason: "Sin series registradas todavía — incremento estándar." };
+  }
+  const diff = achievedRir - prescribedRir;
+  if (diff >= 1.5) return { suggestedLoad: currentLoad + 5, reason: `Le sobró margen (RIR real ${achievedRir} vs objetivo ${prescribedRir}).` };
+  if (diff >= -0.5) return { suggestedLoad: currentLoad + 2.5, reason: `Cumplió el objetivo (RIR real ${achievedRir} vs objetivo ${prescribedRir}).` };
+  if (diff >= -1.5) return { suggestedLoad: currentLoad, reason: `Le costó más de lo esperado (RIR real ${achievedRir} vs objetivo ${prescribedRir}) — mantener.` };
+  return { suggestedLoad: Math.max(0, currentLoad - 2.5), reason: `Le costó bastante más de lo esperado (RIR real ${achievedRir} vs objetivo ${prescribedRir}) — bajar.` };
+}
+
+export async function copyWeek(
+  programId: string,
+  fromWeekId: string,
+  toWeekId: string,
+  loadIncrement = 2.5,
+  loadOverrides?: Record<string, number>
+): Promise<void> {
   const sessions = await listSessions(fromWeekId);
   for (const [sIdx, session] of sessions.entries()) {
     const newSession = await createSession(toWeekId, session.name, sIdx);
@@ -392,7 +458,7 @@ export async function copyWeek(programId: string, fromWeekId: string, toWeekId: 
         sets: ex.sets,
         reps_min: ex.reps_min,
         reps_max: ex.reps_max,
-        load_value: ex.load_value != null ? Number(ex.load_value) + loadIncrement : null,
+        load_value: ex.load_value != null ? loadOverrides?.[ex.id] ?? Number(ex.load_value) + loadIncrement : null,
         rir: ex.rir,
         rest_s: ex.rest_s,
         tempo: ex.tempo,
