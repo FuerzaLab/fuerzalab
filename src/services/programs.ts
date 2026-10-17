@@ -44,6 +44,37 @@ export interface WeekRow {
   block_id: string | null;
   week_number: number;
   start_date: string | null;
+  reviewed: boolean;
+}
+
+/** Marca (o desmarca) una semana sin reclamar como ya revisada — la saca del aviso, sin borrar nada. Se puede revertir. */
+export async function markWeekReviewed(weekId: string, reviewed: boolean): Promise<void> {
+  const { error } = await supabase.from("weeks").update({ reviewed }).eq("id", weekId);
+  if (error) throw error;
+}
+
+/** Si la semana tiene alguna rutina armada, no se puede borrar sin perder contenido. */
+export async function weekHasSessions(weekId: string): Promise<boolean> {
+  const { count, error } = await supabase.from("sessions").select("id", { count: "exact", head: true }).eq("week_id", weekId);
+  if (error) throw error;
+  return (count ?? 0) > 0;
+}
+
+/** Borra una semana — solo tiene sentido llamarla después de confirmar con weekHasSessions que está vacía. */
+export async function deleteWeek(weekId: string): Promise<void> {
+  const { error } = await supabase.from("weeks").delete().eq("id", weekId);
+  if (error) throw error;
+}
+
+/** Crea a mano la siguiente semana del programa, para cuando faltara alguna (normalmente esto ya pasa solo al agrandar un bloque). */
+export async function createWeek(programId: string, weekNumber: number): Promise<WeekRow> {
+  const { data, error } = await supabase
+    .from("weeks")
+    .insert({ program_id: programId, week_number: weekNumber })
+    .select("id, program_id, block_id, week_number, start_date, reviewed")
+    .single();
+  if (error) throw error;
+  return data as WeekRow;
 }
 
 /** Fija la fecha real en la que arranca una semana — normalmente solo hace falta ponerla en la semana 1, las demás se calculan solas a partir de esa. */

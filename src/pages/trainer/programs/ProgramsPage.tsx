@@ -11,6 +11,9 @@ import {
   listMesocycles,
   listWeeks,
   updateWeekStartDate,
+  markWeekReviewed,
+  weekHasSessions,
+  deleteWeek,
   createProgram,
   updateProgramName,
   setAllowMultipleSessionsPerDay,
@@ -46,6 +49,7 @@ export default function ProgramsPage() {
   const [mesos, setMesos] = useState<MesocycleRow[]>([]);
   const [weeks, setWeeks] = useState<WeekRow[]>([]);
   const [selMeso, setSelMeso] = useState(0);
+  const [blockActionBusy, setBlockActionBusy] = useState(false);
   const [showNew, setShowNew] = useState(false);
   const [loading, setLoading] = useState(false);
   const [deleteTarget, setDeleteTarget] = useState<ProgramRow | null>(null);
@@ -95,8 +99,14 @@ export default function ProgramsPage() {
   const program = programs.find((p) => p.id === programId) ?? null;
   const meso = mesos[selMeso];
   const assignedWeeks = mesos.reduce((t, m) => t + (m.duration_weeks ?? 0), 0);
+  // El Constructor lee la tabla real de semanas, no la suma de bloques — si alguna vez
+  // acortaste un bloque, esa tabla puede tener más semanas de las que los bloques
+  // reclaman hoy (a propósito: nunca se borran solas). Mostramos esa cantidad real acá
+  // también, para que las dos pantallas coincidan siempre.
+  const realWeeksTotal = Math.max(assignedWeeks, weeks.length);
+  const unclaimedWeeks = realWeeksTotal - assignedWeeks;
 
-  const weekSeries = useMemo(() => buildWeekSeries(mesos), [mesos]);
+  const weekSeries = useMemo(() => buildWeekSeries(mesos, realWeeksTotal), [mesos, realWeeksTotal]);
 
   const patchMeso = async (field: keyof MesocycleRow, value: any) => {
     if (!meso) return;
@@ -201,10 +211,16 @@ export default function ProgramsPage() {
                   </div>
                 </div>
               </div>
-              <label className="field-label">Duración total: {assignedWeeks} semana{assignedWeeks === 1 ? "" : "s"}</label>
-              <p className="note" style={{ marginBottom: 14 }}>
+              <label className="field-label">Duración total: {realWeeksTotal} semana{realWeeksTotal === 1 ? "" : "s"}</label>
+              <p className="note" style={{ marginBottom: unclaimedWeeks > 0 ? 6 : 14 }}>
                 Es la suma de los bloques de abajo — crece sola a medida que añades bloques o alargas uno existente. Si acortás un bloque, las semanas ya creadas no se borran (podrían tener rutinas armadas en el Constructor).
               </p>
+              {unclaimedWeeks > 0 && (
+                <UnclaimedWeeksPanel
+                  weeks={weeks.filter((w) => w.week_number > assignedWeeks)}
+                  onChanged={() => loadProgramDetail(programId)}
+                />
+              )}
               <label style={{ display: "flex", alignItems: "center", gap: 8, cursor: "pointer" }}>
                 <input
                   type="checkbox"
@@ -280,19 +296,25 @@ export default function ProgramsPage() {
 
                   <div style={{ display: "grid", gridTemplateColumns: `repeat(${weekSeries.length || 1},minmax(0,1fr))`, gap: 6, marginTop: 14 }}>
                     {weekSeries.map((w) => (
-                      <div key={w.n} style={{ textAlign: "center" }}>
-                        <div style={{ display: "flex", gap: 3, height: 60, alignItems: "flex-end", justifyContent: "center" }}>
-                          <div title={`Volumen ${w.vol}%`} style={{ width: 8, height: `${w.vol * 0.6}px`, background: "#9FB0E6", borderRadius: 2 }} />
-                          <div
-                            title={`Intensidad ${w.int}%`}
-                            style={{
-                              width: 8,
-                              height: `${w.int * 0.6}px`,
-                              borderRadius: 2,
-                              background: program.method === "atr" ? PHASE_COLOR[mesos[w.segIndex]?.phase] ?? "#1E3FA8" : BLOCK_COLORS[w.segIndex % BLOCK_COLORS.length],
-                            }}
-                          />
-                        </div>
+                      <div key={w.n} style={{ textAlign: "center" }} title={w.segIndex === -1 ? "Esta semana ya existe (de un bloque que se acortó antes) pero ningún bloque actual la reclama. Alargá un bloque para asignarla." : undefined}>
+                        {w.segIndex === -1 ? (
+                          <div style={{ height: 60, display: "flex", alignItems: "flex-end", justifyContent: "center" }}>
+                            <div style={{ width: 8, height: 10, borderRadius: 2, background: "var(--line)" }} />
+                          </div>
+                        ) : (
+                          <div style={{ display: "flex", gap: 3, height: 60, alignItems: "flex-end", justifyContent: "center" }}>
+                            <div title={`Volumen ${w.vol}%`} style={{ width: 8, height: `${w.vol * 0.6}px`, background: "#9FB0E6", borderRadius: 2 }} />
+                            <div
+                              title={`Intensidad ${w.int}%`}
+                              style={{
+                                width: 8,
+                                height: `${w.int * 0.6}px`,
+                                borderRadius: 2,
+                                background: program.method === "atr" ? PHASE_COLOR[mesos[w.segIndex]?.phase] ?? "#1E3FA8" : BLOCK_COLORS[w.segIndex % BLOCK_COLORS.length],
+                              }}
+                            />
+                          </div>
+                        )}
                         <div className="note" style={{ marginTop: 4, fontSize: 11 }}>S{w.n}</div>
                       </div>
                     ))}
@@ -306,15 +328,22 @@ export default function ProgramsPage() {
                     <div style={{ display: "flex", gap: 8, marginTop: 12 }}>
                       <button
                         className="btn ghost"
+                        disabled={blockActionBusy}
                         onClick={async () => {
-                          const macro = mesos[0];
-                          const defaultDuration = 2;
-                          const created = await addMesocycle(program.id, macro.macrocycle_id, mesos.length, defaultDuration);
-                          await extendProgramWeeks(program.id, assignedWeeks + defaultDuration);
-                          await syncWeekBlocks(program.id);
-                          setMesos((ms) => [...ms, created]);
-                          setSelMeso(mesos.length);
-                          notify("Bloque añadido. Complétalo abajo.");
+                          setBlockActionBusy(true);
+                          try {
+                            const macro = mesos[0];
+                            const defaultDuration = 2;
+                            const created = await addMesocycle(program.id, macro.macrocycle_id, mesos.length, defaultDuration);
+                            await extendProgramWeeks(program.id, assignedWeeks + defaultDuration);
+                            await syncWeekBlocks(program.id);
+                            setMesos((ms) => [...ms, created]);
+                            setSelMeso(mesos.length);
+                            notify("Bloque añadido. Complétalo abajo.");
+                          } catch (e: any) {
+                            notify(e.message);
+                          }
+                          setBlockActionBusy(false);
                         }}
                       >
                         <Plus size={14} /> Añadir bloque
@@ -322,14 +351,20 @@ export default function ProgramsPage() {
                       <button
                         className="btn ghost"
                         style={{ color: "var(--bad)" }}
-                        disabled={mesos.length <= 1}
+                        disabled={mesos.length <= 1 || blockActionBusy}
                         onClick={async () => {
                           if (mesos.length <= 1) return;
-                          await removeMesocycle(program.id, meso.id);
-                          const rest = mesos.filter((_, i) => i !== selMeso);
-                          setMesos(rest);
-                          setSelMeso(Math.max(0, selMeso - 1));
-                          notify("Bloque eliminado");
+                          setBlockActionBusy(true);
+                          try {
+                            await removeMesocycle(program.id, meso.id);
+                            const rest = mesos.filter((_, i) => i !== selMeso);
+                            setMesos(rest);
+                            setSelMeso(Math.max(0, selMeso - 1));
+                            notify("Bloque eliminado");
+                          } catch (e: any) {
+                            notify(e.message);
+                          }
+                          setBlockActionBusy(false);
                         }}
                       >
                         Eliminar este bloque
@@ -348,12 +383,19 @@ export default function ProgramsPage() {
                 {program.method !== "atr" && (
                   <button
                     className="btn ghost"
+                    disabled={blockActionBusy}
                     onClick={async () => {
-                      const created = await duplicateMesocycle(program.id, meso, mesos.length);
-                      await extendProgramWeeks(program.id, assignedWeeks + (created.duration_weeks ?? 0));
-                      await syncWeekBlocks(program.id);
-                      setMesos((ms) => [...ms, created]);
-                      notify("Bloque duplicado. Ajusta lo que cambie.");
+                      setBlockActionBusy(true);
+                      try {
+                        const created = await duplicateMesocycle(program.id, meso, mesos.length);
+                        await extendProgramWeeks(program.id, assignedWeeks + (created.duration_weeks ?? 0));
+                        await syncWeekBlocks(program.id);
+                        setMesos((ms) => [...ms, created]);
+                        notify("Bloque duplicado. Ajusta lo que cambie.");
+                      } catch (e: any) {
+                        notify(e.message);
+                      }
+                      setBlockActionBusy(false);
                     }}
                   >
                     <Copy size={14} /> Duplicar bloque
@@ -504,8 +546,106 @@ function NewProgramModal({
   );
 }
 
-function buildWeekSeries(segments: MesocycleRow[]) {
-  const total = segments.reduce((t, s) => t + (s.duration_weeks ?? 0), 0);
+function UnclaimedWeeksPanel({ weeks, onChanged }: { weeks: WeekRow[]; onChanged: () => void }) {
+  const { notify } = useToast();
+  const [hasContent, setHasContent] = useState<Record<string, boolean>>({});
+  const [loaded, setLoaded] = useState(false);
+  const [busy, setBusy] = useState<string | null>(null);
+  const [showReviewed, setShowReviewed] = useState(false);
+
+  useEffect(() => {
+    setLoaded(false);
+    Promise.all(weeks.map(async (w) => [w.id, await weekHasSessions(w.id)] as const))
+      .then((entries) => setHasContent(Object.fromEntries(entries)))
+      .catch((e: any) => notify(e.message))
+      .finally(() => setLoaded(true));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [weeks.map((w) => w.id).join(",")]);
+
+  const pending = weeks.filter((w) => !w.reviewed);
+  const reviewed = weeks.filter((w) => w.reviewed);
+
+  const run = async (weekId: string, action: () => Promise<void>) => {
+    setBusy(weekId);
+    try {
+      await action();
+      onChanged();
+    } catch (e: any) {
+      notify(e.message);
+    }
+    setBusy(null);
+  };
+
+  if (!loaded) return <p className="note" style={{ marginBottom: 14 }}>Revisando semanas sin reclamar…</p>;
+
+  return (
+    <div className="panel" style={{ marginBottom: 14, borderLeft: pending.length > 0 ? "4px solid var(--warn)" : "4px solid var(--line)" }}>
+      <div className="bd">
+        {pending.length > 0 && (
+          <p className="note" style={{ marginBottom: 10 }}>
+            {pending.length} semana{pending.length === 1 ? "" : "s"} ya existe{pending.length === 1 ? "" : "n"} (de un bloque que acortaste antes) pero ningún bloque actual {pending.length === 1 ? "la reclama" : "las reclama"} — aparecen en gris en el gráfico de abajo.
+          </p>
+        )}
+        {pending.map((w) => (
+          <div key={w.id} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "6px 0", borderBottom: "1px solid var(--line)" }}>
+            <span>
+              Semana {w.week_number}{" "}
+              <span className="note">{hasContent[w.id] ? "— tiene rutinas armadas" : "— vacía"}</span>
+            </span>
+            <div style={{ display: "flex", gap: 6 }}>
+              {!hasContent[w.id] && (
+                <button
+                  className="btn ghost"
+                  style={{ padding: "4px 10px", fontSize: 12.5, color: "var(--bad)" }}
+                  disabled={busy === w.id}
+                  onClick={() => run(w.id, () => deleteWeek(w.id))}
+                >
+                  Eliminar
+                </button>
+              )}
+              <button
+                className="btn ghost"
+                style={{ padding: "4px 10px", fontSize: 12.5 }}
+                disabled={busy === w.id}
+                onClick={() => run(w.id, () => markWeekReviewed(w.id, true))}
+              >
+                Marcar revisada (OK)
+              </button>
+            </div>
+          </div>
+        ))}
+        {reviewed.length > 0 && (
+          <div style={{ marginTop: 10 }}>
+            <button className="btn ghost" style={{ padding: "4px 10px", fontSize: 12.5 }} onClick={() => setShowReviewed((s) => !s)}>
+              {showReviewed ? "Ocultar" : "Ver"} {reviewed.length} ya revisada{reviewed.length === 1 ? "" : "s"}
+            </button>
+            {showReviewed && (
+              <div style={{ marginTop: 8 }}>
+                {reviewed.map((w) => (
+                  <div key={w.id} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "6px 0", borderBottom: "1px solid var(--line)" }}>
+                    <span>Semana {w.week_number}</span>
+                    <button
+                      className="btn ghost"
+                      style={{ padding: "4px 10px", fontSize: 12.5 }}
+                      disabled={busy === w.id}
+                      onClick={() => run(w.id, () => markWeekReviewed(w.id, false))}
+                    >
+                      Editar (volver a mostrar el aviso)
+                    </button>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+function buildWeekSeries(segments: MesocycleRow[], realTotal?: number) {
+  const assigned = segments.reduce((t, s) => t + (s.duration_weeks ?? 0), 0);
+  const total = Math.max(assigned, realTotal ?? 0);
   const out: { n: number; segIndex: number; vol: number; int: number }[] = [];
   let wn = 0;
   segments.forEach((seg, si) => {
@@ -516,5 +656,12 @@ function buildWeekSeries(segments: MesocycleRow[]) {
       out.push({ n: wn, segIndex: si, vol: Math.round(85 - progress * 50), int: Math.round(55 + progress * 40) });
     }
   });
+  // Semanas que ya existen en la tabla real pero ningún bloque actual reclama (de un
+  // acortamiento anterior) — se muestran igual, sin color de bloque, para que el total
+  // de columnas coincida con lo que ves en el Constructor.
+  while (wn < total) {
+    wn++;
+    out.push({ n: wn, segIndex: -1, vol: 0, int: 0 });
+  }
   return out;
 }

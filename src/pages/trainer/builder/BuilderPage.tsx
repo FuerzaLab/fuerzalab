@@ -4,7 +4,7 @@ import ImportRoutineModal, { applyImportedRows } from "./ImportRoutineModal";
 import Modal from "../../../components/ui/Modal";
 import { useToast } from "../../../contexts/ToastContext";
 import { listClients, type ClientRow } from "../../../services/clients";
-import { listPrograms, listWeeks, type ProgramRow, type WeekRow } from "../../../services/programs";
+import { listPrograms, listWeeks, listMesocycles, createWeek, type ProgramRow, type WeekRow, type MesocycleRow } from "../../../services/programs";
 import {
   listExercises,
   listCatalog,
@@ -52,6 +52,9 @@ export default function BuilderPage() {
   const [programs, setPrograms] = useState<ProgramRow[]>([]);
   const [programId, setProgramId] = useState("");
   const [weeks, setWeeks] = useState<WeekRow[]>([]);
+  const [mesos, setMesos] = useState<MesocycleRow[]>([]);
+  const [creatingWeek, setCreatingWeek] = useState(false);
+  const plannedWeeks = mesos.reduce((t, m) => t + (m.duration_weeks ?? 0), 0);
   const [weekId, setWeekId] = useState("");
 
   const [sessions, setSessions] = useState<SessionRow[]>([]);
@@ -89,8 +92,9 @@ export default function BuilderPage() {
       setWeekId("");
       return;
     }
-    listWeeks(programId).then((ws) => {
+    Promise.all([listWeeks(programId), listMesocycles(programId)]).then(([ws, ms]) => {
       setWeeks(ws);
+      setMesos(ms);
       setWeekId(ws[0]?.id ?? "");
     });
   }, [programId]);
@@ -145,23 +149,54 @@ export default function BuilderPage() {
       )}
 
       {weeks.length > 0 && (
-        <div style={{ display: "flex", flexWrap: "wrap", gap: 6, marginBottom: 18 }}>
-          {weeks.map((w) => (
-            <button
-              key={w.id}
-              onClick={() => setWeekId(w.id)}
-              className="btn ghost"
-              style={{
-                padding: "6px 14px",
-                fontSize: 13,
-                background: w.id === weekId ? "var(--pri)" : "transparent",
-                color: w.id === weekId ? "#fff" : "var(--pri)",
-              }}
-            >
-              Semana {w.week_number}
-            </button>
-          ))}
-        </div>
+        <>
+          <p className="note" style={{ marginBottom: 8 }}>
+            Planificación tiene {plannedWeeks} semana{plannedWeeks === 1 ? "" : "s"} en total
+            {weeks.length > plannedWeeks ? ` — las que aparecen en gris abajo (${weeks.length - plannedWeeks}) existen pero no pertenecen a ningún bloque actual; revisalas en Planificación.` : "."}
+          </p>
+          <div style={{ display: "flex", flexWrap: "wrap", gap: 6, marginBottom: 10, alignItems: "center" }}>
+            {weeks.map((w) => {
+              const beyondPlan = w.week_number > plannedWeeks;
+              return (
+                <button
+                  key={w.id}
+                  onClick={() => setWeekId(w.id)}
+                  className="btn ghost"
+                  style={{
+                    padding: "6px 14px",
+                    fontSize: 13,
+                    background: w.id === weekId ? "var(--pri)" : "transparent",
+                    color: w.id === weekId ? "#fff" : beyondPlan ? "var(--muted)" : "var(--pri)",
+                    borderStyle: beyondPlan ? "dashed" : "solid",
+                  }}
+                >
+                  Semana {w.week_number}
+                </button>
+              );
+            })}
+            {weeks.length < plannedWeeks && (
+              <button
+                className="btn ghost"
+                style={{ padding: "6px 14px", fontSize: 13 }}
+                disabled={creatingWeek}
+                onClick={async () => {
+                  setCreatingWeek(true);
+                  try {
+                    const created = await createWeek(programId, weeks.length + 1);
+                    setWeeks((ws) => [...ws, created]);
+                    setWeekId(created.id);
+                    notify(`Semana ${created.week_number} creada.`);
+                  } catch (e: any) {
+                    notify(e.message);
+                  }
+                  setCreatingWeek(false);
+                }}
+              >
+                <Plus size={14} /> {creatingWeek ? "Creando…" : "Crear semana"}
+              </button>
+            )}
+          </div>
+        </>
       )}
 
       {weekId && (
