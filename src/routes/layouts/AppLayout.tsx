@@ -33,6 +33,7 @@ const NAV: Record<Role, NavItem[]> = {
     { to: paths.adminOrgs, label: "Organizaciones", icon: Building2 },
     { to: paths.adminUsers, label: "Usuarios", icon: Users },
     { to: paths.adminExercises, label: "Ejercicios globales", icon: Dumbbell },
+    { to: paths.adminBilling, label: "Pagos", icon: CreditCard },
     { to: paths.adminSettings, label: "Configuración", icon: Settings },
   ],
   trainer: [

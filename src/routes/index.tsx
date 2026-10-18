@@ -17,6 +17,7 @@ import ComingSoon from "../pages/shared/ComingSoon";
 
 import AdminDashboard from "../pages/admin/Dashboard";
 import Organizations from "../pages/admin/Organizations";
+import AdminBillingPage from "../pages/admin/billing/BillingPage";
 import Users from "../pages/admin/Users";
 import TrainerDashboard from "../pages/trainer/Dashboard";
 import ClientDashboard from "../pages/client/Dashboard";
@@ -67,6 +68,7 @@ export default function AppRoutes() {
             <Route path={paths.adminOrgs} element={<Organizations />} />
             <Route path={paths.adminUsers} element={<Users />} />
             <Route path={paths.adminExercises} element={<ExercisesPage scope="global" />} />
+            <Route path={paths.adminBilling} element={<AdminBillingPage />} />
             <Route path={paths.adminSettings} element={<Settings />} />
           </Route>
         </Route>

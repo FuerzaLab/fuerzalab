@@ -10,6 +10,7 @@ export const paths = {
   adminTrainers: "/admin/entrenadores",
   adminUsers: "/admin/usuarios",
   adminExercises: "/admin/ejercicios",
+  adminBilling: "/admin/pagos",
   adminSettings: "/admin/configuracion",
 
   trainerDashboard: "/t",
