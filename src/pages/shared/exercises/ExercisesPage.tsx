@@ -12,6 +12,7 @@ import {
   type ExerciseRow,
   type CatalogItem,
 } from "../../../services/exercises";
+import { compressImage } from "../../../lib/imageCompress";
 import NewExerciseModal from "./NewExerciseModal";
 import ImportExercisesModal from "./ImportExercisesModal";
 import Chip from "../../../components/ui/Chip";
@@ -44,10 +45,11 @@ export default function ExercisesPage({ scope }: { scope: "global" | "trainer" }
   }, [selected?.media_path]);
 
   const pickMedia = async (e: ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file || !selected || !profile) return;
+    const raw = e.target.files?.[0];
+    if (!raw || !selected || !profile) return;
     setUploadingMedia(true);
     try {
+      const file = await compressImage(raw);
       const folderPrefix = scope === "global" ? "global" : profile.organization_id!;
       const { path, type } = await uploadExerciseMedia({ exerciseId: selected.id, folderPrefix, uploaderId: profile.id, file });
       setExercises((es) => es.map((x) => (x.id === selected.id ? { ...x, media_path: path, media_type: type } : x)));

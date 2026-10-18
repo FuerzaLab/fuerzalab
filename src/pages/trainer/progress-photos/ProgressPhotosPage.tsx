@@ -4,6 +4,7 @@ import { useAuth } from "../../../contexts/AuthContext";
 import { useToast } from "../../../contexts/ToastContext";
 import Modal from "../../../components/ui/Modal";
 import ConfirmModal from "../../../components/ui/ConfirmModal";
+import { compressImage } from "../../../lib/imageCompress";
 import { listClients, type ClientRow } from "../../../services/clients";
 import {
   listProgressPhotos,
@@ -211,8 +212,11 @@ function UploadPhotoSetModal({
   const [visibility, setVisibility] = useState<PhotoVisibility>("client_and_trainer");
   const [uploading, setUploading] = useState(false);
 
-  const pickFile = (angle: PhotoAngle) => (e: ChangeEvent<HTMLInputElement>) => {
-    setFiles((f) => ({ ...f, [angle]: e.target.files?.[0] }));
+  const pickFile = (angle: PhotoAngle) => async (e: ChangeEvent<HTMLInputElement>) => {
+    const raw = e.target.files?.[0];
+    if (!raw) return;
+    const compressed = await compressImage(raw);
+    setFiles((f) => ({ ...f, [angle]: compressed }));
   };
 
   const submit = async () => {

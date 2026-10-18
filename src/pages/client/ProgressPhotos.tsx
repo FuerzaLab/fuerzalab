@@ -3,6 +3,7 @@ import { Plus, Trash2 } from "lucide-react";
 import { useAuth } from "../../contexts/AuthContext";
 import { useToast } from "../../contexts/ToastContext";
 import Modal from "../../components/ui/Modal";
+import { compressImage } from "../../lib/imageCompress";
 import ConfirmModal from "../../components/ui/ConfirmModal";
 import { getMyClientId } from "../../services/clients";
 import {
@@ -174,8 +175,11 @@ function UploadPhotoSetModal({
   const [notes, setNotes] = useState("");
   const [uploading, setUploading] = useState(false);
 
-  const pickFile = (angle: PhotoAngle) => (e: ChangeEvent<HTMLInputElement>) => {
-    setFiles((f) => ({ ...f, [angle]: e.target.files?.[0] }));
+  const pickFile = (angle: PhotoAngle) => async (e: ChangeEvent<HTMLInputElement>) => {
+    const raw = e.target.files?.[0];
+    if (!raw) return;
+    const compressed = await compressImage(raw);
+    setFiles((f) => ({ ...f, [angle]: compressed }));
   };
 
   const submit = async () => {
