@@ -219,19 +219,40 @@ export function TrainSession({ sessionId, onExit, backLabel = "Volver a mi rutin
   const [saving, setSaving] = useState(false);
   const [restTotal, setRestTotal] = useState(0);
   const [restRemaining, setRestRemaining] = useState(0);
+  // Guarda el momento real en que termina el descanso, en vez de solo restar de a uno
+  // cada segundo — así, si el celular se bloquea o cambiás de app durante el descanso
+  // (el navegador pausa los conteos en ese caso para ahorrar batería), al volver el
+  // cronómetro muestra el tiempo real que pasó, no el tiempo que alcanzó a contar.
+  const [restEndsAt, setRestEndsAt] = useState<number | null>(null);
   const [restAnchor, setRestAnchor] = useState<string | null>(null);
   const [lastPerf, setLastPerf] = useState<Record<string, LastPerformance | null>>({});
 
   useEffect(() => {
-    if (restRemaining <= 0) return;
-    const t = window.setInterval(() => setRestRemaining((s) => Math.max(0, s - 1)), 1000);
-    return () => window.clearInterval(t);
-  }, [restRemaining > 0]);
+    if (!restEndsAt) {
+      setRestRemaining(0);
+      return;
+    }
+    const tick = () => {
+      const remaining = Math.max(0, Math.ceil((restEndsAt - Date.now()) / 1000));
+      setRestRemaining(remaining);
+      if (remaining <= 0) setRestEndsAt(null);
+    };
+    tick();
+    const t = window.setInterval(tick, 1000);
+    const onVisible = () => {
+      if (document.visibilityState === "visible") tick();
+    };
+    document.addEventListener("visibilitychange", onVisible);
+    return () => {
+      window.clearInterval(t);
+      document.removeEventListener("visibilitychange", onVisible);
+    };
+  }, [restEndsAt]);
 
   const startRest = (seconds: number, anchor: string) => {
     if (!seconds || seconds <= 0) return;
     setRestTotal(seconds);
-    setRestRemaining(seconds);
+    setRestEndsAt(Date.now() + seconds * 1000);
     setRestAnchor(anchor);
   };
 
@@ -340,8 +361,8 @@ export function TrainSession({ sessionId, onExit, backLabel = "Volver a mi rutin
                       restAnchor={restAnchor}
                       restRemaining={restRemaining}
                       restTotal={restTotal}
-                      onAddRestTime={() => setRestRemaining((s) => s + 15)}
-                      onSkipRest={() => setRestRemaining(0)}
+                      onAddRestTime={() => setRestEndsAt((e) => (e ? e + 15000 : e))}
+                      onSkipRest={() => setRestEndsAt(null)}
                       lastPerf={lastPerf}
                     />
                   ) : (
@@ -354,8 +375,8 @@ export function TrainSession({ sessionId, onExit, backLabel = "Volver a mi rutin
                         restAnchor={restAnchor}
                         restRemaining={restRemaining}
                         restTotal={restTotal}
-                        onAddRestTime={() => setRestRemaining((s) => s + 15)}
-                        onSkipRest={() => setRestRemaining(0)}
+                        onAddRestTime={() => setRestEndsAt((e) => (e ? e + 15000 : e))}
+                        onSkipRest={() => setRestEndsAt(null)}
                         lastPerf={lastPerf[ex.exercise_id] ?? null}
                       />
                     ))
