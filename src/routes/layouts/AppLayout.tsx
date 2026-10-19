@@ -25,6 +25,7 @@ interface NavItem {
   to: string;
   label: string;
   icon: typeof LayoutDashboard;
+  group?: string;
 }
 
 const NAV: Record<Role, NavItem[]> = {
@@ -37,20 +38,24 @@ const NAV: Record<Role, NavItem[]> = {
     { to: paths.adminSettings, label: "Configuración", icon: Settings },
   ],
   trainer: [
-    { to: paths.trainerDashboard, label: "Inicio", icon: LayoutDashboard },
-    { to: paths.trainerClients, label: "Clientes", icon: Users },
-    { to: paths.trainerExercises, label: "Ejercicios", icon: Dumbbell },
-    { to: paths.trainerBuilder, label: "Constructor de rutinas", icon: ClipboardList },
-    { to: paths.trainerRunSession, label: "Entrenar con cliente", icon: Dumbbell },
-    { to: paths.trainerPrograms, label: "Planificación", icon: CalendarRange },
-    { to: paths.trainerAssessments, label: "Evaluaciones", icon: Ruler },
-    { to: paths.trainerWellness, label: "Bienestar", icon: Activity },
-    { to: paths.trainerProgressPhotos, label: "Fotos", icon: Camera },
-    { to: paths.trainerSuggestions, label: "Sugerencias", icon: Lightbulb },
-    { to: paths.trainerPayments, label: "Pagos", icon: CreditCard },
-    { to: paths.trainerMessages, label: "Mensajes", icon: MessageSquare },
-    { to: paths.trainerReports, label: "Reportes", icon: FileText },
-    { to: paths.trainerSettings, label: "Configuración", icon: Settings },
+    { to: paths.trainerDashboard, label: "Inicio", icon: LayoutDashboard, group: "Hoy" },
+    { to: paths.trainerRunSession, label: "Entrenar con cliente", icon: Dumbbell, group: "Hoy" },
+
+    { to: paths.trainerClients, label: "Clientes", icon: Users, group: "Clientes" },
+    { to: paths.trainerMessages, label: "Mensajes", icon: MessageSquare, group: "Clientes" },
+
+    { to: paths.trainerExercises, label: "Ejercicios", icon: Dumbbell, group: "Entrenamiento" },
+    { to: paths.trainerBuilder, label: "Constructor de rutinas", icon: ClipboardList, group: "Entrenamiento" },
+    { to: paths.trainerPrograms, label: "Planificación", icon: CalendarRange, group: "Entrenamiento" },
+    { to: paths.trainerAssessments, label: "Evaluaciones", icon: Ruler, group: "Entrenamiento" },
+    { to: paths.trainerWellness, label: "Bienestar", icon: Activity, group: "Entrenamiento" },
+    { to: paths.trainerProgressPhotos, label: "Fotos", icon: Camera, group: "Entrenamiento" },
+
+    { to: paths.trainerReports, label: "Reportes", icon: FileText, group: "Seguimiento" },
+    { to: paths.trainerSuggestions, label: "Sugerencias", icon: Lightbulb, group: "Seguimiento" },
+
+    { to: paths.trainerPayments, label: "Pagos", icon: CreditCard, group: "Negocio" },
+    { to: paths.trainerSettings, label: "Configuración", icon: Settings, group: "Negocio" },
   ],
   staff: [
     { to: paths.trainerDashboard, label: "Inicio", icon: LayoutDashboard },
@@ -88,15 +93,13 @@ export default function AppLayout() {
         <div className="brand">
           Fuerza<span>Lab</span>
         </div>
-        {items.map(({ to, label, icon: Icon }) => (
-          <NavLink
-            key={to}
-            to={to}
-            end
-            className={({ isActive }) => `nav-link${isActive ? " active" : ""}`}
-          >
-            <Icon size={18} /> {label}
-          </NavLink>
+        {items.map(({ to, label, icon: Icon, group }, i) => (
+          <div key={to} className="nav-item">
+            {group && group !== items[i - 1]?.group && <div className="nav-group">{group}</div>}
+            <NavLink to={to} end className={({ isActive }) => `nav-link${isActive ? " active" : ""}`}>
+              <Icon size={18} /> {label}
+            </NavLink>
+          </div>
         ))}
         <div style={{ borderTop: "1px solid rgba(255,255,255,.14)", marginTop: 10, paddingTop: 10 }}>
           <button className="nav-link" onClick={handleLogout} style={{ border: 0 }}>
