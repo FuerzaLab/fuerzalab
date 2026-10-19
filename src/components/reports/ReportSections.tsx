@@ -1,12 +1,94 @@
+import { useEffect, useState } from "react";
 import { LineChart, Line, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from "recharts";
 import { SITE_LABEL, type CircumferenceSite } from "../../services/assessments";
 import { WELLNESS_FIELDS, WELLNESS_FIELD_LABEL, type WellnessField } from "../../services/wellness";
 import type { WeeklyPoint } from "../../services/reports";
+import {
+  listProgressPhotos,
+  groupPhotosBySession,
+  getPhotoUrl,
+  ANGLE_LABEL,
+  type ProgressPhotoRow,
+} from "../../services/progressPhotos";
 
 export const COLORS = { pri: "#1E3FA8", ok: "#2E8B6E", warn: "#B77800", bad: "#D6472B", muted: "#8A93A6", purple: "#7B4FE0" };
 const LINE_PALETTE = [COLORS.pri, COLORS.bad, COLORS.ok, COLORS.warn, COLORS.purple];
 
 export const fmtDate = (d: string) => new Date(d).toLocaleDateString("es", { day: "2-digit", month: "2-digit" });
+
+const fmtFullDate = (d: string) => new Date(d).toLocaleDateString("es", { day: "2-digit", month: "2-digit", year: "numeric" });
+
+/**
+ * A diferencia de las demás secciones de este archivo, esta busca sus propios
+ * datos (fotos y sus URLs firmadas) en vez de recibirlos ya armados — tiene
+ * sentido porque las URLs firmadas vencen y conviene resolverlas justo antes
+ * de mostrarlas, no en el momento en que se cargó el resto del reporte.
+ *
+ * Solo muestra la primera sesión de fotos y la más reciente (no la galería
+ * completa) para que el reporte quede como una comparación de antes/ahora,
+ * no como un álbum — para eso ya está la pantalla de Fotos.
+ */
+export function PhotoBeforeAfter({ clientId, restrictToShared }: { clientId: string; restrictToShared: boolean }) {
+  const [sessions, setSessions] = useState<{ key: string; date: string | null; photos: ProgressPhotoRow[] }[] | null>(null);
+  const [urls, setUrls] = useState<Record<string, string>>({});
+
+  useEffect(() => {
+    let cancelled = false;
+    setSessions(null);
+    listProgressPhotos(clientId)
+      .then(async (photos) => {
+        const visible = restrictToShared ? photos.filter((p) => p.visibility === "client_and_trainer") : photos;
+        const grouped = groupPhotosBySession(visible);
+        if (cancelled) return;
+        setSessions(grouped);
+        const first = grouped[grouped.length - 1];
+        const last = grouped[0];
+        const toResolve = [...(first?.photos ?? []), ...(last && last !== first ? last.photos : [])];
+        const entries = await Promise.all(toResolve.map(async (p) => [p.id, await getPhotoUrl(p.storage_path).catch(() => "")] as const));
+        if (!cancelled) setUrls(Object.fromEntries(entries));
+      })
+      .catch(() => setSessions([]));
+    return () => {
+      cancelled = true;
+    };
+  }, [clientId, restrictToShared]);
+
+  if (sessions === null) return <p className="note">Cargando fotos…</p>;
+  if (sessions.length === 0) return <p className="note">Todavía no hay fotos de progreso cargadas.</p>;
+
+  const first = sessions[sessions.length - 1];
+  const last = sessions[0];
+  const sameSession = first.key === last.key;
+
+  const renderSession = (session: { date: string | null; photos: ProgressPhotoRow[] }, label: string) => (
+    <div>
+      <div className="note" style={{ marginBottom: 8, fontWeight: 600 }}>
+        {label} {session.date ? `— ${fmtFullDate(session.date)}` : ""}
+      </div>
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(110px,1fr))", gap: 8 }}>
+        {session.photos.map((p) => (
+          <div key={p.id}>
+            {urls[p.id] ? (
+              <img src={urls[p.id]} alt={p.angle ?? ""} style={{ width: "100%", aspectRatio: "3/4", objectFit: "cover", borderRadius: 8 }} />
+            ) : (
+              <div style={{ width: "100%", aspectRatio: "3/4", borderRadius: 8, background: "var(--bg)" }} />
+            )}
+            <div className="note" style={{ fontSize: 11.5, textAlign: "center", marginTop: 4 }}>{ANGLE_LABEL[p.angle ?? "front"]}</div>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+
+  if (sameSession) return renderSession(first, "Única sesión registrada hasta ahora");
+
+  return (
+    <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 18 }}>
+      {renderSession(first, "Primera sesión")}
+      {renderSession(last, "Última sesión")}
+    </div>
+  );
+}
 
 export interface BodyPoint { date: string; weight: number | null; bodyFat: number | null }
 

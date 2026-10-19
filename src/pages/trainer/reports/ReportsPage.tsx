@@ -16,6 +16,7 @@ import {
   TrainingWeeklyCharts,
   ExerciseProgressChart,
   AssessmentComparison,
+  PhotoBeforeAfter,
   fmtDate,
 } from "../../../components/reports/ReportSections";
 
@@ -94,6 +95,11 @@ export default function ReportsPage() {
       {clientId && !data.loading && (
         <div ref={reportRef} style={{ display: "grid", gap: 20, background: "#fff" }}>
           <h2 style={{ margin: 0 }}>{clientName}</h2>
+
+          <div className="panel">
+            <div className="hd"><h3>Fotos de progreso</h3></div>
+            <div className="bd"><PhotoBeforeAfter clientId={clientId} restrictToShared={false} /></div>
+          </div>
 
           <div className="panel">
             <div className="hd"><h3>Peso y % de grasa corporal</h3></div>

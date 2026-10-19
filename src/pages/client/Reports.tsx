@@ -6,6 +6,7 @@ import { useClientReportData } from "../../hooks/useClientReportData";
 import { exportReportPdf } from "../../lib/exportReportPdf";
 import type { CircumferenceSite } from "../../services/assessments";
 import {
+  PhotoBeforeAfter,
   BodyCompositionChart,
   CircumferenceChart,
   SkinfoldSumChart,
@@ -70,6 +71,11 @@ export default function ClientReports() {
 
       {clientId && !data.loading && (
         <div ref={reportRef} style={{ display: "grid", gap: 20, background: "#fff" }}>
+          <div className="panel">
+            <div className="hd"><h3>Fotos de progreso</h3></div>
+            <div className="bd"><PhotoBeforeAfter clientId={clientId} restrictToShared={true} /></div>
+          </div>
+
           <div className="panel">
             <div className="hd"><h3>Peso y % de grasa corporal</h3></div>
             <div className="bd"><BodyCompositionChart points={data.bodyPoints} /></div>
