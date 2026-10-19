@@ -273,12 +273,18 @@ function PlanModal({ plan, onClose, onSaved }: { plan: PlatformPlanRow | null; o
         <div>
           <label className="field-label">Periodicidad</label>
           <select className="input" value={period} onChange={(e) => setPeriod(e.target.value as PlatformPlanRow["billing_period"])}>
+            <option value="biweekly">Quincenal</option>
             <option value="monthly">Mensual</option>
             <option value="quarterly">Trimestral</option>
             <option value="annual">Anual</option>
           </select>
         </div>
       </div>
+      {period === "biweekly" && (
+        <p className="note" style={{ marginBottom: 12 }}>
+          Pensada para períodos de prueba gratuitos de 15 días — poné el precio en 0 si es justamente eso.
+        </p>
+      )}
       <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12, marginBottom: 16 }}>
         <div>
           <label className="field-label">Límite de clientes (vacío = sin límite)</label>

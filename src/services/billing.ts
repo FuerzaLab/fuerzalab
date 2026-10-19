@@ -7,7 +7,7 @@ export interface PlatformPlanRow {
   trainer_limit: number | null;
   price: number;
   currency: string;
-  billing_period: "monthly" | "quarterly" | "annual";
+  billing_period: "biweekly" | "monthly" | "quarterly" | "annual";
   is_active: boolean;
 }
 
@@ -29,6 +29,7 @@ export interface OrganizationSubscriptionRow {
 }
 
 export const BILLING_PERIOD_LABEL: Record<PlatformPlanRow["billing_period"], string> = {
+  biweekly: "Quincenal",
   monthly: "Mensual",
   quarterly: "Trimestral",
   annual: "Anual",
