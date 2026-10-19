@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { useToast } from "../../contexts/ToastContext";
 import ChatThread from "../../components/ChatThread";
 import { getMyClientId } from "../../services/clients";
+import Loading from "../../components/ui/Loading";
 
 export default function ClientMessages() {
   const { notify } = useToast();
@@ -15,7 +16,7 @@ export default function ClientMessages() {
   return (
     <div className="page">
       <h1 style={{ marginBottom: 20 }}>Mensajes</h1>
-      {clientId ? <ChatThread clientId={clientId} otherLabel="Tu entrenador" /> : <p className="note">Cargando…</p>}
+      {clientId ? <ChatThread clientId={clientId} otherLabel="Tu entrenador" /> : <Loading />}
     </div>
   );
 }

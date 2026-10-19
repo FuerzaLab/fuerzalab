@@ -19,6 +19,7 @@ import {
   PhotoBeforeAfter,
   fmtDate,
 } from "../../../components/reports/ReportSections";
+import Loading from "../../../components/ui/Loading";
 
 export default function ReportsPage() {
   const { notify } = useToast();
@@ -90,7 +91,7 @@ export default function ReportsPage() {
       </div>
 
       {!clientId && <p className="note">Elige un cliente para ver sus reportes.</p>}
-      {clientId && data.loading && <p className="note">Cargando…</p>}
+      {clientId && data.loading && <Loading />}
 
       {clientId && !data.loading && (
         <div ref={reportRef} style={{ display: "grid", gap: 20, background: "#fff" }}>

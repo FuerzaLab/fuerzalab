@@ -19,6 +19,7 @@ import {
   type PhotoVisibility,
   type PhotoAngle,
 } from "../../../services/progressPhotos";
+import Loading from "../../../components/ui/Loading";
 
 export default function ProgressPhotosPage() {
   const { profile } = useAuth();
@@ -98,7 +99,7 @@ export default function ProgressPhotosPage() {
       </div>
 
       {!clientId && <p className="note">Elige un cliente para empezar.</p>}
-      {clientId && loading && <p className="note">Cargando…</p>}
+      {clientId && loading && <Loading />}
       {clientId && !loading && sessions.length === 0 && <p className="note">Este cliente todavía no tiene fotos de progreso.</p>}
 
       {clientId && !loading && sessions.length > 0 && (

@@ -14,6 +14,7 @@ import {
   type OrganizationRow,
 } from "../../services/admin";
 import { paths } from "../../routes/paths";
+import Loading from "../../components/ui/Loading";
 
 export default function Organizations() {
   const { profile } = useAuth();
@@ -65,7 +66,7 @@ export default function Organizations() {
       </div>
 
       {loading ? (
-        <p className="note">Cargando…</p>
+        <Loading />
       ) : (
         <div className="panel">
           <div style={{ overflowX: "auto" }}>

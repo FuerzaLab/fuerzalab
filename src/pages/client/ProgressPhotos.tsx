@@ -17,6 +17,7 @@ import {
   type ProgressPhotoRow,
   type PhotoAngle,
 } from "../../services/progressPhotos";
+import Loading from "../../components/ui/Loading";
 
 export default function ClientProgressPhotos() {
   const { profile } = useAuth();
@@ -69,7 +70,7 @@ export default function ClientProgressPhotos() {
       </div>
 
       {loading ? (
-        <p className="note">Cargando…</p>
+        <Loading />
       ) : !clientId ? (
         <p className="note">Tu cuenta todavía no está vinculada a una ficha de cliente.</p>
       ) : sessions.length === 0 ? (

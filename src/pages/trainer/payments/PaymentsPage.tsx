@@ -22,6 +22,7 @@ import {
   type PaymentStatus,
   type PaymentMethod,
 } from "../../../services/payments";
+import Loading from "../../../components/ui/Loading";
 
 const STATUS_LABEL: Record<PaymentStatus, string> = { pending: "Pendiente", paid: "Pagado", cancelled: "Cancelado" };
 const STATUS_TONE: Record<PaymentStatus, "warn" | "ok" | "bad"> = { pending: "warn", paid: "ok", cancelled: "bad" };
@@ -111,7 +112,7 @@ export default function PaymentsPage() {
       )}
 
       {loading ? (
-        <p className="note">Cargando…</p>
+        <Loading />
       ) : (
         <div className="panel">
           <div style={{ overflowX: "auto" }}>

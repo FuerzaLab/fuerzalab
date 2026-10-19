@@ -13,6 +13,7 @@ import {
   type WellnessField,
   type WellnessLogRow,
 } from "../services/wellness";
+import Loading from "./ui/Loading";
 
 export default function WellnessForm({
   clientId,
@@ -70,7 +71,7 @@ export default function WellnessForm({
     setSaving(false);
   };
 
-  if (loading) return <p className="note">Cargando…</p>;
+  if (loading) return <Loading />;
 
   return (
     <div>

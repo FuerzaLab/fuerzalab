@@ -20,6 +20,7 @@ import {
   type ClientStatus,
 } from "../../../services/clients";
 import { paths } from "../../../routes/paths";
+import Loading from "../../../components/ui/Loading";
 
 const STATUS_LABEL: Record<ClientStatus, string> = {
   prospect: "Prospecto",
@@ -115,7 +116,7 @@ export default function ClientDetail() {
     setSaving(false);
   };
 
-  if (loading) return <div className="page"><p className="note">Cargando…</p></div>;
+  if (loading) return <div className="page"><Loading /></div>;
   if (loadError || !client) {
     return (
       <div className="page">

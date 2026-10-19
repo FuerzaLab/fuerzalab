@@ -18,6 +18,7 @@ import {
   type OrganizationSubscriptionRow,
   type SubscriptionStatus,
 } from "../../../services/billing";
+import Loading from "../../../components/ui/Loading";
 
 const STATUS_LABEL: Record<SubscriptionStatus, string> = {
   pending: "Pendiente",
@@ -77,7 +78,7 @@ export default function BillingPage() {
       </p>
 
       {loading ? (
-        <p className="note">Cargando…</p>
+        <Loading />
       ) : (
         <>
           <div className="panel" style={{ marginBottom: 24 }}>

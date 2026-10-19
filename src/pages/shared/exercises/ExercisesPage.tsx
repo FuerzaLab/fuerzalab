@@ -16,6 +16,7 @@ import { compressImage } from "../../../lib/imageCompress";
 import NewExerciseModal from "./NewExerciseModal";
 import ImportExercisesModal from "./ImportExercisesModal";
 import Chip from "../../../components/ui/Chip";
+import Loading from "../../../components/ui/Loading";
 
 export default function ExercisesPage({ scope }: { scope: "global" | "trainer" }) {
   const { profile } = useAuth();
@@ -166,7 +167,7 @@ export default function ExercisesPage({ scope }: { scope: "global" | "trainer" }
 
       {loadError && <p className="error-text" style={{ marginBottom: 14 }}>{loadError}</p>}
       {loading ? (
-        <p className="note">Cargando…</p>
+        <Loading />
       ) : (
         <div style={{ display: "grid", gridTemplateColumns: "minmax(0,1.5fr) minmax(0,1fr)", gap: 18 }}>
           <div className="panel">

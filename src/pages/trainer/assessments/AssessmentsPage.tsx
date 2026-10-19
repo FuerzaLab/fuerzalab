@@ -57,6 +57,7 @@ import {
   type FlexibilityTestRow,
   type BodyFatEstimate,
 } from "../../../services/assessments";
+import Loading from "../../../components/ui/Loading";
 
 const CATEGORY_ORDER: AssessmentCategory[] = ["body", "circumferences", "skinfolds", "strength", "power", "endurance", "mobility", "flexibility"];
 
@@ -319,7 +320,7 @@ function AssessmentDetail({
     flexibility: flexibility.length,
   };
 
-  if (loading) return <p className="note">Cargando…</p>;
+  if (loading) return <Loading />;
 
   return (
     <div>

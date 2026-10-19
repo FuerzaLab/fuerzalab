@@ -4,6 +4,7 @@ import { useToast } from "../../../contexts/ToastContext";
 import Chip from "../../../components/ui/Chip";
 import { paths } from "../../../routes/paths";
 import { computeSuggestions, TYPE_LABEL, type Suggestion, type SuggestionType } from "../../../services/suggestions";
+import Loading from "../../../components/ui/Loading";
 
 const SEVERITY_TONE: Record<Suggestion["severity"], "bad" | "warn" | "pri"> = { urgent: "bad", review: "warn", info: "pri" };
 const SEVERITY_LABEL: Record<Suggestion["severity"], string> = { urgent: "Urgente", review: "Revisar", info: "Info" };
@@ -51,7 +52,7 @@ export default function SuggestionsPage() {
       </p>
 
       {loading ? (
-        <p className="note">Cargando…</p>
+        <Loading />
       ) : suggestions.length === 0 ? (
         <p className="note">No hay nada para revisar por ahora. 🟢</p>
       ) : (

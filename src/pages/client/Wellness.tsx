@@ -4,6 +4,7 @@ import Chip from "../../components/ui/Chip";
 import WellnessForm from "../../components/WellnessForm";
 import { getMyClientId } from "../../services/clients";
 import { listRecentLogs, wellnessScore, wellnessSemaforo, type WellnessLogRow } from "../../services/wellness";
+import Loading from "../../components/ui/Loading";
 
 export default function ClientWellness() {
   const { notify } = useToast();
@@ -36,7 +37,7 @@ export default function ClientWellness() {
       </h1>
 
       {loading ? (
-        <p className="note">Cargando…</p>
+        <Loading />
       ) : !clientId ? (
         <p className="note">Tu cuenta todavía no está vinculada a una ficha de cliente.</p>
       ) : (

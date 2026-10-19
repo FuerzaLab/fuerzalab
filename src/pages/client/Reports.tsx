@@ -17,6 +17,7 @@ import {
   TrainingWeeklyCharts,
   ExerciseProgressChart,
 } from "../../components/reports/ReportSections";
+import Loading from "../../components/ui/Loading";
 
 export default function ClientReports() {
   const { notify } = useToast();
@@ -66,8 +67,8 @@ export default function ClientReports() {
         )}
       </div>
 
-      {!clientId && <p className="note">Cargando…</p>}
-      {clientId && data.loading && <p className="note">Cargando…</p>}
+      {!clientId && <Loading />}
+      {clientId && data.loading && <Loading />}
 
       {clientId && !data.loading && (
         <div ref={reportRef} style={{ display: "grid", gap: 20, background: "#fff" }}>

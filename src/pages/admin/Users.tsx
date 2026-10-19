@@ -12,6 +12,7 @@ import {
   type OrganizationRow,
 } from "../../services/admin";
 import type { Role } from "../../types/auth";
+import Loading from "../../components/ui/Loading";
 
 const ROLE_LABEL: Record<Role, string> = {
   super_admin: "Super Admin",
@@ -68,7 +69,7 @@ export default function Users() {
       </p>
 
       {loading ? (
-        <p className="note">Cargando…</p>
+        <Loading />
       ) : (
         <div className="panel">
           <div style={{ overflowX: "auto" }}>

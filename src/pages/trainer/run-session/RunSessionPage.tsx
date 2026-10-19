@@ -5,6 +5,7 @@ import { listWeeks, type ProgramRow, type WeekRow } from "../../../services/prog
 import { listSessions, type SessionRow } from "../../../services/sessions";
 import { getActiveProgramForClient, getSessionStatuses, type WorkoutLogRow } from "../../../services/training";
 import { TrainSession } from "../../client/Routine";
+import Loading from "../../../components/ui/Loading";
 
 const STATUS_LABEL: Record<WorkoutLogRow["status"], string> = {
   pending: "Pendiente",
@@ -100,7 +101,7 @@ export default function RunSessionPage() {
       </div>
 
       {!clientId && <p className="note">Elige un cliente para ver su programa activo.</p>}
-      {clientId && loading && <p className="note">Cargando…</p>}
+      {clientId && loading && <Loading />}
       {clientId && !loading && !program && <p className="note">Este cliente todavía no tiene un programa activo.</p>}
 
       {clientId && !loading && program && (

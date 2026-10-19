@@ -8,6 +8,7 @@ import { listClients, type ClientRow } from "../../services/clients";
 import { listTodayLogsForTrainer, wellnessScore, wellnessSemaforo, type WellnessLogRow } from "../../services/wellness";
 import { computeSuggestions } from "../../services/suggestions";
 import { getTodaysSessionForClient, type TodaysSession } from "../../services/sessions";
+import Loading from "../../components/ui/Loading";
 
 const SESSION_STATUS_LABEL: Record<TodaysSession["status"], string> = {
   pending: "Todavía no la empezó",
@@ -51,7 +52,7 @@ export default function TrainerDashboard() {
       <p className="note" style={{ marginBottom: 20 }}>Esto es lo que pasó hoy con el bienestar de tus clientes.</p>
 
       {loading ? (
-        <p className="note">Cargando…</p>
+        <Loading />
       ) : (
         <>
           {todaysSessions && todaysSessions.length > 0 && (

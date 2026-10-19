@@ -10,6 +10,7 @@ import {
   ANGLE_LABEL,
   type ProgressPhotoRow,
 } from "../../services/progressPhotos";
+import Loading from "../ui/Loading";
 
 export const COLORS = { pri: "#1E3FA8", ok: "#2E8B6E", warn: "#B77800", bad: "#D6472B", muted: "#8A93A6", purple: "#7B4FE0" };
 const LINE_PALETTE = [COLORS.pri, COLORS.bad, COLORS.ok, COLORS.warn, COLORS.purple];
@@ -53,7 +54,7 @@ export function PhotoBeforeAfter({ clientId, restrictToShared }: { clientId: str
     };
   }, [clientId, restrictToShared]);
 
-  if (sessions === null) return <p className="note">Cargando fotos…</p>;
+  if (sessions === null) return <Loading text="Cargando fotos…" />;
   if (sessions.length === 0) return <p className="note">Todavía no hay fotos de progreso cargadas.</p>;
 
   const first = sessions[sessions.length - 1];

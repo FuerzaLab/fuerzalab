@@ -4,6 +4,7 @@ import { useToast } from "../../contexts/ToastContext";
 import Chip from "../../components/ui/Chip";
 import { getMyClientId } from "../../services/clients";
 import { listPayments, uploadReceipt, getReceiptUrl, type PaymentRow, type PaymentStatus } from "../../services/payments";
+import Loading from "../../components/ui/Loading";
 
 const STATUS_LABEL: Record<PaymentStatus, string> = { pending: "Pendiente", paid: "Pagado", cancelled: "Cancelado" };
 const STATUS_TONE: Record<PaymentStatus, "warn" | "ok" | "bad"> = { pending: "warn", paid: "ok", cancelled: "bad" };
@@ -53,7 +54,7 @@ export default function ClientPayments() {
       <h1 style={{ marginBottom: 20 }}>Pagos</h1>
       <input ref={fileRef} type="file" onChange={handleFile} style={{ display: "none" }} aria-label="Subir comprobante" />
       {loading ? (
-        <p className="note">Cargando…</p>
+        <Loading />
       ) : (
         <div className="panel">
           <div style={{ overflowX: "auto" }}>

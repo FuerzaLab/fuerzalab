@@ -30,6 +30,7 @@ import {
   type MesocycleRow,
   type WeekRow,
 } from "../../../services/programs";
+import Loading from "../../../components/ui/Loading";
 
 const PHASE_COLOR: Record<string, string> = {
   accumulation: "#2E8B6E",
@@ -266,7 +267,7 @@ export default function ProgramsPage() {
               </p>
 
               {loading ? (
-                <p className="note">Cargando…</p>
+                <Loading />
               ) : (
                 <>
                   <div style={{ display: "flex", height: 64, borderRadius: 8, overflow: "hidden", gap: 3 }}>

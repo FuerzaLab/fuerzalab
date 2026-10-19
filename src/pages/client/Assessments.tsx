@@ -17,6 +17,7 @@ import {
   type StrengthTestRow,
   type SkinfoldRow,
 } from "../../services/assessments";
+import Loading from "../../components/ui/Loading";
 
 export default function ClientAssessments() {
   const { notify } = useToast();
@@ -68,7 +69,7 @@ export default function ClientAssessments() {
       <h1 style={{ marginBottom: 20 }}>Mis evaluaciones</h1>
 
       {loading ? (
-        <p className="note">Cargando…</p>
+        <Loading />
       ) : assessments.length === 0 ? (
         <p className="note">Todavía no tienes evaluaciones registradas.</p>
       ) : (
@@ -87,7 +88,7 @@ export default function ClientAssessments() {
           </div>
 
           {loadingDetail ? (
-            <p className="note">Cargando…</p>
+            <Loading />
           ) : (
             <>
               <div className="panel" style={{ marginBottom: 16 }}>

@@ -14,6 +14,7 @@ import {
   type ClientStatus,
 } from "../../../services/clients";
 import { paths } from "../../../routes/paths";
+import Loading from "../../../components/ui/Loading";
 
 const STATUS_LABEL: Record<ClientStatus, string> = {
   prospect: "Prospecto",
@@ -124,7 +125,7 @@ export default function ClientsList() {
 
       {loadError && <p className="error-text" style={{ marginBottom: 14 }}>{loadError}</p>}
       {loading ? (
-        <p className="note">Cargando…</p>
+        <Loading />
       ) : (
         <div className="panel">
           <div style={{ overflowX: "auto" }}>

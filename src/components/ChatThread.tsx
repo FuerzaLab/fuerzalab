@@ -3,6 +3,7 @@ import { Send } from "lucide-react";
 import { useAuth } from "../contexts/AuthContext";
 import { useToast } from "../contexts/ToastContext";
 import { listMessages, sendMessage, markThreadRead, type MessageRow } from "../services/messages";
+import Loading from "./ui/Loading";
 
 export default function ChatThread({ clientId, otherLabel }: { clientId: string; otherLabel: string }) {
   const { profile } = useAuth();
@@ -52,7 +53,7 @@ export default function ChatThread({ clientId, otherLabel }: { clientId: string;
       <div className="hd"><h3>{otherLabel}</h3></div>
       <div style={{ flex: 1, overflowY: "auto", padding: 16, display: "flex", flexDirection: "column", gap: 10 }}>
         {loading ? (
-          <p className="note">Cargando…</p>
+          <Loading />
         ) : messages.length === 0 ? (
           <p className="note">Todavía no hay mensajes. Escribe el primero.</p>
         ) : (

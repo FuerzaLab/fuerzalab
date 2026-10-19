@@ -13,6 +13,7 @@ import {
   WELLNESS_FIELD_LABEL,
   type WellnessLogRow,
 } from "../../../services/wellness";
+import Loading from "../../../components/ui/Loading";
 
 export default function WellnessPage() {
   const { notify } = useToast();
@@ -80,7 +81,7 @@ export default function WellnessPage() {
 
       {!clientId && <p className="note">Elige un cliente para ver su historial de los últimos 30 días.</p>}
 
-      {clientId && loading && <p className="note">Cargando…</p>}
+      {clientId && loading && <Loading />}
 
       {clientId && !loading && logs.length === 0 && <p className="note">Este cliente todavía no completó ningún registro de bienestar.</p>}
 

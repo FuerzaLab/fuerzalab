@@ -32,6 +32,7 @@ import {
 } from "../../services/training";
 import WellnessForm from "../../components/WellnessForm";
 import { getExerciseMediaUrl } from "../../services/exercises";
+import Loading from "../../components/ui/Loading";
 
 const STATUS_LABEL: Record<WorkoutLogRow["status"], string> = {
   pending: "Pendiente",
@@ -145,7 +146,7 @@ export default function ClientRoutine() {
       <h1 style={{ marginBottom: 20 }}>Mi rutina</h1>
 
       {loading ? (
-        <p className="note">Cargando…</p>
+        <Loading />
       ) : !program ? (
         <div className="panel"><div className="bd"><p className="note">Todavía no tienes un programa asignado. Avisa a tu entrenador.</p></div></div>
       ) : (
@@ -319,7 +320,7 @@ export function TrainSession({ sessionId, onExit, backLabel = "Volver a mi rutin
     setSaving(false);
   };
 
-  if (loading) return <div className="page"><p className="note">Cargando…</p></div>;
+  if (loading) return <div className="page"><Loading /></div>;
 
   return (
     <div className="page">
@@ -540,7 +541,7 @@ function SupersetTrainer({
                   const existing = logFor(ex.id, roundNumber);
                   const repsTarget = ex.reps_min && ex.reps_max ? `${ex.reps_min}–${ex.reps_max}` : ex.reps_min ?? ex.reps_max ?? "—";
                   return (
-                    <div key={ex.id} style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap", background: existing?.completed ? "var(--ok-soft)" : "var(--bg)", borderRadius: 8, padding: 8 }}>
+                    <div key={ex.id} className="complete-transition" style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap", background: existing?.completed ? "var(--ok-soft)" : "var(--bg)", borderRadius: 8, padding: 8 }}>
                       <span style={{ minWidth: 26, fontWeight: 700, color: "var(--pri)" }}>{SUPERSET_LETTERS[i]}{roundNumber}</span>
                       <span style={{ flex: 1, minWidth: 120 }}>{ex.exercise_name}</span>
                       <span className="note" style={{ fontSize: 12.5 }}>Obj: {repsTarget}{ex.load_value ? ` @ ${ex.load_value}kg` : ""}</span>
@@ -597,11 +598,11 @@ function MiniSetInputs({
       <input className="input" style={{ width: 55, padding: "5px 4px", textAlign: "center" }} value={load} onChange={(e) => setLoad(e.target.value)} onBlur={() => commit()} aria-label="Carga" />
       <input className="input" style={{ width: 45, padding: "5px 4px", textAlign: "center" }} value={rir} onChange={(e) => setRir(e.target.value)} onBlur={() => commit()} aria-label="RIR" />
       <button
-        className="btn ghost"
+        className="btn ghost complete-transition"
         style={{ padding: "4px 8px", fontSize: 12.5, background: completed ? "var(--ok-soft)" : undefined }}
         onClick={() => commit({ completed: !completed })}
       >
-        <Check size={13} />
+        <Check size={13} className={completed ? "check-pop" : undefined} />
       </button>
     </div>
   );
@@ -646,11 +647,11 @@ function ExerciseTrainer({
             </div>
           </div>
           <button
-            className="btn ghost"
+            className="btn ghost complete-transition"
             style={{ background: existing?.completed ? "var(--ok-soft)" : undefined }}
             onClick={() => onSaveSet(ex, 1, { reps: 0, loadKg: null, rir: null, completed: !existing?.completed })}
           >
-            <Check size={14} /> {existing?.completed ? "Hecho" : "Marcar hecho"}
+            <Check size={14} className={existing?.completed ? "check-pop" : undefined} /> {existing?.completed ? "Hecho" : "Marcar hecho"}
           </button>
         </div>
         <div className="bd" style={{ paddingTop: 0 }}>
@@ -742,7 +743,7 @@ function SetRow({
   };
 
   return (
-    <tr style={{ borderTop: "1px solid var(--line)", background: completed ? "var(--ok-soft)" : undefined }}>
+    <tr className="complete-transition" style={{ borderTop: "1px solid var(--line)", background: completed ? "var(--ok-soft)" : undefined }}>
       <td style={{ padding: "6px 10px" }}>{setNumber}</td>
       <td style={{ padding: "6px" }}>
         <input className="input" style={{ width: 60, padding: "6px 4px", textAlign: "center" }} value={reps} onChange={(e) => setReps(e.target.value)} onBlur={() => commit()} />
@@ -755,11 +756,11 @@ function SetRow({
       </td>
       <td style={{ padding: "6px 10px" }}>
         <button
-          className="btn ghost"
+          className="btn ghost complete-transition"
           style={{ padding: "5px 10px", fontSize: 13, background: completed ? "var(--ok-soft)" : undefined }}
           onClick={() => commit({ completed: !completed })}
         >
-          <Check size={13} /> {completed ? "Hecha" : "Marcar"}
+          <Check size={13} className={completed ? "check-pop" : undefined} /> {completed ? "Hecha" : "Marcar"}
         </button>
       </td>
     </tr>
