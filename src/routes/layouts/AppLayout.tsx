@@ -26,6 +26,7 @@ interface NavItem {
   label: string;
   icon: typeof LayoutDashboard;
   group?: string;
+  accent?: "wellness";
 }
 
 const NAV: Record<Role, NavItem[]> = {
@@ -48,7 +49,7 @@ const NAV: Record<Role, NavItem[]> = {
     { to: paths.trainerBuilder, label: "Constructor de rutinas", icon: ClipboardList, group: "Entrenamiento" },
     { to: paths.trainerPrograms, label: "Planificación", icon: CalendarRange, group: "Entrenamiento" },
     { to: paths.trainerAssessments, label: "Evaluaciones", icon: Ruler, group: "Entrenamiento" },
-    { to: paths.trainerWellness, label: "Bienestar", icon: Activity, group: "Entrenamiento" },
+    { to: paths.trainerWellness, label: "Bienestar", icon: Activity, group: "Entrenamiento", accent: "wellness" },
     { to: paths.trainerProgressPhotos, label: "Fotos", icon: Camera, group: "Entrenamiento" },
 
     { to: paths.trainerReports, label: "Reportes", icon: FileText, group: "Seguimiento" },
@@ -66,7 +67,7 @@ const NAV: Record<Role, NavItem[]> = {
     { to: paths.clientDashboard, label: "Inicio", icon: Home },
     { to: paths.clientRoutine, label: "Mi rutina", icon: Dumbbell },
     { to: paths.clientProgress, label: "Mi progreso", icon: Activity },
-    { to: paths.clientWellness, label: "Bienestar", icon: Ruler },
+    { to: paths.clientWellness, label: "Bienestar", icon: Ruler, accent: "wellness" },
     { to: paths.clientReports, label: "Mis reportes", icon: FileText },
     { to: paths.clientPayments, label: "Pagos", icon: CreditCard },
     { to: paths.clientMessages, label: "Mensajes", icon: MessageSquare },
@@ -93,10 +94,14 @@ export default function AppLayout() {
         <div className="brand">
           Fuerza<span>Lab</span>
         </div>
-        {items.map(({ to, label, icon: Icon, group }, i) => (
+        {items.map(({ to, label, icon: Icon, group, accent }, i) => (
           <div key={to} className="nav-item">
             {group && group !== items[i - 1]?.group && <div className="nav-group">{group}</div>}
-            <NavLink to={to} end className={({ isActive }) => `nav-link${isActive ? " active" : ""}`}>
+            <NavLink
+              to={to}
+              end
+              className={({ isActive }) => `nav-link${accent === "wellness" ? " nav-link-wellness" : ""}${isActive ? " active" : ""}`}
+            >
               <Icon size={18} /> {label}
             </NavLink>
           </div>

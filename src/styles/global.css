@@ -13,6 +13,8 @@
   --warn-soft: #FBF0D6;
   --bad: #D6472B;
   --bad-soft: #FBE4DE;
+  --wellness: #7B4FE0;
+  --wellness-soft: #EDE7FB;
 }
 
 * { box-sizing: border-box; }
@@ -53,6 +55,7 @@ button:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-
 .nav-link { display: flex; align-items: center; gap: 10px; width: 100%; border: 0; background: transparent; color: inherit; text-align: left; padding: 9px 10px; border-radius: 6px; font-size: 15px; text-decoration: none; }
 .nav-link:hover { background: rgba(255,255,255,.07); }
 .nav-link.active { background: rgba(143,166,245,.18); color: #fff; box-shadow: inset 3px 0 0 #8FA6F5; }
+.nav-link-wellness.active { background: rgba(167,139,250,.18); box-shadow: inset 3px 0 0 #A78BFA; }
 .main { min-width: 0; }
 .topbar { display: flex; flex-wrap: wrap; align-items: center; gap: 12px; justify-content: space-between; padding: 12px 24px; background: var(--card); border-bottom: 1px solid var(--line); }
 .page { padding: 24px; max-width: 1240px; }

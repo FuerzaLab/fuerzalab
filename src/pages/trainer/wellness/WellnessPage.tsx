@@ -62,7 +62,10 @@ export default function WellnessPage() {
 
   return (
     <div className="page">
-      <h1 style={{ marginBottom: 4 }}>Bienestar</h1>
+      <h1 style={{ marginBottom: 4, display: "flex", alignItems: "center", gap: 10 }}>
+        <span style={{ width: 10, height: 10, borderRadius: 99, background: "var(--wellness)", flex: "none" }} />
+        Bienestar
+      </h1>
       <p className="note" style={{ marginBottom: 20 }}>
         Cuestionario diario (sueño, fatiga, energía, estrés, dolor muscular), de 1 a 5 cada uno — 5 siempre es el mejor estado. Wellness Score de 0 a 100: por encima de 80 óptimo, 60-79 precaución, menos de 60 riesgo.
       </p>

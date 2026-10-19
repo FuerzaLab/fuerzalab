@@ -30,7 +30,10 @@ export default function ClientWellness() {
 
   return (
     <div className="page">
-      <h1 style={{ marginBottom: 20 }}>Bienestar</h1>
+      <h1 style={{ marginBottom: 20, display: "flex", alignItems: "center", gap: 10 }}>
+        <span style={{ width: 10, height: 10, borderRadius: 99, background: "var(--wellness)", flex: "none" }} />
+        Bienestar
+      </h1>
 
       {loading ? (
         <p className="note">Cargando…</p>
