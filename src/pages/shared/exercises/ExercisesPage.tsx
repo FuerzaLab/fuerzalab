@@ -9,8 +9,14 @@ import {
   uploadExerciseMedia,
   removeExerciseMedia,
   getExerciseMediaUrl,
+  listVariationsFor,
+  addVariation,
+  removeVariation,
+  RELATION_LABEL,
   type ExerciseRow,
   type CatalogItem,
+  type ExerciseVariationRow,
+  type VariationRelation,
 } from "../../../services/exercises";
 import { compressImage } from "../../../lib/imageCompress";
 import NewExerciseModal from "./NewExerciseModal";
@@ -34,6 +40,11 @@ export default function ExercisesPage({ scope }: { scope: "global" | "trainer" }
   const [showNew, setShowNew] = useState(false);
   const [showImport, setShowImport] = useState(false);
   const [mediaUrl, setMediaUrl] = useState("");
+  const [variations, setVariations] = useState<ExerciseVariationRow[]>([]);
+  const [addingVariation, setAddingVariation] = useState(false);
+  const [newRelatedId, setNewRelatedId] = useState("");
+  const [newRelation, setNewRelation] = useState<VariationRelation>("variant");
+  const [newVariationNotes, setNewVariationNotes] = useState("");
   const [uploadingMedia, setUploadingMedia] = useState(false);
   const mediaInputRef = useRef<HTMLInputElement>(null);
 
@@ -44,6 +55,17 @@ export default function ExercisesPage({ scope }: { scope: "global" | "trainer" }
       setMediaUrl("");
     }
   }, [selected?.media_path]);
+
+  useEffect(() => {
+    setAddingVariation(false);
+    setNewRelatedId("");
+    setNewVariationNotes("");
+    if (selected) {
+      listVariationsFor(selected.id).then(setVariations).catch((e: any) => notify(e.message));
+    } else {
+      setVariations([]);
+    }
+  }, [selected?.id]);
 
   const pickMedia = async (e: ChangeEvent<HTMLInputElement>) => {
     const raw = e.target.files?.[0];
@@ -248,9 +270,85 @@ export default function ExercisesPage({ scope }: { scope: "global" | "trainer" }
                 <p style={{ marginBottom: 8 }}>
                   <b>Indicaciones.</b> {selected.technical_cues || "Sin indicaciones registradas todavía."}
                 </p>
-                <p>
+                <p style={{ marginBottom: 16 }}>
                   <b>Errores frecuentes.</b> {selected.common_mistakes || "Sin observaciones registradas todavía."}
                 </p>
+
+                <div style={{ borderTop: "1px solid var(--line)", paddingTop: 14 }}>
+                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 10 }}>
+                    <b>Alternativas y progresiones</b>
+                    {!addingVariation && (
+                      <button className="btn ghost" style={{ padding: "4px 10px", fontSize: 12.5 }} onClick={() => setAddingVariation(true)}>
+                        <Plus size={12} /> Agregar
+                      </button>
+                    )}
+                  </div>
+
+                  {variations.length === 0 && !addingVariation && (
+                    <p className="note">Sin alternativas cargadas todavía — útil para cuando a un cliente le falta el equipo, o para subir/bajar la dificultad.</p>
+                  )}
+
+                  {variations.length > 0 && (
+                    <div style={{ display: "grid", gap: 6, marginBottom: addingVariation ? 14 : 0 }}>
+                      {variations.map((v) => (
+                        <div key={v.id} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "6px 0", borderBottom: "1px solid var(--line)" }}>
+                          <span>
+                            <Chip tone={v.relation === "progression" ? "warn" : v.relation === "regression" ? "ok" : ""}>{RELATION_LABEL[v.relation]}</Chip>{" "}
+                            {v.related_exercise_name}
+                            {v.notes && <span className="note"> — {v.notes}</span>}
+                          </span>
+                          <button
+                            className="btn ghost"
+                            style={{ padding: "3px 8px", fontSize: 12 }}
+                            onClick={async () => {
+                              await removeVariation(v.id);
+                              setVariations((vs) => vs.filter((x) => x.id !== v.id));
+                            }}
+                          >
+                            <Trash2 size={12} />
+                          </button>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+
+                  {addingVariation && (
+                    <div style={{ display: "grid", gap: 10 }}>
+                      <select className="input" value={newRelatedId} onChange={(e) => setNewRelatedId(e.target.value)}>
+                        <option value="">Elegí un ejercicio</option>
+                        {exercises.filter((e) => e.id !== selected.id).map((e) => (
+                          <option key={e.id} value={e.id}>{e.name}</option>
+                        ))}
+                      </select>
+                      <select className="input" value={newRelation} onChange={(e) => setNewRelation(e.target.value as VariationRelation)}>
+                        {(Object.entries(RELATION_LABEL) as [VariationRelation, string][]).map(([k, l]) => (
+                          <option key={k} value={k}>{l}</option>
+                        ))}
+                      </select>
+                      <input className="input" placeholder="Nota (opcional) — ej. si no hay barra" value={newVariationNotes} onChange={(e) => setNewVariationNotes(e.target.value)} />
+                      <div style={{ display: "flex", gap: 8 }}>
+                        <button
+                          className="btn"
+                          disabled={!newRelatedId}
+                          onClick={async () => {
+                            try {
+                              const created = await addVariation({ exerciseId: selected.id, relatedExerciseId: newRelatedId, relation: newRelation, notes: newVariationNotes });
+                              setVariations((vs) => [...vs, created]);
+                              setAddingVariation(false);
+                              setNewRelatedId("");
+                              setNewVariationNotes("");
+                            } catch (e: any) {
+                              notify(e.message);
+                            }
+                          }}
+                        >
+                          Guardar
+                        </button>
+                        <button className="btn ghost" onClick={() => setAddingVariation(false)}>Cancelar</button>
+                      </div>
+                    </div>
+                  )}
+                </div>
               </div>
             </div>
           )}

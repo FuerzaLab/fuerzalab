@@ -77,6 +77,60 @@ export async function getExerciseMediaUrl(path: string): Promise<string> {
   return data.signedUrl;
 }
 
+export type VariationRelation = "variant" | "progression" | "regression";
+
+export const RELATION_LABEL: Record<VariationRelation, string> = {
+  variant: "Alternativa",
+  progression: "Progresión (más difícil)",
+  regression: "Regresión (más fácil)",
+};
+
+export interface ExerciseVariationRow {
+  id: string;
+  exercise_id: string;
+  related_exercise_id: string;
+  related_exercise_name: string;
+  relation: VariationRelation;
+  sort_order: number;
+  notes: string | null;
+}
+
+/** Las alternativas, progresiones y regresiones ya cargadas para un ejercicio, con el nombre del ejercicio relacionado. */
+export async function listVariationsFor(exerciseId: string): Promise<ExerciseVariationRow[]> {
+  const { data, error } = await supabase
+    .from("exercise_variations")
+    .select("id, exercise_id, related_exercise_id, relation, sort_order, notes, exercises:related_exercise_id(name)")
+    .eq("exercise_id", exerciseId)
+    .order("sort_order");
+  if (error) throw error;
+  return (data ?? []).map((row: any) => ({ ...row, related_exercise_name: row.exercises?.name ?? "" })) as ExerciseVariationRow[];
+}
+
+export async function addVariation(params: {
+  exerciseId: string;
+  relatedExerciseId: string;
+  relation: VariationRelation;
+  notes: string;
+}): Promise<ExerciseVariationRow> {
+  const { data, error } = await supabase
+    .from("exercise_variations")
+    .insert({
+      exercise_id: params.exerciseId,
+      related_exercise_id: params.relatedExerciseId,
+      relation: params.relation,
+      notes: params.notes || null,
+    })
+    .select("id, exercise_id, related_exercise_id, relation, sort_order, notes, exercises:related_exercise_id(name)")
+    .single();
+  if (error) throw error;
+  return { ...(data as any), related_exercise_name: (data as any).exercises?.name ?? "" } as ExerciseVariationRow;
+}
+
+export async function removeVariation(id: string): Promise<void> {
+  const { error } = await supabase.from("exercise_variations").delete().eq("id", id);
+  if (error) throw error;
+}
+
 export async function listCatalog(kind: string): Promise<CatalogItem[]> {
   const { data, error } = await supabase
     .from("catalog_items")

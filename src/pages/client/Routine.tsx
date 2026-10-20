@@ -31,7 +31,7 @@ import {
   type LastPerformance,
 } from "../../services/training";
 import WellnessForm from "../../components/WellnessForm";
-import { getExerciseMediaUrl } from "../../services/exercises";
+import { getExerciseMediaUrl, listVariationsFor, RELATION_LABEL, type ExerciseVariationRow } from "../../services/exercises";
 import Loading from "../../components/ui/Loading";
 
 const STATUS_LABEL: Record<WorkoutLogRow["status"], string> = {
@@ -227,6 +227,7 @@ export function TrainSession({ sessionId, onExit, backLabel = "Volver a mi rutin
   const [restEndsAt, setRestEndsAt] = useState<number | null>(null);
   const [restAnchor, setRestAnchor] = useState<string | null>(null);
   const [lastPerf, setLastPerf] = useState<Record<string, LastPerformance | null>>({});
+  const [variations, setVariations] = useState<Record<string, ExerciseVariationRow[]>>({});
 
   useEffect(() => {
     if (!restEndsAt) {
@@ -272,6 +273,11 @@ export function TrainSession({ sessionId, onExit, backLabel = "Volver a mi rutin
         uniqueExerciseIds.map(async (exId) => [exId, await getLastPerformance(l.client_id, exId, l.id).catch(() => null)] as const)
       );
       setLastPerf(Object.fromEntries(perfEntries));
+
+      const variationEntries = await Promise.all(
+        uniqueExerciseIds.map(async (exId) => [exId, await listVariationsFor(exId).catch(() => [])] as const)
+      );
+      setVariations(Object.fromEntries(variationEntries));
     } catch (e: any) {
       notify(e.message);
     }
@@ -365,6 +371,7 @@ export function TrainSession({ sessionId, onExit, backLabel = "Volver a mi rutin
                       onAddRestTime={() => setRestEndsAt((e) => (e ? e + 15000 : e))}
                       onSkipRest={() => setRestEndsAt(null)}
                       lastPerf={lastPerf}
+                      variations={variations}
                     />
                   ) : (
                     g.map((ex) => (
@@ -379,6 +386,7 @@ export function TrainSession({ sessionId, onExit, backLabel = "Volver a mi rutin
                         onAddRestTime={() => setRestEndsAt((e) => (e ? e + 15000 : e))}
                         onSkipRest={() => setRestEndsAt(null)}
                         lastPerf={lastPerf[ex.exercise_id] ?? null}
+                        variations={variations[ex.exercise_id] ?? []}
                       />
                     ))
                   )
@@ -452,6 +460,28 @@ function ExerciseMedia({ mediaPath, mediaType, label }: { mediaPath: string | nu
   );
 }
 
+function VariationsNote({ items }: { items: ExerciseVariationRow[] }) {
+  const [open, setOpen] = useState(false);
+  if (items.length === 0) return null;
+  return (
+    <div style={{ marginBottom: 8 }}>
+      <button type="button" className="btn ghost" style={{ padding: "4px 10px", fontSize: 12.5 }} onClick={() => setOpen((o) => !o)}>
+        {open ? "Ocultar alternativas" : "Ver alternativas"}
+      </button>
+      {open && (
+        <div style={{ marginTop: 8, display: "grid", gap: 4 }}>
+          {items.map((v) => (
+            <p key={v.id} className="note" style={{ margin: 0 }}>
+              <b style={{ color: "var(--text)" }}>{RELATION_LABEL[v.relation]}:</b> {v.related_exercise_name}
+              {v.notes ? ` — ${v.notes}` : ""}
+            </p>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
 function LastPerformanceNote({ perf }: { perf: LastPerformance | null }) {
   if (!perf) return null;
   const sets = Object.entries(perf.bySet).sort(([a], [b]) => Number(a) - Number(b));
@@ -494,6 +524,7 @@ function SupersetTrainer({
   onAddRestTime,
   onSkipRest,
   lastPerf,
+  variations,
 }: {
   exercises: WorkoutExerciseRow[];
   logFor: (workoutExerciseId: string, setNumber: number) => SetLogRow | undefined;
@@ -504,6 +535,7 @@ function SupersetTrainer({
   onAddRestTime: () => void;
   onSkipRest: () => void;
   lastPerf: Record<string, LastPerformance | null>;
+  variations: Record<string, ExerciseVariationRow[]>;
 }) {
   const label = exercises.length === 2 ? "Biserie" : exercises.length === 3 ? "Triserie" : "Serie gigante";
   const maxSets = Math.max(...exercises.map((ex) => ex.sets ?? 3));
@@ -525,7 +557,10 @@ function SupersetTrainer({
           </div>
         )}
         {exercises.map((ex) => (
-          <LastPerformanceNote key={ex.id} perf={lastPerf[ex.exercise_id] ?? null} />
+          <div key={ex.id}>
+            <LastPerformanceNote perf={lastPerf[ex.exercise_id] ?? null} />
+            <VariationsNote items={variations[ex.exercise_id] ?? []} />
+          </div>
         ))}
         <p className="note" style={{ marginBottom: 14 }}>
           Hacé una serie de cada ejercicio, en orden, sin descansar entre ellos — el descanso va después de completar la ronda entera.
@@ -618,6 +653,7 @@ function ExerciseTrainer({
   onAddRestTime,
   onSkipRest,
   lastPerf,
+  variations,
 }: {
   ex: WorkoutExerciseRow;
   logFor: (workoutExerciseId: string, setNumber: number) => SetLogRow | undefined;
@@ -628,6 +664,7 @@ function ExerciseTrainer({
   onAddRestTime: () => void;
   onSkipRest: () => void;
   lastPerf: LastPerformance | null;
+  variations: ExerciseVariationRow[];
 }) {
   const showRestHere = restRemaining > 0 && restAnchor != null && restAnchor.startsWith(`${ex.id}:`);
   const isCardio = ex.duration_min != null || ex.distance_km != null || ex.steps_target != null;
@@ -657,6 +694,7 @@ function ExerciseTrainer({
         <div className="bd" style={{ paddingTop: 0 }}>
           <ExerciseMedia mediaPath={ex.media_path} mediaType={ex.media_type} />
           <LastPerformanceNote perf={lastPerf} />
+          <VariationsNote items={variations} />
         </div>
         {showRestHere && <RestTimer remaining={restRemaining} total={restTotal} onAddTime={onAddRestTime} onSkip={onSkipRest} />}
       </div>
@@ -678,6 +716,7 @@ function ExerciseTrainer({
       <div className="bd" style={{ paddingBottom: 0 }}>
         <ExerciseMedia mediaPath={ex.media_path} mediaType={ex.media_type} />
         <LastPerformanceNote perf={lastPerf} />
+        <VariationsNote items={variations} />
       </div>
       <div style={{ overflowX: "auto" }}>
         <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 14 }}>
