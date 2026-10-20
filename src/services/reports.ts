@@ -88,6 +88,43 @@ export interface ExerciseSetEntry {
 }
 
 /** Todas las series completadas del cliente, con el nombre del ejercicio — para elegir un ejercicio y ver su progreso real entrenado a entrenado. */
+export interface DashboardHighlight {
+  bestEver: { exerciseName: string; loadKg: number } | null;
+  progress: { exerciseName: string; fromKg: number; toKg: number } | null;
+}
+
+/**
+ * Para Inicio del cliente: la mejor carga que levantó alguna vez (de
+ * cualquier ejercicio) y, del ejercicio que más entrenó en este período,
+ * cuánto subió desde la primera vez que lo registró hasta la última. Pensado
+ * para festejar, no para evaluar — por eso solo se arma si hay datos reales
+ * que mostrar, nunca con números inventados.
+ */
+export async function getDashboardHighlight(clientId: string): Promise<DashboardHighlight> {
+  const sets = await listExerciseSetsForClient(clientId, 365);
+  const withLoad = sets.filter((s) => s.load_kg != null) as (ExerciseSetEntry & { load_kg: number })[];
+  if (withLoad.length === 0) return { bestEver: null, progress: null };
+
+  const best = withLoad.reduce((max, s) => (s.load_kg > max.load_kg ? s : max), withLoad[0]);
+  const bestEver = { exerciseName: best.exercise_name, loadKg: best.load_kg };
+
+  const countByExercise = new Map<string, number>();
+  for (const s of withLoad) countByExercise.set(s.exercise_id, (countByExercise.get(s.exercise_id) ?? 0) + 1);
+  const mostTrainedId = [...countByExercise.entries()].sort((a, b) => b[1] - a[1])[0]?.[0];
+  const forMostTrained = withLoad.filter((s) => s.exercise_id === mostTrainedId).sort((a, b) => a.performed_at.localeCompare(b.performed_at));
+
+  let progress: DashboardHighlight["progress"] = null;
+  if (forMostTrained.length >= 2) {
+    const from = forMostTrained[0];
+    const to = forMostTrained[forMostTrained.length - 1];
+    if (to.load_kg > from.load_kg) {
+      progress = { exerciseName: from.exercise_name, fromKg: from.load_kg, toKg: to.load_kg };
+    }
+  }
+
+  return { bestEver, progress };
+}
+
 export async function listExerciseSetsForClient(clientId: string, sinceDays = 180): Promise<ExerciseSetEntry[]> {
   const since = new Date(Date.now() - sinceDays * 86400000).toISOString();
   const { data, error } = await supabase

@@ -170,6 +170,52 @@ export async function getTodaysSessionForClient(clientId: string): Promise<Today
   return { clientId, session: todaysSession, status: statuses[todaysSession.id] ?? "pending" };
 }
 
+export interface NextSession {
+  session: SessionRow;
+  dayLabel: string;
+  isToday: boolean;
+}
+
+/**
+ * Si hoy no hay nada asignado, busca la próxima rutina con día asignado —
+ * primero el resto de esta semana, si no la primera de la semana que
+ * sigue. Igual que getTodaysSessionForClient, solo funciona si el
+ * programa tiene fecha de inicio puesta (Planificación); si no, no hay
+ * forma de saber en qué semana real está el cliente.
+ */
+export async function getNextScheduledSessionForClient(clientId: string): Promise<NextSession | null> {
+  const program = await getActiveProgramForClient(clientId);
+  if (!program) return null;
+
+  const weeks = await listWeeks(program.id);
+  const week1 = weeks.find((w) => w.week_number === 1);
+  if (!week1?.start_date) return null;
+
+  const start = new Date(week1.start_date + "T00:00:00");
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  const daysSince = Math.floor((today.getTime() - start.getTime()) / 86400000);
+  if (daysSince < 0) return null;
+  const currentWeekNumber = Math.floor(daysSince / 7) + 1;
+  const todayDow = todayDayOfWeek();
+
+  const currentWeek = weeks.find((w) => w.week_number === currentWeekNumber);
+  if (currentWeek) {
+    const sessions = await listSessions(currentWeek.id);
+    const rest = sessions.filter((s) => s.day_of_week != null && s.day_of_week >= todayDow).sort((a, b) => (a.day_of_week ?? 0) - (b.day_of_week ?? 0));
+    if (rest[0]) return { session: rest[0], dayLabel: DAY_OF_WEEK_LABEL[rest[0].day_of_week!], isToday: rest[0].day_of_week === todayDow };
+  }
+
+  const nextWeek = weeks.find((w) => w.week_number === currentWeekNumber + 1);
+  if (nextWeek) {
+    const sessions = await listSessions(nextWeek.id);
+    const first = sessions.filter((s) => s.day_of_week != null).sort((a, b) => (a.day_of_week ?? 0) - (b.day_of_week ?? 0))[0];
+    if (first) return { session: first, dayLabel: DAY_OF_WEEK_LABEL[first.day_of_week!], isToday: false };
+  }
+
+  return null;
+}
+
 export async function listSessions(weekId: string): Promise<SessionRow[]> {
   const { data, error } = await supabase
     .from("sessions")
