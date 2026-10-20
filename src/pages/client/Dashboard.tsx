@@ -18,6 +18,7 @@ import { getTodayLog } from "../../services/wellness";
 import { listMessages } from "../../services/messages";
 import { listPayments, type PaymentRow } from "../../services/payments";
 import { getDashboardHighlight, type DashboardHighlight } from "../../services/reports";
+import { listAssessments } from "../../services/assessments";
 
 const SESSION_STATUS_LABEL: Record<TodaysSession["status"], string> = {
   pending: "Todavía no la empezaste",
@@ -39,6 +40,7 @@ export default function ClientDashboard() {
   const [nextPayment, setNextPayment] = useState<PaymentRow | null>(null);
   const [mainGoal, setMainGoal] = useState<string | null>(null);
   const [highlight, setHighlight] = useState<DashboardHighlight | null>(null);
+  const [daysSinceMeasurement, setDaysSinceMeasurement] = useState<number | null>(null);
 
   useEffect(() => {
     (async () => {
@@ -46,14 +48,22 @@ export default function ClientDashboard() {
         const cId = await getMyClientId();
         if (!cId) return;
         setClientId(cId);
-        const [session, wellness, messages, payments, clientProfile, dashHighlight] = await Promise.all([
+        const [session, wellness, messages, payments, clientProfile, dashHighlight, assessments] = await Promise.all([
           getTodaysSessionForClient(cId).catch(() => null),
           getTodayLog(cId).catch(() => null),
           listMessages(cId).catch(() => []),
           listPayments(cId).catch(() => []),
           getClientProfile(cId).catch(() => null),
           getDashboardHighlight(cId).catch(() => ({ bestEver: null, progress: null })),
+          listAssessments(cId).catch(() => []),
         ]);
+        if (assessments.length === 0) {
+          setDaysSinceMeasurement(null); // nunca registró nada — se avisa igual, abajo, sin un número de días
+        } else {
+          const last = new Date(assessments[0].assessed_at + "T00:00:00");
+          const diffDays = Math.floor((Date.now() - last.getTime()) / 86400000);
+          setDaysSinceMeasurement(diffDays);
+        }
         setTodaysSession(session);
         setWellnessDoneToday(!!wellness);
         setUnreadCount(messages.filter((m) => m.sender_id !== profile?.id && !m.read_at).length);
@@ -144,6 +154,19 @@ export default function ClientDashboard() {
             <div className="panel">
               <div className="hd"><h3>Tu progreso en fotos</h3></div>
               <div className="bd"><PhotoBeforeAfter clientId={clientId} restrictToShared={true} /></div>
+            </div>
+          )}
+
+          {(daysSinceMeasurement === null || daysSinceMeasurement >= 15) && (
+            <div className="panel">
+              <div className="bd" style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 10 }}>
+                <p className="note">
+                  {daysSinceMeasurement === null
+                    ? "Todavía no registraste tus medidas — probá cargarlas para empezar a ver tu progreso."
+                    : `Pasaron ${daysSinceMeasurement} días desde tu última medición. Es un buen momento para registrar de nuevo.`}
+                </p>
+                <button className="btn ghost" onClick={() => navigate(paths.clientAssessments)}>Registrar medidas</button>
+              </div>
             </div>
           )}
 

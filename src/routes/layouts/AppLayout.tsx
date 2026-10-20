@@ -68,6 +68,7 @@ const NAV: Record<Role, NavItem[]> = {
     { to: paths.clientRoutine, label: "Mi rutina", icon: Dumbbell },
     { to: paths.clientProgress, label: "Mi progreso", icon: Activity },
     { to: paths.clientWellness, label: "Bienestar", icon: Ruler, accent: "wellness" },
+    { to: paths.clientAssessments, label: "Mis evaluaciones", icon: ClipboardList },
     { to: paths.clientReports, label: "Mis reportes", icon: FileText },
     { to: paths.clientPayments, label: "Pagos", icon: CreditCard },
     { to: paths.clientMessages, label: "Mensajes", icon: MessageSquare },
