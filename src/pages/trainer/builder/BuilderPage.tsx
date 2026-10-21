@@ -316,9 +316,6 @@ export default function BuilderPage() {
                 <Copy size={14} /> {loadingAutoReg ? "Calculando…" : "Copiar a la semana siguiente"}
               </button>
             )}
-            <button className="btn ghost" style={{ padding: "5px 10px", fontSize: 13 }} onClick={() => setShowSaveAsTemplate(true)}>
-              <FileUp size={14} /> Guardar como plantilla
-            </button>
           </div>
 
           {sessionId && (
@@ -694,9 +691,14 @@ function SessionEditor({
       <div className="panel">
         <div className="hd">
           <h3>Añadir ejercicio</h3>
-          <button className="btn ghost" onClick={() => setShowImport(true)}>
-            <FileUp size={15} /> Importar rutina
-          </button>
+          <div style={{ display: "flex", gap: 8 }}>
+            <button className="btn ghost" onClick={() => setShowImport(true)}>
+              <FileUp size={15} /> Importar rutina
+            </button>
+            <button className="btn ghost" onClick={() => setShowSaveAsTemplate(true)}>
+              <FileUp size={15} /> Guardar como plantilla
+            </button>
+          </div>
         </div>
         <div className="bd">
           <label className="field-label">Tren del cuerpo a entrenar</label>
