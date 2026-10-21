@@ -3,6 +3,8 @@ import { Plus, Trash2, X, Copy, FileUp, ChevronLeft, ChevronRight } from "lucide
 import ImportRoutineModal, { applyImportedRows } from "./ImportRoutineModal";
 import Modal from "../../../components/ui/Modal";
 import { useToast } from "../../../contexts/ToastContext";
+import { useAuth } from "../../../contexts/AuthContext";
+import { listWorkoutTemplates, saveSessionAsTemplateDay, type WorkoutTemplateRow } from "../../../services/templates";
 import { listClients, type ClientRow } from "../../../services/clients";
 import { listPrograms, listWeeks, listMesocycles, createWeek, type ProgramRow, type WeekRow, type MesocycleRow } from "../../../services/programs";
 import {
@@ -314,6 +316,9 @@ export default function BuilderPage() {
                 <Copy size={14} /> {loadingAutoReg ? "Calculando…" : "Copiar a la semana siguiente"}
               </button>
             )}
+            <button className="btn ghost" style={{ padding: "5px 10px", fontSize: 13 }} onClick={() => setShowSaveAsTemplate(true)}>
+              <FileUp size={14} /> Guardar como plantilla
+            </button>
           </div>
 
           {sessionId && (
@@ -368,10 +373,12 @@ function SessionEditor({
   onRenamed: () => void;
 }) {
   const { notify } = useToast();
+  const { profile } = useAuth();
   const [session, setSession] = useState<SessionRow>(initialSession);
   const [blocks, setBlocks] = useState<SessionBlockRow[]>([]);
   const [items, setItems] = useState<WorkoutExerciseRow[]>([]);
   const [selected, setSelected] = useState<string[]>([]);
+  const [showSaveAsTemplate, setShowSaveAsTemplate] = useState(false);
   const [showImport, setShowImport] = useState(false);
   const [bodyFilter, setBodyFilter] = useState<"all" | "Superior" | "Inferior" | "Full body">("all");
   const [muscleFilter, setMuscleFilter] = useState("all");
@@ -751,7 +758,158 @@ function SessionEditor({
           }}
         />
       )}
+
+      {showSaveAsTemplate && profile && (
+        <SaveAsTemplateModal
+          organizationId={profile.organization_id!}
+          trainerId={profile.id}
+          session={session}
+          exercises={items}
+          onClose={() => setShowSaveAsTemplate(false)}
+          onSaved={() => {
+            setShowSaveAsTemplate(false);
+            notify(`"${session.name}" guardada como plantilla. Buscala en "Plantillas" para reutilizarla.`);
+          }}
+        />
+      )}
     </div>
+  );
+}
+
+function SaveAsTemplateModal({
+  organizationId,
+  trainerId,
+  session,
+  exercises,
+  onClose,
+  onSaved,
+}: {
+  organizationId: string;
+  trainerId: string;
+  session: SessionRow;
+  exercises: WorkoutExerciseRow[];
+  onClose: () => void;
+  onSaved: () => void;
+}) {
+  const { notify } = useToast();
+  const [templates, setTemplates] = useState<WorkoutTemplateRow[]>([]);
+  const [mode, setMode] = useState<"new" | "existing">("new");
+  const [templateId, setTemplateId] = useState("");
+  const [name, setName] = useState(session.name);
+  const [description, setDescription] = useState("");
+  const [goal, setGoal] = useState("");
+  const [level, setLevel] = useState("");
+  const [visibility, setVisibility] = useState<"private" | "organization">("private");
+  const [dayIndex, setDayIndex] = useState("1");
+  const [dayName, setDayName] = useState(session.name);
+  const [focus, setFocus] = useState("");
+  const [error, setError] = useState("");
+  const [saving, setSaving] = useState(false);
+
+  useEffect(() => {
+    listWorkoutTemplates().then(setTemplates).catch((e: any) => notify(e.message));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  const submit = async () => {
+    if (exercises.length === 0) {
+      setError("Esta rutina todavía no tiene ejercicios para guardar.");
+      return;
+    }
+    if (mode === "new" && !name.trim()) {
+      setError("Completa el nombre de la plantilla.");
+      return;
+    }
+    if (mode === "existing" && !templateId) {
+      setError("Elegí a qué plantilla sumar este día.");
+      return;
+    }
+    setError("");
+    setSaving(true);
+    try {
+      await saveSessionAsTemplateDay({
+        organizationId,
+        trainerId,
+        session,
+        exercises,
+        target:
+          mode === "new"
+            ? { kind: "new", name: name.trim(), description, goal, level, visibility }
+            : { kind: "existing", templateId },
+        dayIndex: Number(dayIndex) || 1,
+        dayName: dayName.trim() || session.name,
+        focus,
+      });
+      onSaved();
+    } catch (e: any) {
+      setError(e.message ?? "No pudimos guardar la plantilla.");
+      setSaving(false);
+    }
+  };
+
+  return (
+    <Modal title="Guardar como plantilla" onClose={onClose}>
+      <p className="note" style={{ marginBottom: 16 }}>
+        Guarda esta rutina (con sus ejercicios, series y cargas) como un día reutilizable, sin atarla a este cliente ni a este programa.
+      </p>
+
+      <div style={{ display: "flex", gap: 8, marginBottom: 16 }}>
+        <button className={`btn ${mode === "new" ? "" : "ghost"}`} style={{ padding: "6px 14px", fontSize: 13 }} onClick={() => setMode("new")}>
+          Nueva plantilla
+        </button>
+        <button className={`btn ${mode === "existing" ? "" : "ghost"}`} style={{ padding: "6px 14px", fontSize: 13 }} onClick={() => setMode("existing")} disabled={templates.length === 0}>
+          Sumar a una existente
+        </button>
+      </div>
+
+      {mode === "new" ? (
+        <>
+          <label className="field-label">Nombre de la plantilla</label>
+          <input className="input" style={{ marginBottom: 12 }} value={name} onChange={(e) => setName(e.target.value)} placeholder="Ej. Mi split de empuje-tirón-pierna" />
+          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12, marginBottom: 12 }}>
+            <div>
+              <label className="field-label">Objetivo (opcional)</label>
+              <input className="input" value={goal} onChange={(e) => setGoal(e.target.value)} />
+            </div>
+            <div>
+              <label className="field-label">Nivel (opcional)</label>
+              <input className="input" value={level} onChange={(e) => setLevel(e.target.value)} placeholder="Ej. Principiante" />
+            </div>
+          </div>
+          <label className="field-label">Descripción (opcional)</label>
+          <textarea className="input" style={{ minHeight: 50, marginBottom: 12 }} value={description} onChange={(e) => setDescription(e.target.value)} />
+          <label className="field-label">Visibilidad</label>
+          <select className="input" style={{ marginBottom: 16 }} value={visibility} onChange={(e) => setVisibility(e.target.value as "private" | "organization")}>
+            <option value="private">Solo yo</option>
+            <option value="organization">Todo mi equipo (si trabajás con asistentes)</option>
+          </select>
+        </>
+      ) : (
+        <>
+          <label className="field-label">Plantilla</label>
+          <select className="input" style={{ marginBottom: 16 }} value={templateId} onChange={(e) => setTemplateId(e.target.value)}>
+            <option value="">Elegí una plantilla</option>
+            {templates.map((t) => <option key={t.id} value={t.id}>{t.name}</option>)}
+          </select>
+        </>
+      )}
+
+      <div style={{ display: "grid", gridTemplateColumns: "1fr 2fr", gap: 12, marginBottom: 16 }}>
+        <div>
+          <label className="field-label">Día N°</label>
+          <input className="input" inputMode="numeric" value={dayIndex} onChange={(e) => setDayIndex(e.target.value.replace(/\D/g, ""))} />
+        </div>
+        <div>
+          <label className="field-label">Nombre de este día</label>
+          <input className="input" value={dayName} onChange={(e) => setDayName(e.target.value)} />
+        </div>
+      </div>
+      <label className="field-label">Foco de este día (opcional)</label>
+      <input className="input" style={{ marginBottom: 18 }} value={focus} onChange={(e) => setFocus(e.target.value)} placeholder="Ej. Espalda y bíceps" />
+
+      {error && <p className="error-text" style={{ marginBottom: 12 }}>{error}</p>}
+      <button className="btn" onClick={submit} disabled={saving}>{saving ? "Guardando…" : "Guardar"}</button>
+    </Modal>
   );
 }
 

@@ -7,7 +7,7 @@ export interface ProgramRow {
   id: string;
   organization_id: string;
   trainer_id: string;
-  client_id: string;
+  client_id: string | null;
   name: string;
   method: ProgramMethod;
   status: "draft" | "active" | "completed" | "archived";
@@ -133,6 +133,18 @@ export async function listPrograms(clientId?: string): Promise<ProgramRow[]> {
   return (data ?? []) as ProgramRow[];
 }
 
+/** Los programas guardados como plantilla (sin cliente asignado), para reutilizar con cualquier cliente. */
+export async function listTemplates(): Promise<ProgramRow[]> {
+  const { data, error } = await supabase.from("programs").select("*").eq("is_template", true).order("created_at", { ascending: false });
+  if (error) throw error;
+  return (data ?? []) as ProgramRow[];
+}
+
+export async function deleteProgram(id: string): Promise<void> {
+  const { error } = await supabase.from("programs").delete().eq("id", id);
+  if (error) throw error;
+}
+
 export async function listMesocycles(programId: string): Promise<MesocycleRow[]> {
   const { data, error } = await supabase
     .from("mesocycles")
@@ -243,11 +255,6 @@ export async function updateProgramName(id: string, name: string): Promise<void>
 /** Por defecto, un cliente solo puede completar una rutina por día. Esto lo habilita a hacer más, para este programa en particular (ej. dobles turnos, AM/PM). */
 export async function setAllowMultipleSessionsPerDay(id: string, allow: boolean): Promise<void> {
   const { error } = await supabase.from("programs").update({ allow_multiple_sessions_per_day: allow }).eq("id", id);
-  if (error) throw error;
-}
-
-export async function deleteProgram(id: string): Promise<void> {
-  const { error } = await supabase.from("programs").delete().eq("id", id);
   if (error) throw error;
 }
 

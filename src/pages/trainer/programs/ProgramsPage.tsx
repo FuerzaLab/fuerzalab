@@ -31,6 +31,7 @@ import {
   type WeekRow,
 } from "../../../services/programs";
 import Loading from "../../../components/ui/Loading";
+import { cloneProgram } from "../../../services/sessions";
 
 const PHASE_COLOR: Record<string, string> = {
   accumulation: "#2E8B6E",
@@ -53,6 +54,7 @@ export default function ProgramsPage() {
   const [blockActionBusy, setBlockActionBusy] = useState(false);
   const [showNew, setShowNew] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [savingTemplate, setSavingTemplate] = useState(false);
   const [deleteTarget, setDeleteTarget] = useState<ProgramRow | null>(null);
 
   useEffect(() => {
@@ -190,7 +192,31 @@ export default function ProgramsPage() {
       {program && (
         <>
           <div className="panel" style={{ marginBottom: 18 }}>
-            <div className="hd"><h3>Datos del programa</h3></div>
+            <div className="hd">
+              <h3>Datos del programa</h3>
+              <button
+                className="btn ghost"
+                disabled={savingTemplate}
+                onClick={async () => {
+                  setSavingTemplate(true);
+                  try {
+                    await cloneProgram({
+                      sourceProgram: program,
+                      organizationId: profile.organization_id!,
+                      trainerId: profile.id,
+                      name: `${program.name} (plantilla)`,
+                      targetClientId: null,
+                    });
+                    notify(`Guardado como plantilla. Buscalo en "Plantillas" para usarlo con otro cliente.`);
+                  } catch (e: any) {
+                    notify(e.message);
+                  }
+                  setSavingTemplate(false);
+                }}
+              >
+                {savingTemplate ? "Guardando…" : "Guardar como plantilla"}
+              </button>
+            </div>
             <div className="bd">
               <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(200px,1fr))", gap: 14, marginBottom: 14 }}>
                 <div>

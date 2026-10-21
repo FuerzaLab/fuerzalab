@@ -216,3 +216,42 @@ export async function createClientWithInvite(params: {
 
   return { client: client as ClientRow, code: invite.code as string };
 }
+
+export interface ClientNoteRow {
+  id: string;
+  client_id: string;
+  body: string;
+  created_at: string;
+  updated_at: string;
+}
+
+/** Notas privadas del entrenador sobre un cliente — el cliente nunca las ve, la base de datos lo impide directamente. */
+export async function listClientNotes(clientId: string): Promise<ClientNoteRow[]> {
+  const { data, error } = await supabase
+    .from("client_notes")
+    .select("id, client_id, body, created_at, updated_at")
+    .eq("client_id", clientId)
+    .order("created_at", { ascending: false });
+  if (error) throw error;
+  return (data ?? []) as ClientNoteRow[];
+}
+
+export async function createClientNote(params: { organizationId: string; trainerId: string; clientId: string; body: string }): Promise<ClientNoteRow> {
+  const { data, error } = await supabase
+    .from("client_notes")
+    .insert({ organization_id: params.organizationId, trainer_id: params.trainerId, client_id: params.clientId, body: params.body })
+    .select("id, client_id, body, created_at, updated_at")
+    .single();
+  if (error) throw error;
+  return data as ClientNoteRow;
+}
+
+export async function updateClientNote(id: string, body: string): Promise<void> {
+  const { error } = await supabase.from("client_notes").update({ body }).eq("id", id);
+  if (error) throw error;
+}
+
+export async function deleteClientNote(id: string): Promise<void> {
+  const { error } = await supabase.from("client_notes").delete().eq("id", id);
+  if (error) throw error;
+}

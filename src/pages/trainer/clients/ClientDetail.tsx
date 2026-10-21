@@ -14,10 +14,15 @@ import {
   resetOnboarding,
   getClientDeleteBlockers,
   deleteClient,
+  listClientNotes,
+  createClientNote,
+  updateClientNote,
+  deleteClientNote,
   PAR_Q_QUESTIONS,
   type ClientRow,
   type ClientProfileRow,
   type ClientStatus,
+  type ClientNoteRow,
 } from "../../../services/clients";
 import { paths } from "../../../routes/paths";
 import Loading from "../../../components/ui/Loading";
@@ -288,6 +293,8 @@ export default function ClientDetail() {
         </div>
       </div>
 
+      <ClientNotesPanel clientId={client.id} organizationId={client.organization_id} trainerId={client.trainer_id} />
+
       {toArchive && (
         <ConfirmModal
           title="Dar de baja"
@@ -395,5 +402,120 @@ function DeleteClientModal({ client, onClose, onDeleted }: { client: ClientRow; 
         </>
       )}
     </Modal>
+  );
+}
+
+function ClientNotesPanel({ clientId, organizationId, trainerId }: { clientId: string; organizationId: string; trainerId: string }) {
+  const { notify } = useToast();
+  const [notes, setNotes] = useState<ClientNoteRow[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [newBody, setNewBody] = useState("");
+  const [saving, setSaving] = useState(false);
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [editingBody, setEditingBody] = useState("");
+
+  useEffect(() => {
+    listClientNotes(clientId)
+      .then(setNotes)
+      .catch((e: any) => notify(e.message))
+      .finally(() => setLoading(false));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [clientId]);
+
+  const add = async () => {
+    if (!newBody.trim()) return;
+    setSaving(true);
+    try {
+      const created = await createClientNote({ organizationId, trainerId, clientId, body: newBody.trim() });
+      setNotes((ns) => [created, ...ns]);
+      setNewBody("");
+    } catch (e: any) {
+      notify(e.message);
+    }
+    setSaving(false);
+  };
+
+  return (
+    <div className="panel" style={{ marginTop: 18 }}>
+      <div className="hd">
+        <h3>Notas privadas</h3>
+      </div>
+      <div className="bd">
+        <p className="note" style={{ marginBottom: 14 }}>
+          Solo las ves vos (y tu equipo, si tiene permiso) — el cliente nunca tiene acceso a esta sección.
+        </p>
+        <textarea
+          className="input"
+          style={{ minHeight: 60, marginBottom: 10 }}
+          placeholder="Ej. Llegó tarde dos veces esta semana, revisar horario."
+          value={newBody}
+          onChange={(e) => setNewBody(e.target.value)}
+        />
+        <button className="btn" onClick={add} disabled={saving || !newBody.trim()} style={{ marginBottom: 18 }}>
+          {saving ? "Guardando…" : "Agregar nota"}
+        </button>
+
+        {loading ? (
+          <Loading />
+        ) : notes.length === 0 ? (
+          <p className="note">Todavía no hay notas cargadas.</p>
+        ) : (
+          <div style={{ display: "grid", gap: 10 }}>
+            {notes.map((n) => (
+              <div key={n.id} style={{ borderTop: "1px solid var(--line)", paddingTop: 10 }}>
+                <div className="note" style={{ marginBottom: 4 }}>{new Date(n.created_at).toLocaleString("es")}</div>
+                {editingId === n.id ? (
+                  <>
+                    <textarea className="input" style={{ minHeight: 50, marginBottom: 8 }} value={editingBody} onChange={(e) => setEditingBody(e.target.value)} />
+                    <div style={{ display: "flex", gap: 8 }}>
+                      <button
+                        className="btn ghost"
+                        style={{ padding: "4px 10px", fontSize: 12.5 }}
+                        onClick={async () => {
+                          await updateClientNote(n.id, editingBody.trim());
+                          setNotes((ns) => ns.map((x) => (x.id === n.id ? { ...x, body: editingBody.trim() } : x)));
+                          setEditingId(null);
+                        }}
+                      >
+                        Guardar
+                      </button>
+                      <button className="btn ghost" style={{ padding: "4px 10px", fontSize: 12.5 }} onClick={() => setEditingId(null)}>
+                        Cancelar
+                      </button>
+                    </div>
+                  </>
+                ) : (
+                  <>
+                    <p style={{ margin: "0 0 6px", whiteSpace: "pre-wrap" }}>{n.body}</p>
+                    <div style={{ display: "flex", gap: 8 }}>
+                      <button
+                        className="btn ghost"
+                        style={{ padding: "4px 10px", fontSize: 12.5 }}
+                        onClick={() => {
+                          setEditingId(n.id);
+                          setEditingBody(n.body);
+                        }}
+                      >
+                        Editar
+                      </button>
+                      <button
+                        className="btn ghost"
+                        style={{ padding: "4px 10px", fontSize: 12.5, color: "var(--bad)" }}
+                        onClick={async () => {
+                          await deleteClientNote(n.id);
+                          setNotes((ns) => ns.filter((x) => x.id !== n.id));
+                        }}
+                      >
+                        Eliminar
+                      </button>
+                    </div>
+                  </>
+                )}
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+    </div>
   );
 }

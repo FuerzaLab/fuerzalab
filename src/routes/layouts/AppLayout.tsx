@@ -16,6 +16,7 @@ import {
   Activity,
   Ruler,
   Camera,
+  Copy,
 } from "lucide-react";
 import { useAuth } from "../../contexts/AuthContext";
 import { paths } from "../paths";
@@ -48,6 +49,7 @@ const NAV: Record<Role, NavItem[]> = {
     { to: paths.trainerExercises, label: "Ejercicios", icon: Dumbbell, group: "Entrenamiento" },
     { to: paths.trainerBuilder, label: "Constructor de rutinas", icon: ClipboardList, group: "Entrenamiento" },
     { to: paths.trainerPrograms, label: "Planificación", icon: CalendarRange, group: "Entrenamiento" },
+    { to: paths.trainerTemplates, label: "Plantillas", icon: Copy, group: "Entrenamiento" },
     { to: paths.trainerAssessments, label: "Evaluaciones", icon: Ruler, group: "Entrenamiento" },
     { to: paths.trainerWellness, label: "Bienestar", icon: Activity, group: "Entrenamiento", accent: "wellness" },
     { to: paths.trainerProgressPhotos, label: "Fotos", icon: Camera, group: "Entrenamiento" },

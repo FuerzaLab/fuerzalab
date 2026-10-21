@@ -1,6 +1,6 @@
 import { supabase } from "../lib/supabase";
 import { getActiveProgramForClient, getSessionStatuses } from "./training";
-import { listWeeks } from "./programs";
+import { listWeeks, listMesocycles, syncWeekBlocks, type ProgramRow } from "./programs";
 
 export type BlockKind = "warmup" | "main" | "cardio" | "mobility" | "flexibility" | "cooldown";
 
@@ -406,6 +406,128 @@ export async function duplicateSession(session: SessionRow, newSortOrder: number
  * una versión más vieja de la app) — con un intercambio simple, dos
  * rutinas con el mismo número no se mueven entre sí.
  */
+/** Igual que duplicateSession, pero apuntando a cualquier semana (incluso de otro programa) — para clonar un programa entero como plantilla o a partir de una. */
+export async function cloneSessionToWeek(session: SessionRow, targetWeekId: string, sortOrder: number): Promise<SessionRow> {
+  const newSession = await createSession(targetWeekId, session.name, sortOrder);
+  if (session.strength_type) await updateSessionStrengthType(newSession.id, session.strength_type);
+  if (session.day_of_week) await updateSessionDay(newSession.id, session.day_of_week);
+
+  const [oldBlocks, newBlocks, exercises] = await Promise.all([
+    listSessionBlocks(session.id),
+    listSessionBlocks(newSession.id),
+    listWorkoutExercises(session.id),
+  ]);
+  const blockKindToNewId = new Map(newBlocks.map((b) => [b.kind, b.id]));
+  const oldBlockIdToKind = new Map(oldBlocks.map((b) => [b.id, b.kind]));
+
+  for (const ex of exercises) {
+    const kind = ex.block_id ? oldBlockIdToKind.get(ex.block_id) : undefined;
+    const newBlockId = kind ? blockKindToNewId.get(kind) : newBlocks[0]?.id;
+    if (!newBlockId) continue;
+    await supabase.from("workout_exercises").insert({
+      session_id: newSession.id,
+      block_id: newBlockId,
+      exercise_id: ex.exercise_id,
+      sort_order: ex.sort_order,
+      sets: ex.sets,
+      reps_min: ex.reps_min,
+      reps_max: ex.reps_max,
+      load_value: ex.load_value,
+      rir: ex.rir,
+      rest_s: ex.rest_s,
+      tempo: ex.tempo,
+      superset_group: ex.superset_group,
+      duration_min: ex.duration_min,
+      distance_km: ex.distance_km,
+      steps_target: ex.steps_target,
+      hr_zone: ex.hr_zone,
+      prescription_type: ex.duration_min != null ? "time" : "reps",
+    });
+  }
+  return newSession;
+}
+
+/**
+ * Clona un programa entero (bloques, semanas, rutinas, ejercicios) en uno
+ * nuevo — hacia un cliente (para usar una plantilla) o sin cliente (para
+ * guardar un programa de un cliente como plantilla reutilizable).
+ */
+export async function cloneProgram(params: {
+  sourceProgram: ProgramRow;
+  organizationId: string;
+  trainerId: string;
+  name: string;
+  targetClientId: string | null;
+}): Promise<ProgramRow> {
+  const asTemplate = params.targetClientId == null;
+  const [sourceMesos, sourceWeeks] = await Promise.all([listMesocycles(params.sourceProgram.id), listWeeks(params.sourceProgram.id)]);
+
+  const { data: program, error: progErr } = await supabase
+    .from("programs")
+    .insert({
+      organization_id: params.organizationId,
+      trainer_id: params.trainerId,
+      client_id: params.targetClientId,
+      name: params.name,
+      method: params.sourceProgram.method,
+      status: asTemplate ? "draft" : "active",
+      is_template: asTemplate,
+      source_template_id: !asTemplate && params.sourceProgram.is_template ? params.sourceProgram.id : null,
+    })
+    .select()
+    .single();
+  if (progErr) throw progErr;
+
+  const { data: macro, error: macroErr } = await supabase
+    .from("macrocycles")
+    .insert({ program_id: program.id, name: "Programa completo" })
+    .select()
+    .single();
+  if (macroErr) throw macroErr;
+
+  for (let i = 0; i < sourceMesos.length; i++) {
+    const m = sourceMesos[i];
+    const { data: meso, error: mesoErr } = await supabase
+      .from("mesocycles")
+      .insert({
+        macrocycle_id: macro.id,
+        sort_order: i,
+        name: m.name,
+        phase: m.phase,
+        objective: m.objective,
+        duration_weeks: m.duration_weeks,
+        frequency: m.frequency,
+        volume_focus: m.volume_focus,
+        intensity_focus: m.intensity_focus,
+        progression_criteria: m.progression_criteria,
+      })
+      .select()
+      .single();
+    if (mesoErr) throw mesoErr;
+    await supabase.from("training_blocks").insert({ mesocycle_id: meso.id, name: m.name });
+  }
+
+  const totalWeeks = sourceWeeks.length;
+  if (totalWeeks > 0) {
+    const weekRows = Array.from({ length: totalWeeks }, (_, i) => ({ program_id: program.id, week_number: i + 1 }));
+    const { error: weeksErr } = await supabase.from("weeks").insert(weekRows);
+    if (weeksErr) throw weeksErr;
+  }
+  await syncWeekBlocks(program.id);
+
+  const newWeeks = await listWeeks(program.id);
+  for (let i = 0; i < sourceWeeks.length; i++) {
+    const newWeek = newWeeks[i];
+    if (!newWeek) continue;
+    const sourceSessions = await listSessions(sourceWeeks[i].id);
+    for (let j = 0; j < sourceSessions.length; j++) {
+      await cloneSessionToWeek(sourceSessions[j], newWeek.id, j);
+    }
+  }
+
+  return program as ProgramRow;
+}
+
 export async function reorderSessions(orderedIds: string[]): Promise<void> {
   const results = await Promise.all(orderedIds.map((id, i) => supabase.from("sessions").update({ sort_order: i }).eq("id", id)));
   const firstError = results.find((r) => r.error)?.error;
