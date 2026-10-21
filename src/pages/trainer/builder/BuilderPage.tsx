@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { Plus, Trash2, X, Copy, FileUp, ChevronLeft, ChevronRight } from "lucide-react";
+import { Plus, Trash2, X, Copy, FileUp, ChevronLeft, ChevronRight, ChevronUp, ChevronDown } from "lucide-react";
 import ImportRoutineModal, { applyImportedRows } from "./ImportRoutineModal";
 import Modal from "../../../components/ui/Modal";
 import { useToast } from "../../../contexts/ToastContext";
@@ -435,6 +435,23 @@ function SessionEditor({
     setItems((its) => its.filter((it) => it.id !== id));
   };
 
+  const moveItem = async (id: string, direction: -1 | 1) => {
+    const moved = items.find((it) => it.id === id);
+    if (!moved) return;
+    const blockRows = items.filter((it) => it.block_id === moved.block_id).sort((a, b) => a.sort_order - b.sort_order);
+    const idx = blockRows.findIndex((r) => r.id === id);
+    const swapIdx = idx + direction;
+    if (swapIdx < 0 || swapIdx >= blockRows.length) return;
+    const ids = blockRows.map((r) => r.id);
+    [ids[idx], ids[swapIdx]] = [ids[swapIdx], ids[idx]];
+    try {
+      await Promise.all(ids.map((rid, i) => updateWorkoutExercise(rid, { sort_order: i })));
+      setItems((its) => its.map((it) => (ids.includes(it.id) ? { ...it, sort_order: ids.indexOf(it.id) } : it)));
+    } catch (e: any) {
+      notify(e.message);
+    }
+  };
+
   const addExercise = async () => {
     if (!pickExercise) {
       notify("Elige un ejercicio de la lista.");
@@ -584,7 +601,7 @@ function SessionEditor({
       )}
 
       {BLOCK_ORDER.map((kind) => {
-        const rows = items.filter((it) => blockByKind[kind] && it.block_id === blockByKind[kind].id);
+        const rows = items.filter((it) => blockByKind[kind] && it.block_id === blockByKind[kind].id).sort((a, b) => a.sort_order - b.sort_order);
         if (!rows.length) return null;
         const labels = groupLabels(rows);
         const isCardio = kind === "cardio";
@@ -620,7 +637,7 @@ function SessionEditor({
                   </tr>
                 </thead>
                 <tbody>
-                  {rows.map((it) => (
+                  {rows.map((it, i) => (
                     <tr key={it.id} style={{ borderTop: "1px solid var(--line)" }}>
                       <td style={{ padding: "8px 10px" }}>
                         <input type="checkbox" checked={selected.includes(it.id)} onChange={() => toggleSelect(it.id)} />
@@ -675,6 +692,22 @@ function SessionEditor({
                         </>
                       )}
                       <td style={{ padding: "8px 10px" }}>
+                        <button
+                          aria-label={`Subir ${it.exercise_name}`}
+                          onClick={() => moveItem(it.id, -1)}
+                          disabled={i === 0}
+                          style={{ border: 0, background: "none", color: i === 0 ? "var(--line)" : "var(--muted)", cursor: i === 0 ? "default" : "pointer" }}
+                        >
+                          <ChevronUp size={14} />
+                        </button>
+                        <button
+                          aria-label={`Bajar ${it.exercise_name}`}
+                          onClick={() => moveItem(it.id, 1)}
+                          disabled={i === rows.length - 1}
+                          style={{ border: 0, background: "none", color: i === rows.length - 1 ? "var(--line)" : "var(--muted)", cursor: i === rows.length - 1 ? "default" : "pointer" }}
+                        >
+                          <ChevronDown size={14} />
+                        </button>
                         <button aria-label="Quitar ejercicio" onClick={() => removeItem(it.id)} style={{ border: 0, background: "none", color: "var(--muted)", cursor: "pointer" }}>
                           <Trash2 size={15} />
                         </button>
