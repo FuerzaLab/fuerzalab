@@ -95,15 +95,69 @@ export interface ExerciseVariationRow {
   notes: string | null;
 }
 
-/** Las alternativas, progresiones y regresiones ya cargadas para un ejercicio, con el nombre del ejercicio relacionado. */
+const INVERSE_RELATION: Record<VariationRelation, VariationRelation> = {
+  variant: "variant",
+  progression: "regression",
+  regression: "progression",
+};
+
+/**
+ * Las alternativas, progresiones y regresiones ya cargadas para un
+ * ejercicio — mirando el vínculo en los dos sentidos: si lo cargaste
+ * desde el otro ejercicio (ej. "A es progresión de B"), acá también
+ * aparece desde B ("A" como progresión), no solo desde donde lo cargaste
+ * originalmente. Progresión y regresión se invierten según desde qué
+ * lado se mira; alternativa es la misma para los dos.
+ */
 export async function listVariationsFor(exerciseId: string): Promise<ExerciseVariationRow[]> {
-  const { data, error } = await supabase
-    .from("exercise_variations")
-    .select("id, exercise_id, related_exercise_id, relation, sort_order, notes, exercises:related_exercise_id(name)")
-    .eq("exercise_id", exerciseId)
-    .order("sort_order");
-  if (error) throw error;
-  return (data ?? []).map((row: any) => ({ ...row, related_exercise_name: row.exercises?.name ?? "" })) as ExerciseVariationRow[];
+  // La tabla tiene dos columnas que apuntan a exercises (exercise_id y
+  // related_exercise_id) — unir ambos sentidos en una sola consulta con
+  // join puede ser ambiguo según cómo lo resuelva el servidor, así que acá
+  // se evita del todo: se traen los vínculos en texto plano, y los nombres
+  // de los ejercicios relacionados se resuelven aparte, con una consulta
+  // simple a la tabla de ejercicios.
+  const [forward, backward] = await Promise.all([
+    supabase
+      .from("exercise_variations")
+      .select("id, exercise_id, related_exercise_id, relation, sort_order, notes")
+      .eq("exercise_id", exerciseId)
+      .order("sort_order"),
+    supabase
+      .from("exercise_variations")
+      .select("id, exercise_id, related_exercise_id, relation, sort_order, notes")
+      .eq("related_exercise_id", exerciseId)
+      .order("sort_order"),
+  ]);
+  if (forward.error) throw forward.error;
+  if (backward.error) throw backward.error;
+
+  const fwd = (forward.data ?? []).map((row: any) => ({ ...row, otherExerciseId: row.related_exercise_id as string }));
+  const bwd = (backward.data ?? []).map((row: any) => ({
+    id: row.id,
+    exercise_id: exerciseId,
+    related_exercise_id: row.exercise_id,
+    otherExerciseId: row.exercise_id as string,
+    relation: INVERSE_RELATION[row.relation as VariationRelation],
+    sort_order: row.sort_order,
+    notes: row.notes,
+  }));
+  const combined = [...fwd, ...bwd];
+  if (combined.length === 0) return [];
+
+  const otherIds = [...new Set(combined.map((r) => r.otherExerciseId))];
+  const { data: names, error: namesErr } = await supabase.from("exercises").select("id, name").in("id", otherIds);
+  if (namesErr) throw namesErr;
+  const nameById = new Map((names ?? []).map((n: any) => [n.id, n.name]));
+
+  return combined.map((row) => ({
+    id: row.id,
+    exercise_id: row.exercise_id,
+    related_exercise_id: row.related_exercise_id,
+    related_exercise_name: nameById.get(row.otherExerciseId) ?? "",
+    relation: row.relation,
+    sort_order: row.sort_order,
+    notes: row.notes,
+  })) as ExerciseVariationRow[];
 }
 
 export async function addVariation(params: {

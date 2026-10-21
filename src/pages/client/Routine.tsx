@@ -275,7 +275,7 @@ export function TrainSession({ sessionId, onExit, backLabel = "Volver a mi rutin
       setLastPerf(Object.fromEntries(perfEntries));
 
       const variationEntries = await Promise.all(
-        uniqueExerciseIds.map(async (exId) => [exId, await listVariationsFor(exId).catch(() => [])] as const)
+        uniqueExerciseIds.map(async (exId) => [exId, await listVariationsFor(exId).catch((e: any) => { notify(`No pudimos cargar las alternativas: ${e.message}`); return []; })] as const)
       );
       setVariations(Object.fromEntries(variationEntries));
     } catch (e: any) {
