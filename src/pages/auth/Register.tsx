@@ -3,6 +3,7 @@ import { Link, useSearchParams } from "react-router-dom";
 import { useAuth } from "../../contexts/AuthContext";
 import { supabase } from "../../lib/supabase";
 import { paths } from "../../routes/paths";
+import PasswordInput from "../../components/ui/PasswordInput";
 
 interface InvitePreview {
   valid: boolean;
@@ -144,24 +145,20 @@ export default function Register() {
       />
 
       <label className="field-label" htmlFor="password">Contraseña</label>
-      <input
+      <PasswordInput
         id="password"
-        type="password"
-        className="input"
         style={{ marginBottom: 14 }}
         value={password}
-        onChange={(e) => setPassword(e.target.value)}
+        onChange={setPassword}
         autoComplete="new-password"
       />
 
       <label className="field-label" htmlFor="confirmPassword">Confirmar contraseña</label>
-      <input
+      <PasswordInput
         id="confirmPassword"
-        type="password"
-        className="input"
         style={{ marginBottom: 8 }}
         value={confirmPassword}
-        onChange={(e) => setConfirmPassword(e.target.value)}
+        onChange={setConfirmPassword}
         autoComplete="new-password"
       />
 

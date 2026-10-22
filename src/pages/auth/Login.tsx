@@ -2,6 +2,7 @@ import { useState, type FormEvent } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import { useAuth } from "../../contexts/AuthContext";
 import { paths } from "../../routes/paths";
+import PasswordInput from "../../components/ui/PasswordInput";
 
 export default function Login() {
   const { signIn } = useAuth();
@@ -51,13 +52,11 @@ export default function Login() {
       />
 
       <label className="field-label" htmlFor="password">Contraseña</label>
-      <input
+      <PasswordInput
         id="password"
-        type="password"
-        className="input"
         style={{ marginBottom: 8 }}
         value={password}
-        onChange={(e) => setPassword(e.target.value)}
+        onChange={setPassword}
         autoComplete="current-password"
       />
 

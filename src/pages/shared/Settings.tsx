@@ -2,6 +2,7 @@ import { useState } from "react";
 import { useAuth } from "../../contexts/AuthContext";
 import { useToast } from "../../contexts/ToastContext";
 import { supabase } from "../../lib/supabase";
+import PasswordInput from "../../components/ui/PasswordInput";
 
 export default function Settings() {
   const { profile, updatePassword, refreshProfile } = useAuth();
@@ -69,9 +70,9 @@ export default function Settings() {
         <div className="hd"><h3>Cambiar contraseña</h3></div>
         <div className="bd">
           <label className="field-label">Nueva contraseña</label>
-          <input type="password" className="input" style={{ marginBottom: 12 }} value={newPassword} onChange={(e) => setNewPassword(e.target.value)} />
+          <PasswordInput style={{ marginBottom: 12 }} value={newPassword} onChange={setNewPassword} />
           <label className="field-label">Confirmar contraseña</label>
-          <input type="password" className="input" style={{ marginBottom: 12 }} value={confirmPassword} onChange={(e) => setConfirmPassword(e.target.value)} />
+          <PasswordInput style={{ marginBottom: 12 }} value={confirmPassword} onChange={setConfirmPassword} />
           {passwordError && <p className="error-text" style={{ marginBottom: 12 }}>{passwordError}</p>}
           <button className="btn" onClick={changePassword} disabled={savingPassword}>{savingPassword ? "Guardando…" : "Cambiar contraseña"}</button>
         </div>

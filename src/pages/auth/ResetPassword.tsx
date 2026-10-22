@@ -2,6 +2,7 @@ import { useState, type FormEvent } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "../../contexts/AuthContext";
 import { paths } from "../../routes/paths";
+import PasswordInput from "../../components/ui/PasswordInput";
 
 export default function ResetPassword() {
   const { updatePassword } = useAuth();
@@ -45,24 +46,20 @@ export default function ResetPassword() {
       </p>
 
       <label className="field-label" htmlFor="password">Nueva contraseña</label>
-      <input
+      <PasswordInput
         id="password"
-        type="password"
-        className="input"
         style={{ marginBottom: 14 }}
         value={password}
-        onChange={(e) => setPassword(e.target.value)}
+        onChange={setPassword}
         autoFocus
       />
 
       <label className="field-label" htmlFor="confirmPassword">Confirmar contraseña</label>
-      <input
+      <PasswordInput
         id="confirmPassword"
-        type="password"
-        className="input"
         style={{ marginBottom: 8 }}
         value={confirmPassword}
-        onChange={(e) => setConfirmPassword(e.target.value)}
+        onChange={setConfirmPassword}
       />
 
       {error && <p className="error-text" style={{ margin: "10px 0" }}>{error}</p>}
