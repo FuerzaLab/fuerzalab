@@ -17,6 +17,7 @@ import {
   Ruler,
   Camera,
   Copy,
+  CalendarClock,
 } from "lucide-react";
 import { useAuth } from "../../contexts/AuthContext";
 import { paths } from "../paths";
@@ -42,6 +43,7 @@ const NAV: Record<Role, NavItem[]> = {
   trainer: [
     { to: paths.trainerDashboard, label: "Inicio", icon: LayoutDashboard, group: "Hoy" },
     { to: paths.trainerRunSession, label: "Entrenar con cliente", icon: Dumbbell, group: "Hoy" },
+    { to: paths.trainerAgenda, label: "Agenda", icon: CalendarClock, group: "Hoy" },
 
     { to: paths.trainerClients, label: "Clientes", icon: Users, group: "Clientes" },
     { to: paths.trainerMessages, label: "Mensajes", icon: MessageSquare, group: "Clientes" },

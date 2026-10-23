@@ -41,6 +41,7 @@ import ClientReports from "../pages/client/Reports";
 import ProgressPhotosPage from "../pages/trainer/progress-photos/ProgressPhotosPage";
 import SuggestionsPage from "../pages/trainer/suggestions/SuggestionsPage";
 import TemplatesPage from "../pages/trainer/templates/TemplatesPage";
+import AgendaPage from "../pages/trainer/agenda/AgendaPage";
 import RunSessionPage from "../pages/trainer/run-session/RunSessionPage";
 import ClientProgressPhotos from "../pages/client/ProgressPhotos";
 
@@ -82,6 +83,7 @@ export default function AppRoutes() {
             <Route path={paths.trainerClientDetailPattern} element={<ClientDetail />} />
             <Route path={paths.trainerExercises} element={<ExercisesPage scope="trainer" />} />
             <Route path={paths.trainerTemplates} element={<TemplatesPage />} />
+            <Route path={paths.trainerAgenda} element={<AgendaPage />} />
             <Route path={paths.trainerPrograms} element={<ProgramsPage />} />
             <Route path={paths.trainerAssessments} element={<TrainerAssessmentsPage />} />
             <Route path={paths.trainerWellness} element={<TrainerWellnessPage />} />
