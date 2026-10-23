@@ -528,6 +528,39 @@ export async function cloneProgram(params: {
   return program as ProgramRow;
 }
 
+export type WeekStatus = "empty" | "planned" | "started";
+
+export const WEEK_STATUS_COLOR: Record<WeekStatus, string> = {
+  empty: "var(--muted)",
+  planned: "var(--pri)",
+  started: "var(--ok)",
+};
+export const WEEK_STATUS_LABEL: Record<WeekStatus, string> = {
+  empty: "Vacía, sin rutinas",
+  planned: "Tiene rutinas asignadas",
+  started: "Ya empezó a trabajarse",
+};
+
+/**
+ * Para cada semana: vacía (sin ninguna rutina), con rutinas asignadas pero
+ * sin empezar, o ya en curso (alguna rutina con al menos una serie
+ * marcada). Se usa igual en el Constructor, en Mi rutina y en Entrenar con
+ * un cliente, para que el color signifique lo mismo en los tres lados.
+ */
+export async function computeWeekStatuses(weekIds: string[]): Promise<Record<string, WeekStatus>> {
+  const sessionsByWeek = await Promise.all(weekIds.map((wId) => listSessions(wId)));
+  const allSessionIds = sessionsByWeek.flat().map((s) => s.id);
+  const statuses = allSessionIds.length ? await getSessionStatuses(allSessionIds) : {};
+  const out: Record<string, WeekStatus> = {};
+  weekIds.forEach((wId, i) => {
+    const sessions = sessionsByWeek[i];
+    if (sessions.length === 0) out[wId] = "empty";
+    else if (sessions.some((s) => (statuses[s.id] ?? "pending") !== "pending")) out[wId] = "started";
+    else out[wId] = "planned";
+  });
+  return out;
+}
+
 export async function reorderSessions(orderedIds: string[]): Promise<void> {
   const results = await Promise.all(orderedIds.map((id, i) => supabase.from("sessions").update({ sort_order: i }).eq("id", id)));
   const firstError = results.find((r) => r.error)?.error;

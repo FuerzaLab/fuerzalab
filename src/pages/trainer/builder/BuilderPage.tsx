@@ -5,6 +5,7 @@ import Modal from "../../../components/ui/Modal";
 import { useToast } from "../../../contexts/ToastContext";
 import { useAuth } from "../../../contexts/AuthContext";
 import { listWorkoutTemplates, saveSessionAsTemplateDay, type WorkoutTemplateRow } from "../../../services/templates";
+import { computeWeekStatuses, WEEK_STATUS_COLOR, WEEK_STATUS_LABEL, type WeekStatus } from "../../../services/sessions";
 import { listClients, type ClientRow } from "../../../services/clients";
 import { listPrograms, listWeeks, listMesocycles, createWeek, type ProgramRow, type WeekRow, type MesocycleRow } from "../../../services/programs";
 import {
@@ -54,6 +55,7 @@ export default function BuilderPage() {
   const [programs, setPrograms] = useState<ProgramRow[]>([]);
   const [programId, setProgramId] = useState("");
   const [weeks, setWeeks] = useState<WeekRow[]>([]);
+  const [weekStatus, setWeekStatus] = useState<Record<string, WeekStatus>>({});
   const [mesos, setMesos] = useState<MesocycleRow[]>([]);
   const [creatingWeek, setCreatingWeek] = useState(false);
   const plannedWeeks = mesos.reduce((t, m) => t + (m.duration_weeks ?? 0), 0);
@@ -92,12 +94,19 @@ export default function BuilderPage() {
     if (!programId) {
       setWeeks([]);
       setWeekId("");
+      setWeekStatus({});
       return;
     }
-    Promise.all([listWeeks(programId), listMesocycles(programId)]).then(([ws, ms]) => {
+    Promise.all([listWeeks(programId), listMesocycles(programId)]).then(async ([ws, ms]) => {
       setWeeks(ws);
       setMesos(ms);
       setWeekId(ws[0]?.id ?? "");
+
+      try {
+        setWeekStatus(await computeWeekStatuses(ws.map((w) => w.id)));
+      } catch (e: any) {
+        notify(`No pudimos calcular el estado de las semanas: ${e.message}`);
+      }
     });
   }, [programId]);
 
@@ -105,6 +114,9 @@ export default function BuilderPage() {
     const ss = await listSessions(wId);
     setSessions(ss);
     setSessionId(ss[0]?.id ?? "");
+
+    const result = await computeWeekStatuses([wId]).catch(() => ({ [wId]: "empty" as WeekStatus }));
+    setWeekStatus((prev) => ({ ...prev, ...result }));
   };
 
   useEffect(() => {
@@ -152,26 +164,39 @@ export default function BuilderPage() {
 
       {weeks.length > 0 && (
         <>
-          <p className="note" style={{ marginBottom: 8 }}>
+          <p className="note" style={{ marginBottom: 4 }}>
             Planificación tiene {plannedWeeks} semana{plannedWeeks === 1 ? "" : "s"} en total
             {weeks.length > plannedWeeks ? ` — las que aparecen en gris abajo (${weeks.length - plannedWeeks}) existen pero no pertenecen a ningún bloque actual; revisalas en Planificación.` : "."}
+          </p>
+          <p className="note" style={{ marginBottom: 8, display: "flex", gap: 14, flexWrap: "wrap" }}>
+            <span><span style={{ display: "inline-block", width: 8, height: 8, borderRadius: 99, background: "var(--muted)", marginRight: 5 }} />Vacía</span>
+            <span><span style={{ display: "inline-block", width: 8, height: 8, borderRadius: 99, background: "var(--pri)", marginRight: 5 }} />Con rutinas</span>
+            <span><span style={{ display: "inline-block", width: 8, height: 8, borderRadius: 99, background: "var(--ok)", marginRight: 5 }} />Ya en curso</span>
           </p>
           <div style={{ display: "flex", flexWrap: "wrap", gap: 6, marginBottom: 10, alignItems: "center" }}>
             {weeks.map((w) => {
               const beyondPlan = w.week_number > plannedWeeks;
+              const status = weekStatus[w.id] ?? "empty";
+              const dotColor = WEEK_STATUS_COLOR[status];
+              const dotTitle = WEEK_STATUS_LABEL[status];
               return (
                 <button
                   key={w.id}
                   onClick={() => setWeekId(w.id)}
                   className="btn ghost"
+                  title={dotTitle}
                   style={{
                     padding: "6px 14px",
                     fontSize: 13,
+                    display: "inline-flex",
+                    alignItems: "center",
+                    gap: 7,
                     background: w.id === weekId ? "var(--pri)" : "transparent",
                     color: w.id === weekId ? "#fff" : beyondPlan ? "var(--muted)" : "var(--pri)",
                     borderStyle: beyondPlan ? "dashed" : "solid",
                   }}
                 >
+                  <span style={{ width: 8, height: 8, borderRadius: 99, background: dotColor, flex: "none", border: w.id === weekId ? "1px solid rgba(255,255,255,.6)" : "none" }} />
                   Semana {w.week_number}
                 </button>
               );

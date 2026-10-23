@@ -13,9 +13,13 @@ import {
   BLOCK_ORDER,
   DAY_OF_WEEK_LABEL,
   todayDayOfWeek,
+  computeWeekStatuses,
+  WEEK_STATUS_COLOR,
+  WEEK_STATUS_LABEL,
   type SessionRow,
   type SessionBlockRow,
   type WorkoutExerciseRow,
+  type WeekStatus,
 } from "../../services/sessions";
 import {
   getActiveProgramForClient,
@@ -46,6 +50,7 @@ export default function ClientRoutine() {
   const [clientId, setClientId] = useState<string | null>(null);
   const [program, setProgram] = useState<ProgramRow | null>(null);
   const [weeks, setWeeks] = useState<WeekRow[]>([]);
+  const [weekStatus, setWeekStatus] = useState<Record<string, WeekStatus>>({});
   const [weekId, setWeekId] = useState("");
   const [sessions, setSessions] = useState<SessionRow[]>([]);
   const [statuses, setStatuses] = useState<Record<string, WorkoutLogRow["status"]>>({});
@@ -74,7 +79,10 @@ export default function ClientRoutine() {
   const loadSessions = async (wId: string) => {
     const ss = await listSessions(wId);
     setSessions(ss);
-    setStatuses(await getSessionStatuses(ss.map((s) => s.id)));
+    const st = await getSessionStatuses(ss.map((s) => s.id));
+    setStatuses(st);
+    const status: WeekStatus = ss.length === 0 ? "empty" : ss.some((s) => (st[s.id] ?? "pending") !== "pending") ? "started" : "planned";
+    setWeekStatus((prev) => ({ ...prev, [wId]: status }));
   };
 
   const init = async () => {
@@ -91,6 +99,7 @@ export default function ClientRoutine() {
       if (prog) {
         const ws = await listWeeks(prog.id);
         setWeeks(ws);
+        computeWeekStatuses(ws.map((w) => w.id)).then(setWeekStatus).catch(() => {});
         const firstWeek = ws[0]?.id ?? "";
         setWeekId(firstWeek);
         if (firstWeek) await loadSessions(firstWeek);
@@ -154,16 +163,21 @@ export default function ClientRoutine() {
           <p className="note" style={{ marginBottom: 14 }}>{program.name}</p>
           {weeks.length > 0 && (
             <div style={{ display: "flex", flexWrap: "wrap", gap: 6, marginBottom: 18 }}>
-              {weeks.map((w) => (
-                <button
-                  key={w.id}
-                  onClick={() => setWeekId(w.id)}
-                  className="btn ghost"
-                  style={{ padding: "6px 14px", fontSize: 13, background: w.id === weekId ? "var(--pri)" : "transparent", color: w.id === weekId ? "#fff" : "var(--pri)" }}
-                >
-                  Semana {w.week_number}
-                </button>
-              ))}
+              {weeks.map((w) => {
+                const status = weekStatus[w.id] ?? "empty";
+                return (
+                  <button
+                    key={w.id}
+                    onClick={() => setWeekId(w.id)}
+                    className="btn ghost"
+                    title={WEEK_STATUS_LABEL[status]}
+                    style={{ padding: "6px 14px", fontSize: 13, display: "inline-flex", alignItems: "center", gap: 7, background: w.id === weekId ? "var(--pri)" : "transparent", color: w.id === weekId ? "#fff" : "var(--pri)" }}
+                  >
+                    <span style={{ width: 8, height: 8, borderRadius: 99, background: WEEK_STATUS_COLOR[status], flex: "none", border: w.id === weekId ? "1px solid rgba(255,255,255,.6)" : "none" }} />
+                    Semana {w.week_number}
+                  </button>
+                );
+              })}
             </div>
           )}
 

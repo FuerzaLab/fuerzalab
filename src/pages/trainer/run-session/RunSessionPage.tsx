@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { useToast } from "../../../contexts/ToastContext";
 import { listClients, type ClientRow } from "../../../services/clients";
 import { listWeeks, type ProgramRow, type WeekRow } from "../../../services/programs";
-import { listSessions, type SessionRow } from "../../../services/sessions";
+import { listSessions, computeWeekStatuses, WEEK_STATUS_COLOR, WEEK_STATUS_LABEL, type SessionRow, type WeekStatus } from "../../../services/sessions";
 import { getActiveProgramForClient, getSessionStatuses, type WorkoutLogRow } from "../../../services/training";
 import { TrainSession } from "../../client/Routine";
 import Loading from "../../../components/ui/Loading";
@@ -20,6 +20,7 @@ export default function RunSessionPage() {
   const [clientId, setClientId] = useState("");
   const [program, setProgram] = useState<ProgramRow | null>(null);
   const [weeks, setWeeks] = useState<WeekRow[]>([]);
+  const [weekStatus, setWeekStatus] = useState<Record<string, WeekStatus>>({});
   const [weekId, setWeekId] = useState("");
   const [sessions, setSessions] = useState<SessionRow[]>([]);
   const [statuses, setStatuses] = useState<Record<string, WorkoutLogRow["status"]>>({});
@@ -34,7 +35,10 @@ export default function RunSessionPage() {
   const loadSessions = async (wId: string) => {
     const ss = await listSessions(wId);
     setSessions(ss);
-    setStatuses(await getSessionStatuses(ss.map((s) => s.id)));
+    const st = await getSessionStatuses(ss.map((s) => s.id));
+    setStatuses(st);
+    const status: WeekStatus = ss.length === 0 ? "empty" : ss.some((s) => (st[s.id] ?? "pending") !== "pending") ? "started" : "planned";
+    setWeekStatus((prev) => ({ ...prev, [wId]: status }));
   };
 
   useEffect(() => {
@@ -52,11 +56,13 @@ export default function RunSessionPage() {
         if (prog) {
           const ws = await listWeeks(prog.id);
           setWeeks(ws);
+          computeWeekStatuses(ws.map((w) => w.id)).then(setWeekStatus).catch(() => {});
           const firstWeek = ws[0]?.id ?? "";
           setWeekId(firstWeek);
           if (firstWeek) await loadSessions(firstWeek);
         } else {
           setWeeks([]);
+          setWeekStatus({});
           setSessions([]);
         }
       } catch (e: any) {
@@ -109,16 +115,21 @@ export default function RunSessionPage() {
           <p className="note" style={{ marginBottom: 14 }}>{program.name}</p>
           {weeks.length > 0 && (
             <div style={{ display: "flex", flexWrap: "wrap", gap: 6, marginBottom: 18 }}>
-              {weeks.map((w) => (
-                <button
-                  key={w.id}
-                  onClick={() => setWeekId(w.id)}
-                  className="btn ghost"
-                  style={{ padding: "6px 14px", fontSize: 13, background: w.id === weekId ? "var(--pri)" : "transparent", color: w.id === weekId ? "#fff" : "var(--pri)" }}
-                >
-                  Semana {w.week_number}
-                </button>
-              ))}
+              {weeks.map((w) => {
+                const status = weekStatus[w.id] ?? "empty";
+                return (
+                  <button
+                    key={w.id}
+                    onClick={() => setWeekId(w.id)}
+                    className="btn ghost"
+                    title={WEEK_STATUS_LABEL[status]}
+                    style={{ padding: "6px 14px", fontSize: 13, display: "inline-flex", alignItems: "center", gap: 7, background: w.id === weekId ? "var(--pri)" : "transparent", color: w.id === weekId ? "#fff" : "var(--pri)" }}
+                  >
+                    <span style={{ width: 8, height: 8, borderRadius: 99, background: WEEK_STATUS_COLOR[status], flex: "none", border: w.id === weekId ? "1px solid rgba(255,255,255,.6)" : "none" }} />
+                    Semana {w.week_number}
+                  </button>
+                );
+              })}
             </div>
           )}
 
