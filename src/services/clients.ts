@@ -112,6 +112,19 @@ export async function submitOnboarding(
   if (error) throw error;
 }
 
+/**
+ * El último ingreso de cada cliente que ya tiene cuenta (profile_id puesto),
+ * por id de perfil. Se pide aparte de clients a propósito: esa tabla tiene
+ * dos conexiones distintas hacia profiles (trainer_id y profile_id), así
+ * que traerlo con un join ahí puede salir ambiguo.
+ */
+export async function getLastSignInByProfileId(profileIds: string[]): Promise<Record<string, string | null>> {
+  if (profileIds.length === 0) return {};
+  const { data, error } = await supabase.from("profiles").select("id, last_sign_in_at").in("id", profileIds);
+  if (error) throw error;
+  return Object.fromEntries((data ?? []).map((p: any) => [p.id, p.last_sign_in_at]));
+}
+
 export async function listClients(): Promise<ClientRow[]> {
   const { data, error } = await supabase
     .from("clients")

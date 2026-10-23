@@ -10,6 +10,7 @@ import {
   listClients,
   updateClientStatus,
   createClientWithInvite,
+  getLastSignInByProfileId,
   type ClientRow,
   type ClientStatus,
 } from "../../../services/clients";
@@ -41,12 +42,16 @@ export default function ClientsList() {
   const [filter, setFilter] = useState<"all" | ClientStatus>("all");
   const [showInvite, setShowInvite] = useState(false);
   const [toArchive, setToArchive] = useState<ClientRow | null>(null);
+  const [lastSignIn, setLastSignIn] = useState<Record<string, string | null>>({});
 
   const load = async () => {
     setLoading(true);
     setLoadError("");
     try {
-      setClients(await listClients());
+      const cs = await listClients();
+      setClients(cs);
+      const profileIds = cs.map((c) => c.profile_id).filter((id): id is string => !!id);
+      setLastSignIn(await getLastSignInByProfileId(profileIds));
     } catch (err: any) {
       setLoadError(err.message ?? "No pudimos cargar tus clientes.");
     }
@@ -148,7 +153,15 @@ export default function ClientsList() {
                       {c.email && <div className="note">{c.email}</div>}
                     </td>
                     <td style={{ padding: "11px 16px" }}>
-                      <Chip tone={STATUS_TONE[c.status]}>{STATUS_LABEL[c.status]}</Chip>
+                      <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
+                        <Chip tone={STATUS_TONE[c.status]}>{STATUS_LABEL[c.status]}</Chip>
+                        {!c.profile_id && <Chip tone="warn">Sin aceptar invitación</Chip>}
+                      </div>
+                      {c.profile_id && (
+                        <div className="note" style={{ marginTop: 3 }}>
+                          {lastSignIn[c.profile_id] ? `Último ingreso: ${new Date(lastSignIn[c.profile_id]!).toLocaleDateString("es")}` : "Todavía no ingresó"}
+                        </div>
+                      )}
                     </td>
                     <td style={{ padding: "11px 16px" }}>
                       <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>

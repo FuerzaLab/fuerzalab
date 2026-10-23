@@ -18,6 +18,7 @@ import {
   createClientNote,
   updateClientNote,
   deleteClientNote,
+  getLastSignInByProfileId,
   PAR_Q_QUESTIONS,
   type ClientRow,
   type ClientProfileRow,
@@ -73,6 +74,7 @@ export default function ClientDetail() {
   const [saving, setSaving] = useState(false);
   const [toArchive, setToArchive] = useState(false);
   const [showDelete, setShowDelete] = useState(false);
+  const [lastSignIn, setLastSignIn] = useState<string | null>(null);
 
   useEffect(() => {
     if (!id) return;
@@ -86,6 +88,10 @@ export default function ClientDetail() {
         setClient(c);
         setIntake(p);
         if (p) setForm(profileToForm(p));
+        if (c.profile_id) {
+          const map = await getLastSignInByProfileId([c.profile_id]);
+          if (!cancelled) setLastSignIn(map[c.profile_id] ?? null);
+        }
       } catch (err: any) {
         if (!cancelled) setLoadError(err.message ?? "No pudimos cargar este cliente.");
       }
@@ -146,6 +152,10 @@ export default function ClientDetail() {
         </div>
         <div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
           <Chip tone={STATUS_TONE[client.status]}>{STATUS_LABEL[client.status]}</Chip>
+          {!client.profile_id && <Chip tone="warn">Sin aceptar invitación</Chip>}
+          {client.profile_id && (
+            <span className="note">{lastSignIn ? `Último ingreso: ${new Date(lastSignIn).toLocaleDateString("es")}` : "Todavía no ingresó"}</span>
+          )}
           {client.status !== "active" && (
             <button className="btn ghost" onClick={() => changeStatus("active")}>Reactivar</button>
           )}

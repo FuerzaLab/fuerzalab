@@ -8,8 +8,11 @@ import {
   listOrganizations,
   countClientsByTrainer,
   moveTrainerToOrganization,
+  listInvitations,
+  revokeInvitation,
   type UserRow,
   type OrganizationRow,
+  type InvitationRow,
 } from "../../services/admin";
 import type { Role } from "../../types/auth";
 import Loading from "../../components/ui/Loading";
@@ -26,6 +29,7 @@ export default function Users() {
   const [users, setUsers] = useState<UserRow[]>([]);
   const [orgs, setOrgs] = useState<OrganizationRow[]>([]);
   const [clientCounts, setClientCounts] = useState<Record<string, number>>({});
+  const [invitations, setInvitations] = useState<InvitationRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [moveTarget, setMoveTarget] = useState<UserRow | null>(null);
 
@@ -37,6 +41,7 @@ export default function Users() {
       setOrgs(await listOrganizations());
       const trainerIds = us.filter((u) => u.role === "trainer").map((u) => u.id);
       setClientCounts(await countClientsByTrainer(trainerIds));
+      setInvitations(await listInvitations("trainer"));
     } catch (e: any) {
       notify(e.message);
     }
@@ -68,6 +73,42 @@ export default function Users() {
         por completo el acceso de esa persona, que es el efecto práctico que buscarías con un borrado.
       </p>
 
+      {!loading && invitations.some((i) => i.status === "pending" || i.status === "expired") && (
+        <div className="panel" style={{ marginBottom: 18 }}>
+          <div className="hd"><h3>Invitaciones de entrenador sin aceptar</h3></div>
+          <div className="bd" style={{ display: "grid", gap: 10 }}>
+            {invitations
+              .filter((i) => i.status === "pending" || i.status === "expired")
+              .map((i) => {
+                const isExpired = i.status === "expired" || new Date(i.expires_at) < new Date();
+                return (
+                  <div key={i.id} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 10, borderTop: "1px solid var(--line)", paddingTop: 10 }}>
+                    <span>
+                      <b>{i.full_name || i.email || "Sin nombre"}</b>
+                      {i.email && <span className="note"> — {i.email}</span>}
+                      <div className="note">{orgs.find((o) => o.id === i.organization_id)?.name ?? "Organización"} · Invitado el {new Date(i.created_at).toLocaleDateString("es")}</div>
+                    </span>
+                    <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                      <Chip tone={isExpired ? "bad" : "warn"}>{isExpired ? "Vencida" : "Pendiente"}</Chip>
+                      <button
+                        className="btn ghost"
+                        style={{ padding: "4px 10px", fontSize: 12.5 }}
+                        onClick={async () => {
+                          await revokeInvitation(i.id);
+                          setInvitations((inv) => inv.filter((x) => x.id !== i.id));
+                          notify("Invitación revocada.");
+                        }}
+                      >
+                        Revocar
+                      </button>
+                    </div>
+                  </div>
+                );
+              })}
+          </div>
+        </div>
+      )}
+
       {loading ? (
         <Loading />
       ) : (
@@ -80,6 +121,7 @@ export default function Users() {
                   <th style={{ padding: "10px 16px" }}>Rol</th>
                   <th style={{ padding: "10px 16px" }}>Organización</th>
                   <th style={{ padding: "10px 16px" }}>Estado</th>
+                  <th style={{ padding: "10px 16px" }}>Último ingreso</th>
                   <th style={{ padding: "10px 16px" }}></th>
                 </tr>
               </thead>
@@ -94,6 +136,9 @@ export default function Users() {
                     <td style={{ padding: "11px 16px" }}>{u.organizations?.name ?? "—"}</td>
                     <td style={{ padding: "11px 16px" }}>
                       <Chip tone={u.is_active ? "ok" : "bad"}>{u.is_active ? "Activo" : "Inactivo"}</Chip>
+                    </td>
+                    <td style={{ padding: "11px 16px" }} className="note">
+                      {u.last_sign_in_at ? new Date(u.last_sign_in_at).toLocaleDateString("es") : "Nunca"}
                     </td>
                     <td style={{ padding: "11px 16px" }}>
                       <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>

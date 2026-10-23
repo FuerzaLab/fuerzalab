@@ -16,6 +16,7 @@ export interface UserRow {
   full_name: string;
   email: string;
   is_active: boolean;
+  last_sign_in_at: string | null;
   organizations: { name: string } | null;
 }
 
@@ -74,7 +75,7 @@ export async function deleteOrganization(id: string): Promise<void> {
 export async function listUsers(): Promise<UserRow[]> {
   const { data, error } = await supabase
     .from("profiles")
-    .select("id, organization_id, role, full_name, email, is_active, organizations(name)")
+    .select("id, organization_id, role, full_name, email, is_active, last_sign_in_at, organizations(name)")
     .neq("role", "super_admin")
     .order("full_name");
   if (error) throw error;
@@ -104,6 +105,35 @@ export async function countClientsByTrainer(trainerIds: string[]): Promise<Recor
  */
 export async function moveTrainerToOrganization(trainerId: string, organizationId: string): Promise<void> {
   const { error } = await supabase.from("profiles").update({ organization_id: organizationId }).eq("id", trainerId);
+  if (error) throw error;
+}
+
+export interface InvitationRow {
+  id: string;
+  organization_id: string;
+  role: "trainer" | "staff" | "client";
+  email: string | null;
+  full_name: string | null;
+  code: string;
+  status: "pending" | "accepted" | "expired" | "revoked";
+  expires_at: string;
+  accepted_at: string | null;
+  created_at: string;
+}
+
+/** Las invitaciones de un rol puntual (para Super Admin: entrenadores invitados, aceptaron o no). */
+export async function listInvitations(role: "trainer" | "staff" | "client"): Promise<InvitationRow[]> {
+  const { data, error } = await supabase
+    .from("invitations")
+    .select("*")
+    .eq("role", role)
+    .order("created_at", { ascending: false });
+  if (error) throw error;
+  return (data ?? []) as InvitationRow[];
+}
+
+export async function revokeInvitation(id: string): Promise<void> {
+  const { error } = await supabase.from("invitations").update({ status: "revoked" }).eq("id", id);
   if (error) throw error;
 }
 
