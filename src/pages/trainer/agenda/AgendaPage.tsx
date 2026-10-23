@@ -17,6 +17,7 @@ import {
   type AppointmentRow,
   type AppointmentKind,
 } from "../../../services/appointments";
+import { createClientWithInvite } from "../../../services/clients";
 
 const DAY_LABEL = ["Domingo", "Lunes", "Martes", "Miércoles", "Jueves", "Viernes", "Sábado"];
 
@@ -192,6 +193,12 @@ export default function AgendaPage() {
             setEditing(null);
             await load();
           }}
+          onDeleted={async () => {
+            setEditing(null);
+            await load();
+            notify("Cita eliminada.");
+          }}
+          onClientCreated={(c) => setClients((cs) => [...cs, c])}
         />
       )}
 
@@ -230,12 +237,43 @@ export default function AgendaPage() {
   );
 }
 
+type DayCell = { type: "start"; appt: AppointmentRow; span: number } | { type: "skip" } | { type: "empty" };
+
+/** Para una columna (un día), decide qué le toca a cada fila de hora: el inicio de un bloque (con cuántas filas ocupa), una fila cubierta por un bloque que empezó antes (no se dibuja), o una celda vacía. */
+function buildDayMap(day: Date, appointments: AppointmentRow[], hourList: number[]): Record<number, DayCell> {
+  const dayKey = toDateKey(day);
+  const dayAppts = appointments
+    .filter((a) => a.starts_at.slice(0, 10) === dayKey)
+    .sort((a, b) => a.starts_at.localeCompare(b.starts_at));
+
+  const map: Record<number, DayCell> = {};
+  const consumed = new Set<number>();
+  const firstHour = hourList[0];
+  const lastHour = hourList[hourList.length - 1];
+
+  for (const a of dayAppts) {
+    const startDate = new Date(a.starts_at);
+    const endDate = new Date(a.ends_at);
+    const sh = Math.max(startDate.getHours(), firstHour);
+    const ehRaw = endDate.getHours() + (endDate.getMinutes() > 0 ? 1 : 0);
+    const eh = Math.min(Math.max(ehRaw, sh + 1), lastHour + 1);
+    if (consumed.has(sh) || map[sh]) continue; // ya hay algo ahí (cita superpuesta) — se deja la primera, para no romper la grilla
+    const span = eh - sh;
+    map[sh] = { type: "start", appt: a, span };
+    for (let h = sh + 1; h < sh + span; h++) consumed.add(h);
+  }
+
+  for (const h of hourList) {
+    if (map[h]) continue;
+    map[h] = consumed.has(h) ? { type: "skip" } : { type: "empty" };
+  }
+  return map;
+}
+
 /**
- * Grilla de horas × días — pensada para ver la ocupación de un pantallazo,
- * no para precisión al pixel. Cada cita se muestra en la fila de su hora
- * de inicio, con el horario completo como texto, sin estirarse varias
- * filas aunque dure más de una hora — una simplificación a propósito, más
- * confiable de construir bien que un calendario con posicionamiento libre.
+ * Grilla de horas × días — pensada para ver la ocupación de un pantallazo.
+ * Cada cita ocupa, con rowSpan, todas las filas de hora que dura — una de
+ * 6 a 9 se ve como un solo bloque alto, no solo marcada en la fila de las 6.
  */
 function WeekGrid({
   days,
@@ -259,6 +297,7 @@ function WeekGrid({
     if (eh > maxHour) maxHour = eh;
   }
   const hourList = Array.from({ length: maxHour - minHour }, (_, i) => minHour + i);
+  const dayMaps = days.map((day) => buildDayMap(day, appointments, hourList));
 
   return (
     <div style={{ overflowX: "auto" }}>
@@ -285,34 +324,43 @@ function WeekGrid({
               <td style={{ fontSize: 11, color: "var(--muted)", textAlign: "right", paddingRight: 6, borderTop: "1px solid var(--line)", verticalAlign: "top", whiteSpace: "nowrap" }}>
                 {String(hour).padStart(2, "0")}:00
               </td>
-              {days.map((day) => {
-                const dayKey = toDateKey(day);
-                const cellAppts = appointments.filter((a) => a.starts_at.slice(0, 10) === dayKey && new Date(a.starts_at).getHours() === hour);
-                return (
-                  <td
-                    key={dayKey}
-                    style={{ borderTop: "1px solid var(--line)", borderLeft: "1px solid var(--line)", minHeight: 34, padding: 2, verticalAlign: "top", cursor: cellAppts.length === 0 ? "pointer" : "default" }}
-                    onClick={() => { if (cellAppts.length === 0) onCellClick(day, hour); }}
-                  >
-                    {cellAppts.map((a) => (
+              {days.map((day, dayIdx) => {
+                const cell = dayMaps[dayIdx][hour];
+                if (cell.type === "skip") return null;
+                if (cell.type === "start") {
+                  const a = cell.appt;
+                  return (
+                    <td
+                      key={toDateKey(day)}
+                      rowSpan={cell.span}
+                      style={{ borderTop: "1px solid var(--line)", borderLeft: "1px solid var(--line)", padding: 2, verticalAlign: "top" }}
+                    >
                       <div
-                        key={a.id}
-                        onClick={(e) => { e.stopPropagation(); onApptClick(a, day); }}
+                        onClick={() => onApptClick(a, day)}
                         style={{
                           background: a.kind === "online" ? "#E5EAF8" : "#E1F1EA",
                           color: a.kind === "online" ? "var(--pri)" : "#1F6B52",
                           borderRadius: 5,
-                          padding: "3px 5px",
+                          padding: "4px 6px",
                           fontSize: 11,
-                          marginBottom: 2,
                           cursor: "pointer",
-                          lineHeight: 1.3,
+                          lineHeight: 1.35,
+                          height: "100%",
+                          minHeight: 30 * cell.span - 4,
                         }}
                       >
-                        <b>{fmtTime(a.starts_at)}</b> {a.title || clientName(a.client_id)}
+                        <b>{fmtTime(a.starts_at)}–{fmtTime(a.ends_at)}</b><br />
+                        {a.title || clientName(a.client_id)}
                       </div>
-                    ))}
-                  </td>
+                    </td>
+                  );
+                }
+                return (
+                  <td
+                    key={toDateKey(day)}
+                    style={{ borderTop: "1px solid var(--line)", borderLeft: "1px solid var(--line)", minHeight: 30, padding: 2, verticalAlign: "top", cursor: "pointer" }}
+                    onClick={() => onCellClick(day, hour)}
+                  />
                 );
               })}
             </tr>
@@ -331,6 +379,8 @@ function AppointmentModal({
   trainerId,
   onClose,
   onSaved,
+  onDeleted,
+  onClientCreated,
 }: {
   appt: AppointmentRow | null;
   defaultDate: Date;
@@ -339,9 +389,18 @@ function AppointmentModal({
   trainerId: string;
   onClose: () => void;
   onSaved: () => void;
+  onDeleted: () => void;
+  onClientCreated: (c: ClientRow) => void;
 }) {
   const { notify } = useToast();
+  const [localClients, setLocalClients] = useState(clients);
   const [clientId, setClientId] = useState(appt?.client_id ?? "");
+  const [addingClient, setAddingClient] = useState(false);
+  const [newClientName, setNewClientName] = useState("");
+  const [newClientEmail, setNewClientEmail] = useState("");
+  const [creatingClient, setCreatingClient] = useState(false);
+  const [confirmingDelete, setConfirmingDelete] = useState(false);
+  const [deleting, setDeleting] = useState(false);
   const [kind, setKind] = useState<AppointmentKind>(appt?.kind ?? "in_person");
   const [title, setTitle] = useState(appt?.title ?? "");
   const [date, setDate] = useState(appt ? appt.starts_at.slice(0, 10) : toDateKey(defaultDate));
@@ -392,11 +451,61 @@ function AppointmentModal({
 
   return (
     <Modal title={appt ? "Editar cita" : "Nueva cita"} onClose={onClose}>
-      <label className="field-label">Cliente</label>
-      <select className="input" style={{ marginBottom: 14 }} value={clientId} onChange={(e) => setClientId(e.target.value)}>
-        <option value="">Elegí un cliente</option>
-        {clients.map((c) => <option key={c.id} value={c.id}>{c.full_name}</option>)}
-      </select>
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+        <label className="field-label">Cliente</label>
+        {!addingClient && (
+          <button type="button" className="btn ghost" style={{ padding: "2px 8px", fontSize: 12 }} onClick={() => setAddingClient(true)}>
+            + Nuevo cliente
+          </button>
+        )}
+      </div>
+      {addingClient ? (
+        <div style={{ border: "1px solid var(--line)", borderRadius: 8, padding: 12, marginBottom: 14 }}>
+          <label className="field-label">Nombre</label>
+          <input className="input" style={{ marginBottom: 8 }} value={newClientName} onChange={(e) => setNewClientName(e.target.value)} />
+          <label className="field-label">Correo</label>
+          <input className="input" style={{ marginBottom: 10 }} value={newClientEmail} onChange={(e) => setNewClientEmail(e.target.value)} />
+          <div style={{ display: "flex", gap: 8 }}>
+            <button
+              type="button"
+              className="btn"
+              style={{ padding: "5px 12px", fontSize: 12.5 }}
+              disabled={creatingClient || !newClientName.trim() || !newClientEmail.trim()}
+              onClick={async () => {
+                setCreatingClient(true);
+                try {
+                  const { client } = await createClientWithInvite({
+                    organizationId,
+                    trainerId,
+                    fullName: newClientName.trim(),
+                    email: newClientEmail.trim(),
+                  });
+                  setLocalClients((cs) => [...cs, client]);
+                  setClientId(client.id);
+                  onClientCreated(client);
+                  setAddingClient(false);
+                  setNewClientName("");
+                  setNewClientEmail("");
+                  notify(`"${client.full_name}" agregado — no te olvides de invitarlo desde Clientes.`);
+                } catch (e: any) {
+                  notify(e.message);
+                }
+                setCreatingClient(false);
+              }}
+            >
+              {creatingClient ? "Creando…" : "Crear y usar"}
+            </button>
+            <button type="button" className="btn ghost" style={{ padding: "5px 12px", fontSize: 12.5 }} onClick={() => setAddingClient(false)}>
+              Cancelar
+            </button>
+          </div>
+        </div>
+      ) : (
+        <select className="input" style={{ marginBottom: 14 }} value={clientId} onChange={(e) => setClientId(e.target.value)}>
+          <option value="">Elegí un cliente</option>
+          {localClients.map((c) => <option key={c.id} value={c.id}>{c.full_name}</option>)}
+        </select>
+      )}
 
       <label className="field-label">Tipo</label>
       <select className="input" style={{ marginBottom: 14 }} value={kind} onChange={(e) => setKind(e.target.value as AppointmentKind)}>
@@ -442,7 +551,40 @@ function AppointmentModal({
       <textarea className="input" style={{ minHeight: 60, marginBottom: 18 }} value={notes} onChange={(e) => setNotes(e.target.value)} />
 
       {error && <p className="error-text" style={{ marginBottom: 12 }}>{error}</p>}
-      <button className="btn" onClick={submit} disabled={saving}>{saving ? "Guardando…" : "Guardar"}</button>
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+        <button className="btn" onClick={submit} disabled={saving}>{saving ? "Guardando…" : "Guardar"}</button>
+        {appt && !confirmingDelete && (
+          <button type="button" className="btn ghost" style={{ color: "var(--bad)" }} onClick={() => setConfirmingDelete(true)}>
+            Eliminar cita
+          </button>
+        )}
+        {appt && confirmingDelete && (
+          <span style={{ display: "flex", gap: 8, alignItems: "center" }}>
+            <span className="note">¿Seguro?</span>
+            <button
+              type="button"
+              className="btn"
+              style={{ background: "var(--bad)", borderColor: "var(--bad)", padding: "5px 12px", fontSize: 12.5 }}
+              disabled={deleting}
+              onClick={async () => {
+                setDeleting(true);
+                try {
+                  await deleteAppointment(appt.id);
+                  onDeleted();
+                } catch (e: any) {
+                  notify(e.message);
+                  setDeleting(false);
+                }
+              }}
+            >
+              {deleting ? "Eliminando…" : "Sí, eliminar"}
+            </button>
+            <button type="button" className="btn ghost" style={{ padding: "5px 12px", fontSize: 12.5 }} onClick={() => setConfirmingDelete(false)}>
+              No
+            </button>
+          </span>
+        )}
+      </div>
     </Modal>
   );
 }
