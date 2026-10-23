@@ -188,6 +188,18 @@ export async function completeWorkout(params: {
   if (error) throw error;
 }
 
+/**
+ * El entrenador marca una rutina como saltada — por ejemplo si el cliente
+ * nunca la va a completar (una lesión, un viaje) y quedó trabada una
+ * semana anterior. Resuelve el aviso de "semana sin terminar" sin que el
+ * cliente tenga que forzar nada.
+ */
+export async function markSessionSkipped(sessionId: string): Promise<void> {
+  const log = await getOrCreateWorkoutLog(sessionId);
+  const { error } = await supabase.from("workout_logs").update({ status: "skipped", completed_at: new Date().toISOString() }).eq("id", log.id);
+  if (error) throw error;
+}
+
 /** Estado (pendiente/en curso/completada) de cada sesión de una semana, para mostrar en la lista. */
 export async function getSessionStatuses(sessionIds: string[]): Promise<Record<string, WorkoutLogRow["status"]>> {
   if (!sessionIds.length) return {};

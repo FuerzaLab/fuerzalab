@@ -3,7 +3,7 @@ import { useToast } from "../../../contexts/ToastContext";
 import { listClients, type ClientRow } from "../../../services/clients";
 import { listWeeks, type ProgramRow, type WeekRow } from "../../../services/programs";
 import { listSessions, computeWeekStatuses, WEEK_STATUS_COLOR, WEEK_STATUS_LABEL, type SessionRow, type WeekStatus } from "../../../services/sessions";
-import { getActiveProgramForClient, getSessionStatuses, type WorkoutLogRow } from "../../../services/training";
+import { getActiveProgramForClient, getSessionStatuses, markSessionSkipped, type WorkoutLogRow } from "../../../services/training";
 import { TrainSession } from "../../client/Routine";
 import Loading from "../../../components/ui/Loading";
 
@@ -143,9 +143,24 @@ export default function RunSessionPage() {
                       <b>{s.name}</b>
                       <div className="note">{STATUS_LABEL[status]}</div>
                     </div>
-                    <button className="btn" onClick={() => setActiveSessionId(s.id)} disabled={status === "completed"}>
-                      {status === "completed" ? "Completada" : status === "in_progress" ? "Continuar" : "Entrenar"}
-                    </button>
+                    <div style={{ display: "flex", gap: 8 }}>
+                      {(status === "pending" || status === "in_progress") && (
+                        <button
+                          className="btn ghost"
+                          style={{ fontSize: 12.5 }}
+                          onClick={async () => {
+                            await markSessionSkipped(s.id);
+                            await loadSessions(weekId);
+                            notify(`"${s.name}" marcada como saltada.`);
+                          }}
+                        >
+                          Marcar como saltada
+                        </button>
+                      )}
+                      <button className="btn" onClick={() => setActiveSessionId(s.id)} disabled={status === "completed"}>
+                        {status === "completed" ? "Completada" : status === "in_progress" ? "Continuar" : "Entrenar"}
+                      </button>
+                    </div>
                   </div>
                 </div>
               );
