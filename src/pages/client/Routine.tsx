@@ -58,6 +58,32 @@ export default function ClientRoutine() {
   const [pendingSessionId, setPendingSessionId] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [blockedByDailyLimit, setBlockedByDailyLimit] = useState<string | null>(null);
+  const [pendingWarning, setPendingWarning] = useState<{ sessionId: string; weekLabel: string } | null>(null);
+
+  /**
+   * No bloquea nada — solo avisa si la semana anterior quedó con rutinas sin
+   * terminar, y deja que el cliente decida igual. Un aviso, no un candado:
+   * la vida real (viajes, una semana saltada a propósito) no siempre sigue
+   * el orden prolijo del plan.
+   */
+  const previousWeekIncompleteLabel = async (currentWeekId: string): Promise<string | null> => {
+    const current = weeks.find((w) => w.id === currentWeekId);
+    if (!current) return null;
+    const prevWeek = weeks.find((w) => w.week_number === current.week_number - 1);
+    if (!prevWeek) return null;
+    try {
+      const prevSessions = await listSessions(prevWeek.id);
+      if (prevSessions.length === 0) return null;
+      const prevStatuses = await getSessionStatuses(prevSessions.map((s) => s.id));
+      const allDone = prevSessions.every((s) => {
+        const st = prevStatuses[s.id] ?? "pending";
+        return st === "completed" || st === "skipped";
+      });
+      return allDone ? null : `Semana ${prevWeek.week_number}`;
+    } catch {
+      return null;
+    }
+  };
 
   const startSession = async (sessionId: string) => {
     if (!clientId) return;
@@ -72,6 +98,11 @@ export default function ClientRoutine() {
         notify(e.message);
         return;
       }
+    }
+    const incompleteWeek = await previousWeekIncompleteLabel(weekId);
+    if (incompleteWeek) {
+      setPendingWarning({ sessionId, weekLabel: incompleteWeek });
+      return;
     }
     setPendingSessionId(sessionId);
   };
@@ -215,6 +246,26 @@ export default function ClientRoutine() {
           <p>
             Ya completaste "{blockedByDailyLimit}" hoy. Tu entrenador no habilitó más de una rutina por día en este programa — si hoy te toca otra, avisale.
           </p>
+        </Modal>
+      )}
+
+      {pendingWarning && (
+        <Modal title="Tenés una semana sin terminar" onClose={() => setPendingWarning(null)}>
+          <p style={{ marginBottom: 18 }}>
+            Todavía te falta completar rutinas de la {pendingWarning.weekLabel}. ¿Igual querés entrenar esta ahora?
+          </p>
+          <div style={{ display: "flex", gap: 10, justifyContent: "flex-end" }}>
+            <button className="btn ghost" onClick={() => setPendingWarning(null)}>Volver</button>
+            <button
+              className="btn"
+              onClick={() => {
+                setPendingSessionId(pendingWarning.sessionId);
+                setPendingWarning(null);
+              }}
+            >
+              Entrenar igual
+            </button>
+          </div>
         </Modal>
       )}
     </div>
