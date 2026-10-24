@@ -25,7 +25,7 @@ import {
 } from "../../services/assessments";
 import Loading from "../../components/ui/Loading";
 
-const SELF_REPORT_SITES: CircumferenceSite[] = ["waist", "hip", "arm", "forearm", "thigh", "chest"];
+const SELF_REPORT_SITES: CircumferenceSite[] = ["neck", "waist", "hip", "arm", "forearm", "thigh", "chest"];
 
 export default function ClientAssessments() {
   const { notify } = useToast();

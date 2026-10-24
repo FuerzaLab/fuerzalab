@@ -380,7 +380,9 @@ function BodySection({
 }) {
   const { notify } = useToast();
   const [weight, setWeight] = useState(body?.weight_kg != null ? String(body.weight_kg) : "");
-  const [height, setHeight] = useState(body?.height_cm != null ? String(body.height_cm) : "");
+  const [height, setHeight] = useState(
+    body?.height_cm != null ? String(body.height_cm) : clientProfile?.height_cm != null ? String(clientProfile.height_cm) : ""
+  );
   const [bodyFat, setBodyFat] = useState(body?.body_fat_pct != null ? String(body.body_fat_pct) : "");
   const [muscleMass, setMuscleMass] = useState(body?.muscle_mass_kg != null ? String(body.muscle_mass_kg) : "");
   const [saving, setSaving] = useState(false);
