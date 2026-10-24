@@ -278,6 +278,9 @@ function AssessmentDetail({
   const [mobility, setMobility] = useState<MobilityTestRow[]>([]);
   const [flexibility, setFlexibility] = useState<FlexibilityTestRow[]>([]);
   const [exercises, setExercises] = useState<ExerciseRow[]>([]);
+  const [previousCircs, setPreviousCircs] = useState<CircumferenceRow[]>([]);
+  const [previousSkinfolds, setPreviousSkinfolds] = useState<SkinfoldRow[]>([]);
+  const [previousDate, setPreviousDate] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -293,10 +296,27 @@ function AssessmentDetail({
       listFlexibilityTests(assessment.id),
       listExercises(),
     ])
-      .then(([b, c, s, sf, pw, en, mo, fl, ex]) => {
+      .then(async ([b, c, s, sf, pw, en, mo, fl, ex]) => {
         setBody(b);
         setCircs(c);
         setStrength(s);
+
+        try {
+          const all = await listAssessments(assessment.client_id);
+          const previous = all.find((a) => a.id !== assessment.id && a.assessed_at <= assessment.assessed_at);
+          if (previous) {
+            const [pc, psf] = await Promise.all([listCircumferences(previous.id), listSkinfolds(previous.id)]);
+            setPreviousCircs(pc);
+            setPreviousSkinfolds(psf);
+            setPreviousDate(previous.assessed_at);
+          } else {
+            setPreviousCircs([]);
+            setPreviousSkinfolds([]);
+            setPreviousDate(null);
+          }
+        } catch {
+          // si esto falla, el cálculo sigue andando solo con los datos de la evaluación actual
+        }
         setSkinfolds(sf);
         setPower(pw);
         setEndurance(en);
@@ -350,6 +370,9 @@ function AssessmentDetail({
           clientProfile={clientProfile}
           circumferences={circs}
           skinfolds={skinfolds}
+          previousCircumferences={previousCircs}
+          previousSkinfolds={previousSkinfolds}
+          previousDate={previousDate}
         />
       )}
       {active === "circumferences" && <CircumferencesSection assessmentId={assessment.id} rows={circs} setRows={setCircs} />}
@@ -370,6 +393,9 @@ function BodySection({
   clientProfile,
   circumferences,
   skinfolds,
+  previousCircumferences,
+  previousSkinfolds,
+  previousDate,
 }: {
   assessmentId: string;
   body: BodyMeasurementRow | null;
@@ -377,6 +403,9 @@ function BodySection({
   clientProfile: ClientProfileRow | null;
   circumferences: CircumferenceRow[];
   skinfolds: SkinfoldRow[];
+  previousCircumferences: CircumferenceRow[];
+  previousSkinfolds: SkinfoldRow[];
+  previousDate: string | null;
 }) {
   const { notify } = useToast();
   const [weight, setWeight] = useState(body?.weight_kg != null ? String(body.weight_kg) : "");
@@ -388,16 +417,38 @@ function BodySection({
   const [saving, setSaving] = useState(false);
   const [estimate, setEstimate] = useState<BodyFatEstimate | null>(null);
   const [estimateError, setEstimateError] = useState("");
+  const [borrowedNote, setBorrowedNote] = useState("");
 
   const runEstimate = () => {
     setEstimateError("");
+    setBorrowedNote("");
+
+    // Lo que falte en esta evaluación se completa con la anterior más
+    // reciente del cliente — nunca al revés, para no tapar un dato que sí
+    // se cargó hoy con uno viejo.
+    const missingCircSites = previousCircumferences.filter((pc) => !circumferences.some((c) => c.site === pc.site));
+    const missingSkinfoldSites = previousSkinfolds.filter((ps) => !skinfolds.some((s) => s.site === ps.site));
+    const mergedCircs = [...circumferences, ...missingCircSites];
+    const mergedSkinfolds = [...skinfolds, ...missingSkinfoldSites];
+
     const result = estimateBodyFat({
       sex: clientProfile?.sex ?? null,
       birthDate: clientProfile?.birth_date ?? null,
       heightCm: height ? Number(height.replace(",", ".")) : clientProfile?.height_cm ?? null,
-      circumferences,
-      skinfolds,
+      circumferences: mergedCircs,
+      skinfolds: mergedSkinfolds,
     });
+
+    if (result) {
+      const borrowedLabels = [
+        ...missingCircSites.map((c) => (c.site === "custom" ? c.custom_label : SITE_LABEL[c.site])),
+        ...missingSkinfoldSites.map((s) => s.site),
+      ].filter(Boolean);
+      if (borrowedLabels.length > 0 && previousDate) {
+        setBorrowedNote(`Usamos ${borrowedLabels.join(", ")} de tu evaluación del ${new Date(previousDate).toLocaleDateString("es")}, porque esta todavía no los tiene.`);
+      }
+    }
+
     if (!result) {
       setEstimateError(
         "Faltan datos para estimarlo. Para pliegues: fecha de nacimiento del cliente y los 3 pliegues correspondientes a su sexo (Pectoral, Abdominal y Muslo en hombres; Tríceps, Suprailíaco y Muslo en mujeres). Para circunferencias: sexo, estatura, cuello y cintura (y cadera en mujeres)."
@@ -457,6 +508,7 @@ function BodySection({
               </button>
             </div>
           )}
+          {borrowedNote && <p className="note" style={{ marginTop: 6 }}>{borrowedNote}</p>}
         </div>
 
         <button className="btn" onClick={save} disabled={saving}>{saving ? "Guardando…" : "Guardar datos corporales"}</button>
