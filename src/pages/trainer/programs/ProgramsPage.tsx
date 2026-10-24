@@ -42,7 +42,7 @@ const BLOCK_COLORS = ["#3B4F8F", "#4F6BB8", "#6C86D1", "#8AA0DE", "#A9BCEA", "#C
 
 export default function ProgramsPage() {
   const { profile } = useAuth();
-  const { notify } = useToast();
+  const { notify, flashSaved } = useToast();
 
   const [clients, setClients] = useState<ClientRow[]>([]);
   const [clientId, setClientId] = useState("");
@@ -117,6 +117,7 @@ export default function ProgramsPage() {
     setMesos((ms) => ms.map((m, i) => (i === selMeso ? { ...m, [field]: value } : m)));
     try {
       await updateMesocycle(meso.id, { [field]: value });
+      flashSaved();
       if (field === "duration_weeks") {
         const newTotal = mesos.reduce((t, m, i) => t + (i === selMeso ? value : m.duration_weeks ?? 0), 0);
         await extendProgramWeeks(programId, newTotal);
@@ -228,6 +229,7 @@ export default function ProgramsPage() {
                     onBlur={async (e) => {
                       if (!e.target.value.trim()) return;
                       await updateProgramName(program.id, e.target.value.trim());
+                      flashSaved();
                     }}
                   />
                 </div>
@@ -256,6 +258,7 @@ export default function ProgramsPage() {
                     const allow = e.target.checked;
                     setPrograms((ps) => ps.map((p) => (p.id === program.id ? { ...p, allow_multiple_sessions_per_day: allow } : p)));
                     await setAllowMultipleSessionsPerDay(program.id, allow);
+                    flashSaved();
                   }}
                 />
                 <span>Permitir más de una rutina por día (ej. doble turno)</span>
@@ -273,6 +276,7 @@ export default function ProgramsPage() {
                   if (!weeks[0]) return;
                   await updateWeekStartDate(weeks[0].id, date);
                   setWeeks((ws) => ws.map((w, i) => (i === 0 ? { ...w, start_date: date } : w)));
+                  flashSaved();
                 }}
               />
               <p className="note">

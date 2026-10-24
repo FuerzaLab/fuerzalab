@@ -394,7 +394,7 @@ function SessionEditor({
   muscleById: Record<string, CatalogItem>;
   onRenamed: () => void;
 }) {
-  const { notify } = useToast();
+  const { notify, flashSaved } = useToast();
   const { profile } = useAuth();
   const [session, setSession] = useState<SessionRow>(initialSession);
   const [blocks, setBlocks] = useState<SessionBlockRow[]>([]);
@@ -452,7 +452,9 @@ function SessionEditor({
 
   const patchItem = (id: string, field: keyof WorkoutExerciseRow, value: any) => {
     setItems((its) => its.map((it) => (it.id === id ? { ...it, [field]: value } : it)));
-    updateWorkoutExercise(id, { [field]: value } as any).catch((e) => notify(e.message));
+    updateWorkoutExercise(id, { [field]: value } as any)
+      .then(() => flashSaved())
+      .catch((e) => notify(e.message));
   };
 
   const removeItem = async (id: string) => {
@@ -510,6 +512,7 @@ function SessionEditor({
             onBlur={async (e) => {
               if (!e.target.value.trim()) return;
               await updateSessionName(sessionId, e.target.value.trim());
+              flashSaved();
               onRenamed();
             }}
           />
@@ -523,6 +526,7 @@ function SessionEditor({
               const day = e.target.value ? Number(e.target.value) : null;
               await updateSessionDay(sessionId, day);
               setSession((s) => (s ? { ...s, day_of_week: day } : s));
+              flashSaved();
             }}
           >
             <option value="">Sin día asignado</option>
@@ -541,6 +545,7 @@ function SessionEditor({
               const st = e.target.value as StrengthType;
               await updateSessionStrengthType(sessionId, st);
               setSession((s) => (s ? { ...s, strength_type: st } : s));
+              flashSaved();
             }}
           >
             <option value="">Sin definir</option>
