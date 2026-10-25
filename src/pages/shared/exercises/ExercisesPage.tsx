@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState, type ChangeEvent } from "react";
-import { Plus, FileUp, Film, Trash2 } from "lucide-react";
+import { Plus, FileUp, Film, Trash2, Pencil } from "lucide-react";
 import { useAuth } from "../../../contexts/AuthContext";
 import { useToast } from "../../../contexts/ToastContext";
 import {
@@ -13,6 +13,7 @@ import {
   addVariation,
   removeVariation,
   RELATION_LABEL,
+  deleteExercise,
   type ExerciseRow,
   type CatalogItem,
   type ExerciseVariationRow,
@@ -23,9 +24,10 @@ import NewExerciseModal from "./NewExerciseModal";
 import ImportExercisesModal from "./ImportExercisesModal";
 import Chip from "../../../components/ui/Chip";
 import Loading from "../../../components/ui/Loading";
+import ConfirmModal from "../../../components/ui/ConfirmModal";
 
 export default function ExercisesPage({ scope }: { scope: "global" | "trainer" }) {
-  const { profile, actingTrainerId } = useAuth();
+  const { profile, actingTrainerId, can } = useAuth();
   const { notify } = useToast();
   const [exercises, setExercises] = useState<ExerciseRow[]>([]);
   const [muscles, setMuscles] = useState<CatalogItem[]>([]);
@@ -47,6 +49,8 @@ export default function ExercisesPage({ scope }: { scope: "global" | "trainer" }
   const [newVariationNotes, setNewVariationNotes] = useState("");
   const [uploadingMedia, setUploadingMedia] = useState(false);
   const mediaInputRef = useRef<HTMLInputElement>(null);
+  const [editingExercise, setEditingExercise] = useState<ExerciseRow | null>(null);
+  const [toDelete, setToDelete] = useState<ExerciseRow | null>(null);
 
   useEffect(() => {
     if (selected?.media_path) {
@@ -136,6 +140,33 @@ export default function ExercisesPage({ scope }: { scope: "global" | "trainer" }
   }, [exercises, query, bodyFilter, muscleById]);
 
   if (!profile) return null;
+
+  // Qué ejercicios se pueden editar/eliminar desde esta pantalla: en la
+  // biblioteca global (Super Admin), los globales; en la del entrenador,
+  // solo los propios — los globales se ven, pero no se tocan.
+  const canEdit = (e: ExerciseRow) =>
+    scope === "global"
+      ? e.scope === "global"
+      : e.scope === "trainer" && e.owner_id === (actingTrainerId ?? profile.id) && can("exercises", "write");
+
+  const confirmDelete = async () => {
+    const ex = toDelete;
+    if (!ex) return;
+    setToDelete(null);
+    try {
+      const result = await deleteExercise(ex.id);
+      const rest = exercises.filter((x) => x.id !== ex.id);
+      setExercises(rest);
+      setSelected((s) => (s?.id === ex.id ? rest[0] ?? null : s));
+      notify(
+        result === "deleted"
+          ? "Ejercicio eliminado."
+          : "Ejercicio quitado de la biblioteca. Como ya se usó en rutinas o en el historial, ahí se sigue viendo."
+      );
+    } catch (err: any) {
+      notify(err.message);
+    }
+  };
 
   const title = scope === "global" ? "Biblioteca global de ejercicios" : "Biblioteca de ejercicios";
   const sub =
@@ -236,6 +267,20 @@ export default function ExercisesPage({ scope }: { scope: "global" | "trainer" }
             <div className="panel">
               <div className="hd">
                 <h3>{selected.name}</h3>
+                {canEdit(selected) && (
+                  <div style={{ display: "flex", gap: 6 }}>
+                    <button className="btn ghost" style={{ padding: "4px 10px", fontSize: 12.5 }} onClick={() => setEditingExercise(selected)}>
+                      <Pencil size={13} /> Editar
+                    </button>
+                    <button
+                      className="btn ghost"
+                      style={{ padding: "4px 10px", fontSize: 12.5, color: "var(--bad)" }}
+                      onClick={() => setToDelete(selected)}
+                    >
+                      <Trash2 size={13} /> Eliminar
+                    </button>
+                  </div>
+                )}
               </div>
               <div className="bd">
                 <div style={{ marginBottom: 14 }}>
@@ -353,6 +398,36 @@ export default function ExercisesPage({ scope }: { scope: "global" | "trainer" }
             </div>
           )}
         </div>
+      )}
+
+      {editingExercise && (
+        <NewExerciseModal
+          scope={scope}
+          organizationId={profile.organization_id}
+          ownerId={(actingTrainerId ?? profile.id)}
+          muscles={muscles}
+          patterns={patterns}
+          equipment={equipment}
+          exercise={editingExercise}
+          onClose={() => setEditingExercise(null)}
+          onCreated={(ex) => {
+            setExercises((xs) => xs.map((x) => (x.id === ex.id ? ex : x)).sort((a, b) => a.name.localeCompare(b.name)));
+            setSelected(ex);
+            setEditingExercise(null);
+            notify("Cambios guardados.");
+          }}
+        />
+      )}
+
+      {toDelete && (
+        <ConfirmModal
+          title="Eliminar ejercicio"
+          message={`¿Eliminar "${toDelete.name}" de tu biblioteca? Si ya lo usaste en alguna rutina, evaluación o entrenamiento registrado, no se borra ese historial: el ejercicio deja de aparecer en la biblioteca y no se puede elegir para rutinas nuevas, pero donde ya estaba se sigue viendo.`}
+          confirmLabel="Eliminar"
+          danger
+          onClose={() => setToDelete(null)}
+          onConfirm={confirmDelete}
+        />
       )}
 
       {showNew && (

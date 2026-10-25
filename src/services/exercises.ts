@@ -236,3 +236,39 @@ export async function createExercise(
   if (error) throw error;
   return data as ExerciseRow;
 }
+
+/**
+ * Edita un ejercicio de la biblioteca. Si las reglas de seguridad no
+ * dejan tocarlo (ej. un ejercicio global, para un entrenador), Supabase
+ * no da error: simplemente no actualiza nada — por eso se chequea a mano.
+ */
+export async function updateExercise(id: string, input: NewExerciseInput): Promise<ExerciseRow> {
+  const { data, error } = await supabase.from("exercises").update(input).eq("id", id).select();
+  if (error) throw error;
+  if (!data || data.length === 0) throw new Error("No tenés permiso para editar este ejercicio.");
+  return data[0] as ExerciseRow;
+}
+
+/**
+ * Elimina un ejercicio. Si ya se usó en alguna rutina, sesión registrada
+ * o prueba de fuerza, la base de datos no deja borrarlo (perdería ese
+ * historial) — en ese caso se ARCHIVA: desaparece de la biblioteca y no
+ * se puede elegir para rutinas nuevas, pero las rutinas e historiales
+ * donde ya aparece lo siguen mostrando con su nombre.
+ */
+export async function deleteExercise(id: string): Promise<"deleted" | "archived"> {
+  const { data, error } = await supabase.from("exercises").delete().eq("id", id).select("id");
+  if (!error) {
+    if (!data || data.length === 0) throw new Error("No tenés permiso para eliminar este ejercicio.");
+    return "deleted";
+  }
+  // 23503 = el ejercicio está referenciado desde otra tabla (rutinas, historial…)
+  if ((error as any).code !== "23503") throw error;
+
+  const { data: upd, error: updErr } = await supabase.from("exercises").update({ is_active: false }).eq("id", id).select("id");
+  if (updErr) throw updErr;
+  if (!upd || upd.length === 0) throw new Error("No tenés permiso para eliminar este ejercicio.");
+  // Que no siga apareciendo como "alternativa" de otro ejercicio en Mi rutina.
+  await supabase.from("exercise_variations").delete().or(`exercise_id.eq.${id},related_exercise_id.eq.${id}`);
+  return "archived";
+}

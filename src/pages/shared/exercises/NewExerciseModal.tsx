@@ -2,6 +2,7 @@ import { useState } from "react";
 import Modal from "../../../components/ui/Modal";
 import {
   createExercise,
+  updateExercise,
   GOAL_OPTIONS,
   type CatalogItem,
   type ExerciseRow,
@@ -17,6 +18,7 @@ export default function NewExerciseModal({
   equipment,
   onClose,
   onCreated,
+  exercise,
 }: {
   scope: "global" | "trainer";
   organizationId: string | null;
@@ -26,15 +28,18 @@ export default function NewExerciseModal({
   equipment: CatalogItem[];
   onClose: () => void;
   onCreated: (ex: ExerciseRow) => void;
+  /** Si viene, el formulario edita este ejercicio en vez de crear uno nuevo. */
+  exercise?: ExerciseRow;
 }) {
-  const [name, setName] = useState("");
-  const [muscleId, setMuscleId] = useState("");
-  const [patternId, setPatternId] = useState("");
-  const [equipIds, setEquipIds] = useState<string[]>([]);
-  const [difficulty, setDifficulty] = useState<NewExerciseInput["difficulty"]>("intermediate");
-  const [goals, setGoals] = useState<string[]>([]);
-  const [cues, setCues] = useState("");
-  const [mistakes, setMistakes] = useState("");
+  const editing = !!exercise;
+  const [name, setName] = useState(exercise?.name ?? "");
+  const [muscleId, setMuscleId] = useState(exercise?.primary_muscle_id ?? "");
+  const [patternId, setPatternId] = useState(exercise?.movement_pattern_id ?? "");
+  const [equipIds, setEquipIds] = useState<string[]>(exercise?.equipment_ids ?? []);
+  const [difficulty, setDifficulty] = useState<NewExerciseInput["difficulty"]>(exercise?.difficulty ?? "intermediate");
+  const [goals, setGoals] = useState<string[]>(exercise?.goals ?? []);
+  const [cues, setCues] = useState(exercise?.technical_cues ?? "");
+  const [mistakes, setMistakes] = useState(exercise?.common_mistakes ?? "");
   const [error, setError] = useState("");
   const [saving, setSaving] = useState(false);
 
@@ -44,37 +49,37 @@ export default function NewExerciseModal({
 
   const submit = async () => {
     if (!name.trim()) {
-      setError("Escribe un nombre para poder crear el ejercicio.");
+      setError(editing ? "El ejercicio necesita un nombre." : "Escribe un nombre para poder crear el ejercicio.");
       return;
     }
     setError("");
     setSaving(true);
     try {
-      const created = await createExercise(
-        {
-          name: name.trim(),
-          primary_muscle_id: muscleId || null,
-          movement_pattern_id: patternId || null,
-          equipment_ids: equipIds,
-          difficulty,
-          goals: goals.length ? goals : ["Fuerza"],
-          instructions: "",
-          technical_cues: cues,
-          common_mistakes: mistakes,
-        },
-        scope,
-        organizationId,
-        ownerId
-      );
-      onCreated(created);
+      const input: NewExerciseInput = {
+        name: name.trim(),
+        primary_muscle_id: muscleId || null,
+        movement_pattern_id: patternId || null,
+        equipment_ids: equipIds,
+        difficulty,
+        goals: goals.length ? goals : ["Fuerza"],
+        // "instructions" no se muestra en ningún formulario: al editar se
+        // conserva lo que tuviera (por ejemplo, de una importación).
+        instructions: exercise?.instructions ?? "",
+        technical_cues: cues,
+        common_mistakes: mistakes,
+      };
+      const saved = editing
+        ? await updateExercise(exercise!.id, input)
+        : await createExercise(input, scope, organizationId, ownerId);
+      onCreated(saved);
     } catch (err: any) {
-      setError(err.message ?? "No pudimos crear el ejercicio.");
+      setError(err.message ?? (editing ? "No pudimos guardar los cambios." : "No pudimos crear el ejercicio."));
     }
     setSaving(false);
   };
 
   return (
-    <Modal title="Nuevo ejercicio" onClose={onClose} wide>
+    <Modal title={editing ? "Editar ejercicio" : "Nuevo ejercicio"} onClose={onClose} wide>
       <label className="field-label">Nombre del ejercicio</label>
       <input
         className={`input${error && !name.trim() ? " error" : ""}`}
@@ -162,7 +167,7 @@ export default function NewExerciseModal({
 
       {error && <p className="error-text" style={{ marginBottom: 12 }}>{error}</p>}
       <button className="btn" onClick={submit} disabled={saving}>
-        {saving ? "Creando…" : "Crear ejercicio"}
+        {saving ? (editing ? "Guardando…" : "Creando…") : editing ? "Guardar cambios" : "Crear ejercicio"}
       </button>
     </Modal>
   );
