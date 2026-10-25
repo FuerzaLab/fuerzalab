@@ -183,3 +183,9 @@ select.input:hover { border-color: var(--pri); }
 .launcher-topbar .brand-logo { width: 34px; height: 34px; }
 .auth-brand .brand-logo { width: 44px; height: 44px; border-radius: 11px; }
 .auth-brand { margin-bottom: 12px; }
+
+/* Marca de agua del logo (inicio de sesión, registro e Inicio). z-index -1: queda
+   detrás de tarjetas, paneles y barras, y solo se ve en el fondo libre. */
+.watermark { position: fixed; right: -140px; bottom: -120px; width: 640px; max-width: none; opacity: .10; pointer-events: none; user-select: none; z-index: -1; }
+@media (max-width: 860px) { .watermark { width: 420px; right: -100px; bottom: -80px; } }
+@media print { .watermark { display: none; } }

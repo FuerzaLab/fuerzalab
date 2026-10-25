@@ -9,6 +9,7 @@ import { listTodayLogsForTrainer, wellnessScore, wellnessSemaforo, type Wellness
 import { computeSuggestions } from "../../services/suggestions";
 import { getTodaysSessionForClient, type TodaysSession } from "../../services/sessions";
 import Loading from "../../components/ui/Loading";
+import Watermark from "../../components/ui/Watermark";
 
 const SESSION_STATUS_LABEL: Record<TodaysSession["status"], string> = {
   pending: "Todavía no la empezó",
@@ -52,6 +53,7 @@ export default function TrainerDashboard() {
 
   return (
     <div className="page">
+      <Watermark />
       <h1 style={{ marginBottom: 6 }}>Hola, {profile?.full_name}</h1>
       <p className="note" style={{ marginBottom: 20 }}>
         {profile?.role === "staff" ? "Esto es lo que está pasando hoy con los clientes." : "Esto es lo que pasó hoy con el bienestar de tus clientes."}

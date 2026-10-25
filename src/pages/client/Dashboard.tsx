@@ -19,6 +19,7 @@ import { listMessages } from "../../services/messages";
 import { listPayments, type PaymentRow } from "../../services/payments";
 import { getDashboardHighlight, type DashboardHighlight } from "../../services/reports";
 import { listAssessments } from "../../services/assessments";
+import Watermark from "../../components/ui/Watermark";
 
 const SESSION_STATUS_LABEL: Record<TodaysSession["status"], string> = {
   pending: "Todavía no la empezaste",
@@ -89,6 +90,7 @@ export default function ClientDashboard() {
 
   return (
     <div className="page">
+      <Watermark />
       <h1 style={{ marginBottom: 6 }}>Hola, {profile?.full_name}</h1>
       <p className="note" style={{ marginBottom: 20 }}>Esto es lo que te toca hoy.</p>
 
