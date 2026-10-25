@@ -682,7 +682,9 @@ export async function copyWeek(
     const oldBlockIdToKind = new Map(oldBlocks.map((b) => [b.id, b.kind]));
 
     const oldExerciseIds = exercises.map((ex) => ex.id);
-    const oldNotesByExercise = oldExerciseIds.length ? await listSetNotesForExercises(oldExerciseIds).catch(() => ({})) : {};
+    const oldNotesByExercise: Record<string, Record<number, string>> = oldExerciseIds.length
+      ? await listSetNotesForExercises(oldExerciseIds).catch(() => ({}))
+      : {};
 
     for (const ex of exercises) {
       const kind = ex.block_id ? oldBlockIdToKind.get(ex.block_id) : undefined;

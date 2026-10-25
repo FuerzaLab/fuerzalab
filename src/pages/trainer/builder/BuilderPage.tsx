@@ -469,7 +469,8 @@ function SessionEditor({
     }
     const existing = setNotes[item.id] ?? {};
     const drafts: Record<number, string> = {};
-    for (let n = 1; n <= item.sets; n++) drafts[n] = existing[n] ?? "";
+    const totalSets = item.sets ?? 3;
+    for (let n = 1; n <= totalSets; n++) drafts[n] = existing[n] ?? "";
     setNoteDrafts(drafts);
     setNotesExpandedId(item.id);
   };
@@ -793,7 +794,7 @@ function SessionEditor({
                             Notas por serie — se muestran destacadas al cliente mientras entrena esa serie en particular. Dejá vacío lo que no necesite nota.
                           </p>
                           <div style={{ display: "grid", gap: 6, marginBottom: 10 }}>
-                            {Array.from({ length: it.sets }, (_, idx) => idx + 1).map((n) => (
+                            {Array.from({ length: it.sets ?? 3 }, (_, idx) => idx + 1).map((n) => (
                               <div key={n} style={{ display: "flex", alignItems: "center", gap: 8 }}>
                                 <span className="note" style={{ width: 54, flex: "none" }}>Serie {n}</span>
                                 <input
