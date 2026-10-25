@@ -34,8 +34,12 @@ export type StaffLevel = "read" | "write";
 export type StaffPermissions = Partial<Record<StaffModule, StaffLevel>>;
 
 /** A qué entrenador asiste esta cuenta de staff, y con qué permisos. */
+export type StaffClientScope = "all" | "assigned";
+
 export interface StaffAccess {
   trainerId: string;
   trainerName: string;
   permissions: StaffPermissions;
+  /** "all": ve a todos los clientes del entrenador; "assigned": solo los que le asignó. */
+  clientScope: StaffClientScope;
 }

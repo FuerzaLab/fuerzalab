@@ -179,7 +179,7 @@ export function useAuth() {
 async function loadStaffAccess(staffId: string): Promise<StaffAccess | null> {
   const { data, error } = await supabase
     .from("staff_permissions")
-    .select("trainer_id, permissions, trainer:profiles!staff_permissions_trainer_id_fkey(full_name)")
+    .select("*, trainer:profiles!staff_permissions_trainer_id_fkey(full_name)")
     .eq("staff_id", staffId)
     .order("created_at")
     .limit(1)
@@ -194,6 +194,9 @@ async function loadStaffAccess(staffId: string): Promise<StaffAccess | null> {
     trainerId: row.trainer_id as string,
     trainerName: (trainer?.full_name as string | undefined) ?? "tu entrenador",
     permissions: (row.permissions ?? {}) as StaffAccess["permissions"],
+    // "*" en vez de nombrar la columna: si todavía no se corrió
+    // part3p_migration.sql, client_scope no existe y se asume "all".
+    clientScope: row.client_scope === "assigned" ? "assigned" : "all",
   };
 }
 

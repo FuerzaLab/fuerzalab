@@ -31,7 +31,7 @@ const STATUS_TONE: Record<ClientStatus, "ok" | "warn" | "bad" | ""> = {
 };
 
 export default function ClientsList() {
-  const { profile } = useAuth();
+  const { profile, staffAccess } = useAuth();
   const { notify } = useToast();
   const navigate = useNavigate();
 
@@ -90,7 +90,11 @@ export default function ClientsList() {
       <div style={{ display: "flex", flexWrap: "wrap", justifyContent: "space-between", gap: 12, marginBottom: 20 }}>
         <div>
           <h1 style={{ marginBottom: 4 }}>Clientes</h1>
-          <p className="note">{clients.length} clientes en tu cartera</p>
+          <p className="note">
+            {staffAccess?.clientScope === "assigned"
+              ? `${clients.length} cliente${clients.length === 1 ? "" : "s"} que te asignó ${staffAccess.trainerName}`
+              : `${clients.length} clientes en tu cartera`}
+          </p>
         </div>
         {/* Invitar clientes nuevos queda reservado al entrenador (la base de datos tampoco se lo permite al staff). */}
         {profile.role === "trainer" && (
