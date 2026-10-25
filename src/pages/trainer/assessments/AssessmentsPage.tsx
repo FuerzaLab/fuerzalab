@@ -66,6 +66,7 @@ import {
   type BodyFatEstimate,
 } from "../../../services/assessments";
 import Loading from "../../../components/ui/Loading";
+import SearchSelect from "../../../components/ui/SearchSelect";
 
 const CATEGORY_ORDER: AssessmentCategory[] = ["body", "circumferences", "skinfolds", "strength", "power", "endurance", "mobility", "flexibility"];
 
@@ -133,10 +134,10 @@ export default function AssessmentsPage() {
 
       <div style={{ marginBottom: 20, maxWidth: 320 }}>
         <label className="field-label">Cliente</label>
-        <select className="input" value={clientId} onChange={(e) => setClientId(e.target.value)}>
+        <SearchSelect className="input" value={clientId} onChange={(e) => setClientId(e.target.value)}>
           <option value="">Selecciona un cliente</option>
           {clients.map((c) => <option key={c.id} value={c.id}>{c.full_name}</option>)}
-        </select>
+        </SearchSelect>
       </div>
 
       {clientId && suggestion && (
@@ -877,10 +878,10 @@ function StrengthSection({ assessmentId, rows, setRows, exercises }: { assessmen
         <div style={{ display: "flex", flexWrap: "wrap", gap: 10, alignItems: "flex-end" }}>
           <div style={{ minWidth: 200 }}>
             <label className="field-label">Ejercicio</label>
-            <select className="input" value={exerciseId} onChange={(e) => setExerciseId(e.target.value)}>
+            <SearchSelect className="input" value={exerciseId} onChange={(e) => setExerciseId(e.target.value)}>
               <option value="">Elige uno</option>
               {exercises.map((e) => <option key={e.id} value={e.id}>{e.name}</option>)}
-            </select>
+            </SearchSelect>
           </div>
           <div><label className="field-label">Carga (kg)</label><input className="input" style={{ maxWidth: 100 }} value={load} onChange={(e) => setLoad(e.target.value)} /></div>
           <div><label className="field-label">Repeticiones</label><input className="input" style={{ maxWidth: 90 }} value={reps} onChange={(e) => setReps(e.target.value)} /></div>

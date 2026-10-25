@@ -16,6 +16,7 @@ import {
 } from "../../services/admin";
 import type { Role } from "../../types/auth";
 import Loading from "../../components/ui/Loading";
+import SearchSelect from "../../components/ui/SearchSelect";
 
 const ROLE_LABEL: Record<Role, string> = {
   super_admin: "Super Admin",
@@ -229,10 +230,10 @@ function MoveTrainerModal({
       ) : (
         <>
           <label className="field-label">Nueva organización</label>
-          <select className="input" style={{ marginBottom: 16 }} value={orgId} onChange={(e) => setOrgId(e.target.value)}>
+          <SearchSelect className="input" style={{ marginBottom: 16 }} value={orgId} onChange={(e) => setOrgId(e.target.value)}>
             <option value="">Selecciona</option>
             {orgs.map((o) => <option key={o.id} value={o.id}>{o.name}</option>)}
-          </select>
+          </SearchSelect>
           {error && <p className="error-text" style={{ marginBottom: 12 }}>{error}</p>}
           <button className="btn" onClick={submit} disabled={saving}>{saving ? "Moviendo…" : "Mover"}</button>
         </>

@@ -18,6 +18,7 @@ import {
   type AppointmentKind,
 } from "../../../services/appointments";
 import { createClientWithInvite } from "../../../services/clients";
+import SearchSelect from "../../../components/ui/SearchSelect";
 
 const DAY_LABEL = ["Domingo", "Lunes", "Martes", "Miércoles", "Jueves", "Viernes", "Sábado"];
 
@@ -501,10 +502,10 @@ function AppointmentModal({
           </div>
         </div>
       ) : (
-        <select className="input" style={{ marginBottom: 14 }} value={clientId} onChange={(e) => setClientId(e.target.value)}>
+        <SearchSelect className="input" style={{ marginBottom: 14 }} value={clientId} onChange={(e) => setClientId(e.target.value)}>
           <option value="">Elegí un cliente</option>
           {localClients.map((c) => <option key={c.id} value={c.id}>{c.full_name}</option>)}
-        </select>
+        </SearchSelect>
       )}
 
       <label className="field-label">Tipo</label>

@@ -25,6 +25,7 @@ import ImportExercisesModal from "./ImportExercisesModal";
 import Chip from "../../../components/ui/Chip";
 import Loading from "../../../components/ui/Loading";
 import ConfirmModal from "../../../components/ui/ConfirmModal";
+import SearchSelect from "../../../components/ui/SearchSelect";
 
 export default function ExercisesPage({ scope }: { scope: "global" | "trainer" }) {
   const { profile, actingTrainerId, can } = useAuth();
@@ -359,12 +360,12 @@ export default function ExercisesPage({ scope }: { scope: "global" | "trainer" }
 
                   {addingVariation && (
                     <div style={{ display: "grid", gap: 10 }}>
-                      <select className="input" value={newRelatedId} onChange={(e) => setNewRelatedId(e.target.value)}>
+                      <SearchSelect className="input" value={newRelatedId} onChange={(e) => setNewRelatedId(e.target.value)}>
                         <option value="">Elegí un ejercicio</option>
                         {exercises.filter((e) => e.id !== selected.id).map((e) => (
                           <option key={e.id} value={e.id}>{e.name}</option>
                         ))}
-                      </select>
+                      </SearchSelect>
                       <select className="input" value={newRelation} onChange={(e) => setNewRelation(e.target.value as VariationRelation)}>
                         {(Object.entries(RELATION_LABEL) as [VariationRelation, string][]).map(([k, l]) => (
                           <option key={k} value={k}>{l}</option>

@@ -17,6 +17,7 @@ import {
   type WorkoutTemplateRow,
   type WorkoutTemplateSessionRow,
 } from "../../../services/templates";
+import SearchSelect from "../../../components/ui/SearchSelect";
 
 export default function TemplatesPage() {
   const { profile, actingTrainerId } = useAuth();
@@ -290,10 +291,10 @@ function ApplyTemplateDayModal({
   return (
     <Modal title={`Usar "${day.name}"`} onClose={onClose}>
       <label className="field-label">Cliente</label>
-      <select className="input" style={{ marginBottom: 14 }} value={clientId} onChange={(e) => pickClient(e.target.value)}>
+      <SearchSelect className="input" style={{ marginBottom: 14 }} value={clientId} onChange={(e) => pickClient(e.target.value)}>
         <option value="">Elegí un cliente</option>
         {clients.map((c) => <option key={c.id} value={c.id}>{c.full_name}</option>)}
-      </select>
+      </SearchSelect>
 
       {loadingWeeks && <Loading />}
 
@@ -358,10 +359,10 @@ function ApplyTemplateModal({
   return (
     <Modal title={`Usar "${template.name}"`} onClose={onClose}>
       <label className="field-label">Cliente</label>
-      <select className="input" style={{ marginBottom: 14 }} value={clientId} onChange={(e) => setClientId(e.target.value)}>
+      <SearchSelect className="input" style={{ marginBottom: 14 }} value={clientId} onChange={(e) => setClientId(e.target.value)}>
         <option value="">Elegí un cliente</option>
         {clients.map((c) => <option key={c.id} value={c.id}>{c.full_name}</option>)}
-      </select>
+      </SearchSelect>
       <label className="field-label">Nombre del programa para este cliente</label>
       <input className="input" style={{ marginBottom: 18 }} value={name} onChange={(e) => setName(e.target.value)} />
       <button className="btn" onClick={submit} disabled={saving}>{saving ? "Aplicando…" : "Aplicar plantilla"}</button>

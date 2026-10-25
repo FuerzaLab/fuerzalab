@@ -48,6 +48,7 @@ import {
   type BlockKind,
   type StrengthType,
 } from "../../../services/sessions";
+import SearchSelect from "../../../components/ui/SearchSelect";
 
 export default function BuilderPage() {
   const { notify } = useToast();
@@ -140,21 +141,21 @@ export default function BuilderPage() {
       <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(200px,1fr))", gap: 12, marginBottom: 18 }}>
         <div>
           <label className="field-label">Cliente</label>
-          <select className="input" value={clientId} onChange={(e) => setClientId(e.target.value)}>
+          <SearchSelect className="input" value={clientId} onChange={(e) => setClientId(e.target.value)}>
             <option value="">Selecciona</option>
             {clients.map((c) => (
               <option key={c.id} value={c.id}>{c.full_name}</option>
             ))}
-          </select>
+          </SearchSelect>
         </div>
         <div>
           <label className="field-label">Programa</label>
-          <select className="input" value={programId} onChange={(e) => setProgramId(e.target.value)} disabled={!clientId}>
+          <SearchSelect className="input" value={programId} onChange={(e) => setProgramId(e.target.value)} disabled={!clientId}>
             <option value="">{programs.length ? "Selecciona" : "Sin programas"}</option>
             {programs.map((p) => (
               <option key={p.id} value={p.id}>{p.name}</option>
             ))}
-          </select>
+          </SearchSelect>
         </div>
       </div>
 
@@ -857,20 +858,20 @@ function SessionEditor({
           <div style={{ display: "flex", flexWrap: "wrap", gap: 12, alignItems: "flex-end" }}>
             <div style={{ flex: "0 1 180px" }}>
               <label className="field-label">Músculo</label>
-              <select className="input" value={muscleFilter} onChange={(e) => setMuscleFilter(e.target.value)}>
+              <SearchSelect className="input" value={muscleFilter} onChange={(e) => setMuscleFilter(e.target.value)}>
                 <option value="all">Todos</option>
                 {muscles
                   .filter((m) => bodyFilter === "all" || bodyRegionOf(m.key) === bodyFilter)
                   .map((m) => <option key={m.id} value={m.id}>{m.label}</option>)}
-              </select>
+              </SearchSelect>
             </div>
             <div style={{ flex: "1 1 220px" }}>
               <label className="field-label">Buscar ejercicio ({filteredExercises.length} disponibles)</label>
               <input className="input" style={{ marginBottom: 6 }} placeholder="Escribe para buscar" value={search} onChange={(e) => setSearch(e.target.value)} />
-              <select className="input" value={pickExercise} onChange={(e) => setPickExercise(e.target.value)}>
+              <SearchSelect className="input" value={pickExercise} onChange={(e) => setPickExercise(e.target.value)}>
                 <option value="">Elige un ejercicio</option>
                 {filteredExercises.map((e) => <option key={e.id} value={e.id}>{e.name}</option>)}
-              </select>
+              </SearchSelect>
             </div>
             <div style={{ flex: "0 1 170px" }}>
               <label className="field-label">Bloque</label>
@@ -1028,10 +1029,10 @@ function SaveAsTemplateModal({
       ) : (
         <>
           <label className="field-label">Plantilla</label>
-          <select className="input" style={{ marginBottom: 16 }} value={templateId} onChange={(e) => setTemplateId(e.target.value)}>
+          <SearchSelect className="input" style={{ marginBottom: 16 }} value={templateId} onChange={(e) => setTemplateId(e.target.value)}>
             <option value="">Elegí una plantilla</option>
             {templates.map((t) => <option key={t.id} value={t.id}>{t.name}</option>)}
-          </select>
+          </SearchSelect>
         </>
       )}
 

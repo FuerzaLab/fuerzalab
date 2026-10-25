@@ -11,6 +11,7 @@ import {
   type ProgressPhotoRow,
 } from "../../services/progressPhotos";
 import Loading from "../ui/Loading";
+import SearchSelect from "../ui/SearchSelect";
 
 export const COLORS = { pri: "#1E3FA8", ok: "#2E8B6E", warn: "#B77800", bad: "#D6472B", muted: "#8A93A6", purple: "#7B4FE0" };
 const LINE_PALETTE = [COLORS.pri, COLORS.bad, COLORS.ok, COLORS.warn, COLORS.purple];
@@ -176,9 +177,9 @@ export function StrengthChart({
   if (exerciseOptions.length === 0) return <p className="note">Este cliente todavía no tiene pruebas de fuerza registradas en Evaluaciones.</p>;
   return (
     <>
-      <select className="input" style={{ maxWidth: 260, marginBottom: 14 }} value={exerciseId} onChange={(e) => onExerciseChange(e.target.value)}>
+      <SearchSelect className="input" style={{ maxWidth: 260, marginBottom: 14 }} value={exerciseId} onChange={(e) => onExerciseChange(e.target.value)}>
         {exerciseOptions.map(([id, name]) => <option key={id} value={id}>{name}</option>)}
-      </select>
+      </SearchSelect>
       {series.length < 2 ? (
         <p className="note">Hace falta al menos 2 pruebas de este ejercicio para ver una tendencia.</p>
       ) : (
@@ -354,17 +355,17 @@ export function AssessmentComparison({
       <div style={{ display: "flex", gap: 14, flexWrap: "wrap", marginBottom: 18 }}>
         <div>
           <label className="field-label">Evaluación A (anterior)</label>
-          <select className="input" value={idA} onChange={(e) => onChangeA(e.target.value)}>
+          <SearchSelect className="input" value={idA} onChange={(e) => onChangeA(e.target.value)}>
             <option value="">Selecciona</option>
             {options.map((o) => <option key={o.id} value={o.id}>{o.label}</option>)}
-          </select>
+          </SearchSelect>
         </div>
         <div>
           <label className="field-label">Evaluación B (más reciente)</label>
-          <select className="input" value={idB} onChange={(e) => onChangeB(e.target.value)}>
+          <SearchSelect className="input" value={idB} onChange={(e) => onChangeB(e.target.value)}>
             <option value="">Selecciona</option>
             {options.map((o) => <option key={o.id} value={o.id}>{o.label}</option>)}
-          </select>
+          </SearchSelect>
         </div>
       </div>
 
@@ -448,9 +449,9 @@ export function ExerciseProgressChart({
   if (exerciseOptions.length === 0) return <p className="note">Este cliente todavía no entrenó ningún ejercicio con carga registrada.</p>;
   return (
     <>
-      <select className="input" style={{ maxWidth: 260, marginBottom: 14 }} value={exerciseId} onChange={(e) => onExerciseChange(e.target.value)}>
+      <SearchSelect className="input" style={{ maxWidth: 260, marginBottom: 14 }} value={exerciseId} onChange={(e) => onExerciseChange(e.target.value)}>
         {exerciseOptions.map(([id, name]) => <option key={id} value={id}>{name}</option>)}
-      </select>
+      </SearchSelect>
       {series.length < 2 ? (
         <p className="note">Hace falta al menos 2 sesiones con este ejercicio para ver una tendencia.</p>
       ) : (

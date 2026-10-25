@@ -12,6 +12,7 @@ import {
 } from "../../../lib/importParsing";
 import { addWorkoutExercise, updateWorkoutExercise, BLOCK_LABEL, BLOCK_ORDER, type BlockKind, type SessionBlockRow } from "../../../services/sessions";
 import type { ExerciseRow } from "../../../services/exercises";
+import SearchSelect from "../../../components/ui/SearchSelect";
 
 const ALIASES = {
   name: ["ejercicio", "exercise", "nombre"],
@@ -185,10 +186,10 @@ export default function ImportRoutineModal({
                 {rows.map((r) => (
                   <tr key={r.id} style={{ borderTop: "1px solid var(--line)", background: r.exerciseId ? undefined : "var(--bad-soft)" }}>
                     <td style={{ padding: "6px 8px", minWidth: 180 }}>
-                      <select className="input" style={{ padding: "6px 8px" }} value={r.exerciseId} onChange={(e) => patch(r.id, "exerciseId", e.target.value)}>
+                      <SearchSelect className="input" style={{ padding: "6px 8px" }} value={r.exerciseId} onChange={(e) => patch(r.id, "exerciseId", e.target.value)}>
                         <option value="">{r.name} (sin coincidir, elige uno)</option>
                         {exercises.map((e) => <option key={e.id} value={e.id}>{e.name}</option>)}
-                      </select>
+                      </SearchSelect>
                     </td>
                     <td style={{ padding: "6px 8px" }}>
                       <select className="input" style={{ padding: "6px 8px" }} value={r.block} onChange={(e) => patch(r.id, "block", e.target.value)}>

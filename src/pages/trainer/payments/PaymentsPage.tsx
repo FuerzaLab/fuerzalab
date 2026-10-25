@@ -23,6 +23,7 @@ import {
   type PaymentMethod,
 } from "../../../services/payments";
 import Loading from "../../../components/ui/Loading";
+import SearchSelect from "../../../components/ui/SearchSelect";
 
 const STATUS_LABEL: Record<PaymentStatus, string> = { pending: "Pendiente", paid: "Pagado", cancelled: "Cancelado" };
 const STATUS_TONE: Record<PaymentStatus, "warn" | "ok" | "bad"> = { pending: "warn", paid: "ok", cancelled: "bad" };
@@ -452,14 +453,14 @@ function NewPaymentModal({
   return (
     <Modal title="Registrar pago" onClose={onClose}>
       <label className="field-label">Cliente</label>
-      <select className="input" style={{ marginBottom: 12 }} value={clientId} onChange={(e) => setClientId(e.target.value)}>
+      <SearchSelect className="input" style={{ marginBottom: 12 }} value={clientId} onChange={(e) => setClientId(e.target.value)}>
         {clients.map((c) => <option key={c.id} value={c.id}>{c.full_name}</option>)}
-      </select>
+      </SearchSelect>
       <label className="field-label">Plan (opcional, completa el monto)</label>
-      <select className="input" style={{ marginBottom: 12 }} value={planId} onChange={(e) => applyPlan(e.target.value)}>
+      <SearchSelect className="input" style={{ marginBottom: 12 }} value={planId} onChange={(e) => applyPlan(e.target.value)}>
         <option value="">Sin plan</option>
         {plans.map((p) => <option key={p.id} value={p.id}>{p.name} — {p.currency} {p.price}</option>)}
-      </select>
+      </SearchSelect>
       <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 12, marginBottom: 12 }}>
         <div>
           <label className="field-label">Monto</label>

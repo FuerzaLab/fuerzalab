@@ -6,6 +6,7 @@ import { listSessions, computeWeekStatuses, WEEK_STATUS_COLOR, WEEK_STATUS_LABEL
 import { getActiveProgramForClient, getSessionStatuses, markSessionSkipped, type WorkoutLogRow } from "../../../services/training";
 import { TrainSession } from "../../client/Routine";
 import Loading from "../../../components/ui/Loading";
+import SearchSelect from "../../../components/ui/SearchSelect";
 
 const STATUS_LABEL: Record<WorkoutLogRow["status"], string> = {
   pending: "Pendiente",
@@ -100,10 +101,10 @@ export default function RunSessionPage() {
 
       <div style={{ marginBottom: 20, maxWidth: 320 }}>
         <label className="field-label">Cliente</label>
-        <select className="input" value={clientId} onChange={(e) => setClientId(e.target.value)}>
+        <SearchSelect className="input" value={clientId} onChange={(e) => setClientId(e.target.value)}>
           <option value="">Selecciona un cliente</option>
           {clients.map((c) => <option key={c.id} value={c.id}>{c.full_name}</option>)}
-        </select>
+        </SearchSelect>
       </div>
 
       {!clientId && <p className="note">Elige un cliente para ver su programa activo.</p>}

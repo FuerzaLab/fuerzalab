@@ -8,6 +8,7 @@ import {
   type ExerciseRow,
   type NewExerciseInput,
 } from "../../../services/exercises";
+import SearchSelect from "../../../components/ui/SearchSelect";
 
 export default function NewExerciseModal({
   scope,
@@ -93,21 +94,21 @@ export default function NewExerciseModal({
       <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(170px,1fr))", gap: 12, marginBottom: 12 }}>
         <div>
           <label className="field-label">Grupo muscular</label>
-          <select className="input" value={muscleId} onChange={(e) => setMuscleId(e.target.value)}>
+          <SearchSelect className="input" value={muscleId} onChange={(e) => setMuscleId(e.target.value)}>
             <option value="">Selecciona</option>
             {muscles.map((m) => (
               <option key={m.id} value={m.id}>{m.label}</option>
             ))}
-          </select>
+          </SearchSelect>
         </div>
         <div>
           <label className="field-label">Patrón de movimiento</label>
-          <select className="input" value={patternId} onChange={(e) => setPatternId(e.target.value)}>
+          <SearchSelect className="input" value={patternId} onChange={(e) => setPatternId(e.target.value)}>
             <option value="">Selecciona</option>
             {patterns.map((p) => (
               <option key={p.id} value={p.id}>{p.label}</option>
             ))}
-          </select>
+          </SearchSelect>
         </div>
         <div>
           <label className="field-label">Nivel</label>

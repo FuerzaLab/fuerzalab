@@ -20,6 +20,7 @@ import {
   fmtDate,
 } from "../../../components/reports/ReportSections";
 import Loading from "../../../components/ui/Loading";
+import SearchSelect from "../../../components/ui/SearchSelect";
 
 export default function ReportsPage() {
   const { notify } = useToast();
@@ -84,10 +85,10 @@ export default function ReportsPage() {
 
       <div style={{ marginBottom: 24, maxWidth: 320 }}>
         <label className="field-label">Cliente</label>
-        <select className="input" value={clientId} onChange={(e) => { setClientId(e.target.value); setCircSite(""); setStrengthExId(""); setProgressExId(""); setCmpA(""); setCmpB(""); }}>
+        <SearchSelect className="input" value={clientId} onChange={(e) => { setClientId(e.target.value); setCircSite(""); setStrengthExId(""); setProgressExId(""); setCmpA(""); setCmpB(""); }}>
           <option value="">Selecciona un cliente</option>
           {clients.map((c) => <option key={c.id} value={c.id}>{c.full_name}</option>)}
-        </select>
+        </SearchSelect>
       </div>
 
       {!clientId && <p className="note">Elige un cliente para ver sus reportes.</p>}

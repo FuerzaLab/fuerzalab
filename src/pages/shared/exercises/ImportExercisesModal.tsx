@@ -10,6 +10,7 @@ import {
   fileKind,
 } from "../../../lib/importParsing";
 import { createExercise, GOAL_OPTIONS, type CatalogItem, type ExerciseRow, type NewExerciseInput } from "../../../services/exercises";
+import SearchSelect from "../../../components/ui/SearchSelect";
 
 const ALIASES = {
   name: ["ejercicio", "exercise", "nombre", "movimiento"],
@@ -202,16 +203,16 @@ export default function ImportExercisesModal({
                       <input className="input" style={{ padding: "6px 8px" }} value={r.name} onChange={(e) => patch(r.id, "name", e.target.value)} />
                     </td>
                     <td style={{ padding: "6px 8px" }}>
-                      <select className="input" style={{ padding: "6px 8px" }} value={findCatalogId(muscles, r.muscleGroup)} onChange={(e) => patch(r.id, "muscleGroup", muscles.find((m) => m.id === e.target.value)?.label ?? "")}>
+                      <SearchSelect className="input" style={{ padding: "6px 8px" }} value={findCatalogId(muscles, r.muscleGroup)} onChange={(e) => patch(r.id, "muscleGroup", muscles.find((m) => m.id === e.target.value)?.label ?? "")}>
                         <option value="">Sin definir</option>
                         {muscles.map((m) => <option key={m.id} value={m.id}>{m.label}</option>)}
-                      </select>
+                      </SearchSelect>
                     </td>
                     <td style={{ padding: "6px 8px" }}>
-                      <select className="input" style={{ padding: "6px 8px" }} value={findCatalogId(patterns, r.pattern)} onChange={(e) => patch(r.id, "pattern", patterns.find((p) => p.id === e.target.value)?.label ?? "")}>
+                      <SearchSelect className="input" style={{ padding: "6px 8px" }} value={findCatalogId(patterns, r.pattern)} onChange={(e) => patch(r.id, "pattern", patterns.find((p) => p.id === e.target.value)?.label ?? "")}>
                         <option value="">Sin definir</option>
                         {patterns.map((p) => <option key={p.id} value={p.id}>{p.label}</option>)}
-                      </select>
+                      </SearchSelect>
                     </td>
                     <td style={{ padding: "6px 8px" }}>
                       <select className="input" style={{ padding: "6px 8px" }} value={r.difficulty} onChange={(e) => patch(r.id, "difficulty", e.target.value)}>

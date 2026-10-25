@@ -32,6 +32,7 @@ import {
 } from "../../../services/programs";
 import Loading from "../../../components/ui/Loading";
 import { cloneProgram } from "../../../services/sessions";
+import SearchSelect from "../../../components/ui/SearchSelect";
 
 const PHASE_COLOR: Record<string, string> = {
   accumulation: "#2E8B6E",
@@ -147,12 +148,12 @@ export default function ProgramsPage() {
 
       <div style={{ marginBottom: 20, maxWidth: 320 }}>
         <label className="field-label">Cliente</label>
-        <select className="input" value={clientId} onChange={(e) => setClientId(e.target.value)}>
+        <SearchSelect className="input" value={clientId} onChange={(e) => setClientId(e.target.value)}>
           <option value="">Selecciona un cliente</option>
           {clients.map((c) => (
             <option key={c.id} value={c.id}>{c.full_name}</option>
           ))}
-        </select>
+        </SearchSelect>
       </div>
 
       {clientId && programs.length === 0 && !loading && (
