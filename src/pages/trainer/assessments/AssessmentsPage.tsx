@@ -1,5 +1,5 @@
 import { useEffect, useState, type Dispatch, type SetStateAction } from "react";
-import { Plus, Trash2 } from "lucide-react";
+import { Plus, Trash2, Pencil, Check, X } from "lucide-react";
 import { useAuth } from "../../../contexts/AuthContext";
 import { useToast } from "../../../contexts/ToastContext";
 import Modal from "../../../components/ui/Modal";
@@ -10,30 +10,38 @@ import {
   listAssessments,
   createAssessment,
   deleteAssessment,
+  updateAssessment,
   getBodyMeasurement,
   upsertBodyMeasurement,
   listCircumferences,
   addCircumference,
   deleteCircumference,
+  updateCircumference,
   listStrengthTests,
   addStrengthTest,
   deleteStrengthTest,
+  updateStrengthTest,
   listSkinfolds,
   addSkinfold,
   deleteSkinfold,
+  updateSkinfold,
   sumSkinfolds8,
   listPowerTests,
   addPowerTest,
   deletePowerTest,
+  updatePowerTest,
   listEnduranceTests,
   addEnduranceTest,
   deleteEnduranceTest,
+  updateEnduranceTest,
   listMobilityTests,
   addMobilityTest,
   deleteMobilityTest,
+  updateMobilityTest,
   listFlexibilityTests,
   addFlexibilityTest,
   deleteFlexibilityTest,
+  updateFlexibilityTest,
   suggestAssessmentCategories,
   estimateBodyFat,
   TYPE_LABEL,
@@ -282,6 +290,22 @@ function AssessmentDetail({
   const [previousSkinfolds, setPreviousSkinfolds] = useState<SkinfoldRow[]>([]);
   const [previousDate, setPreviousDate] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
+  const [assessedAt, setAssessedAt] = useState(assessment.assessed_at.slice(0, 10));
+  const [notesText, setNotesText] = useState(assessment.notes ?? "");
+  const [editingHeader, setEditingHeader] = useState(false);
+  const [savingHeader, setSavingHeader] = useState(false);
+
+  const saveHeader = async () => {
+    setSavingHeader(true);
+    try {
+      await updateAssessment(assessment.id, { assessedAt, notes: notesText });
+      setEditingHeader(false);
+      notify("Fecha y notas actualizadas.");
+    } catch (e: any) {
+      notify(e.message);
+    }
+    setSavingHeader(false);
+  };
 
   useEffect(() => {
     setLoading(true);
@@ -344,6 +368,35 @@ function AssessmentDetail({
 
   return (
     <div>
+      <div className="panel" style={{ marginBottom: 18 }}>
+        <div className="bd">
+          {editingHeader ? (
+            <div style={{ display: "flex", flexWrap: "wrap", gap: 12, alignItems: "flex-end" }}>
+              <div>
+                <label className="field-label">Fecha</label>
+                <input className="input" type="date" value={assessedAt} onChange={(e) => setAssessedAt(e.target.value)} />
+              </div>
+              <div style={{ flex: 1, minWidth: 220 }}>
+                <label className="field-label">Notas (opcional)</label>
+                <input className="input" value={notesText} onChange={(e) => setNotesText(e.target.value)} />
+              </div>
+              <button className="btn" onClick={saveHeader} disabled={savingHeader}>{savingHeader ? "Guardando…" : "Guardar"}</button>
+              <button className="btn ghost" onClick={() => { setEditingHeader(false); setAssessedAt(assessment.assessed_at.slice(0, 10)); setNotesText(assessment.notes ?? ""); }}>Cancelar</button>
+            </div>
+          ) : (
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 10 }}>
+              <span>
+                <b>{new Date(assessedAt + "T00:00:00").toLocaleDateString("es")}</b>
+                {notesText && <span className="note"> — {notesText}</span>}
+              </span>
+              <button className="btn ghost" style={{ padding: "5px 10px", fontSize: 13 }} onClick={() => setEditingHeader(true)}>
+                <Pencil size={13} /> Editar fecha y notas
+              </button>
+            </div>
+          )}
+        </div>
+      </div>
+
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-end", gap: 12, marginBottom: 18, flexWrap: "wrap" }}>
         <div>
           <label className="field-label">Qué evaluación querés registrar</label>
@@ -523,6 +576,8 @@ function CircumferencesSection({ assessmentId, rows, setRows }: { assessmentId: 
   const [customLabel, setCustomLabel] = useState("");
   const [side, setSide] = useState<CircumferenceRow["side"]>("none");
   const [value, setValue] = useState("");
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [editValue, setEditValue] = useState("");
 
   const add = async () => {
     if (!value) return notify("Escribe el valor en centímetros.");
@@ -531,6 +586,17 @@ function CircumferencesSection({ assessmentId, rows, setRows }: { assessmentId: 
       setRows((rs) => [...rs, created]);
       setValue("");
       setCustomLabel("");
+    } catch (e: any) {
+      notify(e.message);
+    }
+  };
+
+  const saveEdit = async (id: string) => {
+    if (!editValue) return;
+    try {
+      await updateCircumference(id, { valueCm: Number(editValue.replace(",", ".")) });
+      setRows((rs) => rs.map((r) => (r.id === id ? { ...r, value_cm: Number(editValue.replace(",", ".")) } : r)));
+      setEditingId(null);
     } catch (e: any) {
       notify(e.message);
     }
@@ -547,11 +613,33 @@ function CircumferencesSection({ assessmentId, rows, setRows }: { assessmentId: 
                 <tr key={c.id} style={{ borderBottom: "1px solid var(--line)" }}>
                   <td style={{ padding: "6px 4px" }}>{c.site === "custom" ? c.custom_label : SITE_LABEL[c.site]}</td>
                   <td style={{ padding: "6px 4px" }}>{c.side !== "none" ? (c.side === "left" ? "Izquierda" : "Derecha") : ""}</td>
-                  <td style={{ padding: "6px 4px" }}>{c.value_cm} cm</td>
+                  <td style={{ padding: "6px 4px" }}>
+                    {editingId === c.id ? (
+                      <input className="input" style={{ maxWidth: 90, padding: "4px 8px" }} value={editValue} onChange={(e) => setEditValue(e.target.value)} autoFocus />
+                    ) : (
+                      `${c.value_cm} cm`
+                    )}
+                  </td>
                   <td style={{ padding: "6px 4px", textAlign: "right" }}>
-                    <button aria-label={`Quitar ${c.site}`} onClick={async () => { await deleteCircumference(c.id); setRows((rs) => rs.filter((x) => x.id !== c.id)); }} style={{ border: 0, background: "none", color: "var(--muted)", cursor: "pointer" }}>
-                      <Trash2 size={14} />
-                    </button>
+                    {editingId === c.id ? (
+                      <>
+                        <button aria-label="Guardar" onClick={() => saveEdit(c.id)} style={{ border: 0, background: "none", color: "var(--ok)", cursor: "pointer", marginRight: 6 }}>
+                          <Check size={14} />
+                        </button>
+                        <button aria-label="Cancelar" onClick={() => setEditingId(null)} style={{ border: 0, background: "none", color: "var(--muted)", cursor: "pointer" }}>
+                          <X size={14} />
+                        </button>
+                      </>
+                    ) : (
+                      <>
+                        <button aria-label={`Editar ${c.site}`} onClick={() => { setEditingId(c.id); setEditValue(String(c.value_cm)); }} style={{ border: 0, background: "none", color: "var(--muted)", cursor: "pointer", marginRight: 6 }}>
+                          <Pencil size={14} />
+                        </button>
+                        <button aria-label={`Quitar ${c.site}`} onClick={async () => { await deleteCircumference(c.id); setRows((rs) => rs.filter((x) => x.id !== c.id)); }} style={{ border: 0, background: "none", color: "var(--muted)", cursor: "pointer" }}>
+                          <Trash2 size={14} />
+                        </button>
+                      </>
+                    )}
                   </td>
                 </tr>
               ))}
@@ -590,6 +678,8 @@ function SkinfoldsSection({ assessmentId, rows, setRows }: { assessmentId: strin
   const [side, setSide] = useState<SkinfoldRow["side"]>(null);
   const [value, setValue] = useState("");
   const [protocol, setProtocol] = useState("");
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [editValue, setEditValue] = useState("");
 
   const add = async () => {
     if (!value) return notify("Escribe el valor en milímetros.");
@@ -597,6 +687,17 @@ function SkinfoldsSection({ assessmentId, rows, setRows }: { assessmentId: strin
       const created = await addSkinfold({ assessmentId, site, side, valueMm: Number(value.replace(",", ".")), protocol });
       setRows((rs) => [...rs, created]);
       setValue("");
+    } catch (e: any) {
+      notify(e.message);
+    }
+  };
+
+  const saveEdit = async (id: string) => {
+    if (!editValue) return;
+    try {
+      await updateSkinfold(id, { valueMm: Number(editValue.replace(",", ".")) });
+      setRows((rs) => rs.map((r) => (r.id === id ? { ...r, value_mm: Number(editValue.replace(",", ".")) } : r)));
+      setEditingId(null);
     } catch (e: any) {
       notify(e.message);
     }
@@ -627,11 +728,33 @@ function SkinfoldsSection({ assessmentId, rows, setRows }: { assessmentId: strin
                 <tr key={s.id} style={{ borderBottom: "1px solid var(--line)" }}>
                   <td style={{ padding: "6px 4px" }}>{s.site}</td>
                   <td style={{ padding: "6px 4px" }}>{s.side ? (s.side === "left" ? "Izquierda" : "Derecha") : ""}</td>
-                  <td style={{ padding: "6px 4px" }}>{s.value_mm} mm</td>
+                  <td style={{ padding: "6px 4px" }}>
+                    {editingId === s.id ? (
+                      <input className="input" style={{ maxWidth: 90, padding: "4px 8px" }} value={editValue} onChange={(e) => setEditValue(e.target.value)} autoFocus />
+                    ) : (
+                      `${s.value_mm} mm`
+                    )}
+                  </td>
                   <td style={{ padding: "6px 4px", textAlign: "right" }}>
-                    <button aria-label={`Quitar ${s.site}`} onClick={async () => { await deleteSkinfold(s.id); setRows((rs) => rs.filter((x) => x.id !== s.id)); }} style={{ border: 0, background: "none", color: "var(--muted)", cursor: "pointer" }}>
-                      <Trash2 size={14} />
-                    </button>
+                    {editingId === s.id ? (
+                      <>
+                        <button aria-label="Guardar" onClick={() => saveEdit(s.id)} style={{ border: 0, background: "none", color: "var(--ok)", cursor: "pointer", marginRight: 6 }}>
+                          <Check size={14} />
+                        </button>
+                        <button aria-label="Cancelar" onClick={() => setEditingId(null)} style={{ border: 0, background: "none", color: "var(--muted)", cursor: "pointer" }}>
+                          <X size={14} />
+                        </button>
+                      </>
+                    ) : (
+                      <>
+                        <button aria-label={`Editar ${s.site}`} onClick={() => { setEditingId(s.id); setEditValue(String(s.value_mm)); }} style={{ border: 0, background: "none", color: "var(--muted)", cursor: "pointer", marginRight: 6 }}>
+                          <Pencil size={14} />
+                        </button>
+                        <button aria-label={`Quitar ${s.site}`} onClick={async () => { await deleteSkinfold(s.id); setRows((rs) => rs.filter((x) => x.id !== s.id)); }} style={{ border: 0, background: "none", color: "var(--muted)", cursor: "pointer" }}>
+                          <Trash2 size={14} />
+                        </button>
+                      </>
+                    )}
                   </td>
                 </tr>
               ))}
@@ -667,6 +790,9 @@ function StrengthSection({ assessmentId, rows, setRows, exercises }: { assessmen
   const [exerciseId, setExerciseId] = useState("");
   const [load, setLoad] = useState("");
   const [reps, setReps] = useState("1");
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [editLoad, setEditLoad] = useState("");
+  const [editReps, setEditReps] = useState("");
 
   const add = async () => {
     if (!exerciseId || !load) return notify("Elige el ejercicio y la carga usada.");
@@ -675,6 +801,17 @@ function StrengthSection({ assessmentId, rows, setRows, exercises }: { assessmen
       setRows((rs) => [...rs, created]);
       setLoad("");
       setReps("1");
+    } catch (e: any) {
+      notify(e.message);
+    }
+  };
+
+  const saveEdit = async (id: string) => {
+    if (!editLoad) return;
+    try {
+      const updated = await updateStrengthTest(id, { loadKg: Number(editLoad.replace(",", ".")), reps: Number(editReps) || 1 });
+      setRows((rs) => rs.map((r) => (r.id === id ? { ...r, ...updated, exercise_name: r.exercise_name } : r)));
+      setEditingId(null);
     } catch (e: any) {
       notify(e.message);
     }
@@ -696,13 +833,41 @@ function StrengthSection({ assessmentId, rows, setRows, exercises }: { assessmen
               {rows.map((s) => (
                 <tr key={s.id} style={{ borderTop: "1px solid var(--line)" }}>
                   <td style={{ padding: "6px 4px" }}>{s.exercise_name}</td>
-                  <td style={{ padding: "6px 4px" }}>{s.load_kg} kg</td>
-                  <td style={{ padding: "6px 4px" }}>{s.reps}</td>
+                  <td style={{ padding: "6px 4px" }}>
+                    {editingId === s.id ? (
+                      <input className="input" style={{ maxWidth: 80, padding: "4px 8px" }} value={editLoad} onChange={(e) => setEditLoad(e.target.value)} autoFocus />
+                    ) : (
+                      `${s.load_kg} kg`
+                    )}
+                  </td>
+                  <td style={{ padding: "6px 4px" }}>
+                    {editingId === s.id ? (
+                      <input className="input" style={{ maxWidth: 60, padding: "4px 8px" }} value={editReps} onChange={(e) => setEditReps(e.target.value)} />
+                    ) : (
+                      s.reps
+                    )}
+                  </td>
                   <td style={{ padding: "6px 4px" }}><b>{s.estimated_1rm} kg</b>{s.is_direct_1rm ? " (directo)" : ""}</td>
                   <td style={{ padding: "6px 4px", textAlign: "right" }}>
-                    <button aria-label={`Quitar ${s.exercise_name}`} onClick={async () => { await deleteStrengthTest(s.id); setRows((rs) => rs.filter((x) => x.id !== s.id)); }} style={{ border: 0, background: "none", color: "var(--muted)", cursor: "pointer" }}>
-                      <Trash2 size={14} />
-                    </button>
+                    {editingId === s.id ? (
+                      <>
+                        <button aria-label="Guardar" onClick={() => saveEdit(s.id)} style={{ border: 0, background: "none", color: "var(--ok)", cursor: "pointer", marginRight: 6 }}>
+                          <Check size={14} />
+                        </button>
+                        <button aria-label="Cancelar" onClick={() => setEditingId(null)} style={{ border: 0, background: "none", color: "var(--muted)", cursor: "pointer" }}>
+                          <X size={14} />
+                        </button>
+                      </>
+                    ) : (
+                      <>
+                        <button aria-label={`Editar ${s.exercise_name}`} onClick={() => { setEditingId(s.id); setEditLoad(String(s.load_kg)); setEditReps(String(s.reps)); }} style={{ border: 0, background: "none", color: "var(--muted)", cursor: "pointer", marginRight: 6 }}>
+                          <Pencil size={14} />
+                        </button>
+                        <button aria-label={`Quitar ${s.exercise_name}`} onClick={async () => { await deleteStrengthTest(s.id); setRows((rs) => rs.filter((x) => x.id !== s.id)); }} style={{ border: 0, background: "none", color: "var(--muted)", cursor: "pointer" }}>
+                          <Trash2 size={14} />
+                        </button>
+                      </>
+                    )}
                   </td>
                 </tr>
               ))}
@@ -732,6 +897,8 @@ function PowerSection({ assessmentId, rows, setRows }: { assessmentId: string; r
   const [value, setValue] = useState("");
   const [unit, setUnit] = useState("cm");
   const [implementWeight, setImplementWeight] = useState("");
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [editValue, setEditValue] = useState("");
 
   const add = async () => {
     if (!value) return notify("Escribe el resultado de la prueba.");
@@ -739,6 +906,17 @@ function PowerSection({ assessmentId, rows, setRows }: { assessmentId: string; r
       const created = await addPowerTest({ assessmentId, testType, value: Number(value.replace(",", ".")), unit, implementWeightKg: implementWeight ? Number(implementWeight.replace(",", ".")) : null });
       setRows((rs) => [...rs, created]);
       setValue("");
+    } catch (e: any) {
+      notify(e.message);
+    }
+  };
+
+  const saveEdit = async (id: string) => {
+    if (!editValue) return;
+    try {
+      await updatePowerTest(id, { value: Number(editValue.replace(",", ".")) });
+      setRows((rs) => rs.map((r) => (r.id === id ? { ...r, value: Number(editValue.replace(",", ".")) } : r)));
+      setEditingId(null);
     } catch (e: any) {
       notify(e.message);
     }
@@ -754,11 +932,33 @@ function PowerSection({ assessmentId, rows, setRows }: { assessmentId: string; r
               {rows.map((p) => (
                 <tr key={p.id} style={{ borderBottom: "1px solid var(--line)" }}>
                   <td style={{ padding: "6px 4px" }}>{POWER_TEST_LABEL[p.test_type]}</td>
-                  <td style={{ padding: "6px 4px" }}><b>{p.value} {p.unit}</b></td>
+                  <td style={{ padding: "6px 4px" }}>
+                    {editingId === p.id ? (
+                      <input className="input" style={{ maxWidth: 90, padding: "4px 8px" }} value={editValue} onChange={(e) => setEditValue(e.target.value)} autoFocus />
+                    ) : (
+                      <b>{p.value} {p.unit}</b>
+                    )}
+                  </td>
                   <td style={{ padding: "6px 4px", textAlign: "right" }}>
-                    <button aria-label="Quitar prueba" onClick={async () => { await deletePowerTest(p.id); setRows((rs) => rs.filter((x) => x.id !== p.id)); }} style={{ border: 0, background: "none", color: "var(--muted)", cursor: "pointer" }}>
-                      <Trash2 size={14} />
-                    </button>
+                    {editingId === p.id ? (
+                      <>
+                        <button aria-label="Guardar" onClick={() => saveEdit(p.id)} style={{ border: 0, background: "none", color: "var(--ok)", cursor: "pointer", marginRight: 6 }}>
+                          <Check size={14} />
+                        </button>
+                        <button aria-label="Cancelar" onClick={() => setEditingId(null)} style={{ border: 0, background: "none", color: "var(--muted)", cursor: "pointer" }}>
+                          <X size={14} />
+                        </button>
+                      </>
+                    ) : (
+                      <>
+                        <button aria-label="Editar prueba" onClick={() => { setEditingId(p.id); setEditValue(String(p.value)); }} style={{ border: 0, background: "none", color: "var(--muted)", cursor: "pointer", marginRight: 6 }}>
+                          <Pencil size={14} />
+                        </button>
+                        <button aria-label="Quitar prueba" onClick={async () => { await deletePowerTest(p.id); setRows((rs) => rs.filter((x) => x.id !== p.id)); }} style={{ border: 0, background: "none", color: "var(--muted)", cursor: "pointer" }}>
+                          <Trash2 size={14} />
+                        </button>
+                      </>
+                    )}
                   </td>
                 </tr>
               ))}
@@ -789,6 +989,11 @@ function EnduranceSection({ assessmentId, rows, setRows }: { assessmentId: strin
   const [time, setTime] = useState("");
   const [hrAvg, setHrAvg] = useState("");
   const [hrMax, setHrMax] = useState("");
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [editDistance, setEditDistance] = useState("");
+  const [editTime, setEditTime] = useState("");
+  const [editHrAvg, setEditHrAvg] = useState("");
+  const [editHrMax, setEditHrMax] = useState("");
 
   const add = async () => {
     if (!testType.trim()) return notify("Escribe el nombre de la prueba.");
@@ -810,6 +1015,20 @@ function EnduranceSection({ assessmentId, rows, setRows }: { assessmentId: strin
     }
   };
 
+  const saveEdit = async (id: string) => {
+    const distanceM = editDistance ? Number(editDistance.replace(",", ".")) : null;
+    const timeS = editTime ? Number(editTime.replace(",", ".")) : null;
+    const hrAvgNum = editHrAvg ? Number(editHrAvg) : null;
+    const hrMaxNum = editHrMax ? Number(editHrMax) : null;
+    try {
+      await updateEnduranceTest(id, { distanceM, timeS, hrAvg: hrAvgNum, hrMax: hrMaxNum });
+      setRows((rs) => rs.map((r) => (r.id === id ? { ...r, distance_m: distanceM, time_s: timeS, hr_avg: hrAvgNum, hr_max: hrMaxNum } : r)));
+      setEditingId(null);
+    } catch (e: any) {
+      notify(e.message);
+    }
+  };
+
   return (
     <div className="panel">
       <div className="hd"><h3>Pruebas de resistencia</h3></div>
@@ -820,12 +1039,57 @@ function EnduranceSection({ assessmentId, rows, setRows }: { assessmentId: strin
               {rows.map((t) => (
                 <tr key={t.id} style={{ borderBottom: "1px solid var(--line)" }}>
                   <td style={{ padding: "6px 4px" }}>{t.test_type}</td>
-                  <td style={{ padding: "6px 4px" }}>{t.distance_m ? `${t.distance_m} m` : ""}{t.time_s ? ` · ${t.time_s} s` : ""}</td>
-                  <td style={{ padding: "6px 4px" }}>{t.hr_avg ? `FC prom. ${t.hr_avg}` : ""}{t.hr_max ? ` · FC máx ${t.hr_max}` : ""}</td>
+                  {editingId === t.id ? (
+                    <>
+                      <td style={{ padding: "6px 4px" }}>
+                        <div style={{ display: "flex", gap: 4 }}>
+                          <input className="input" style={{ maxWidth: 70, padding: "4px 6px" }} value={editDistance} onChange={(e) => setEditDistance(e.target.value)} placeholder="m" autoFocus />
+                          <input className="input" style={{ maxWidth: 70, padding: "4px 6px" }} value={editTime} onChange={(e) => setEditTime(e.target.value)} placeholder="s" />
+                        </div>
+                      </td>
+                      <td style={{ padding: "6px 4px" }}>
+                        <div style={{ display: "flex", gap: 4 }}>
+                          <input className="input" style={{ maxWidth: 70, padding: "4px 6px" }} value={editHrAvg} onChange={(e) => setEditHrAvg(e.target.value)} placeholder="FC prom." />
+                          <input className="input" style={{ maxWidth: 70, padding: "4px 6px" }} value={editHrMax} onChange={(e) => setEditHrMax(e.target.value)} placeholder="FC máx" />
+                        </div>
+                      </td>
+                    </>
+                  ) : (
+                    <>
+                      <td style={{ padding: "6px 4px" }}>{t.distance_m ? `${t.distance_m} m` : ""}{t.time_s ? ` · ${t.time_s} s` : ""}</td>
+                      <td style={{ padding: "6px 4px" }}>{t.hr_avg ? `FC prom. ${t.hr_avg}` : ""}{t.hr_max ? ` · FC máx ${t.hr_max}` : ""}</td>
+                    </>
+                  )}
                   <td style={{ padding: "6px 4px", textAlign: "right" }}>
-                    <button aria-label="Quitar prueba" onClick={async () => { await deleteEnduranceTest(t.id); setRows((rs) => rs.filter((x) => x.id !== t.id)); }} style={{ border: 0, background: "none", color: "var(--muted)", cursor: "pointer" }}>
-                      <Trash2 size={14} />
-                    </button>
+                    {editingId === t.id ? (
+                      <>
+                        <button aria-label="Guardar" onClick={() => saveEdit(t.id)} style={{ border: 0, background: "none", color: "var(--ok)", cursor: "pointer", marginRight: 6 }}>
+                          <Check size={14} />
+                        </button>
+                        <button aria-label="Cancelar" onClick={() => setEditingId(null)} style={{ border: 0, background: "none", color: "var(--muted)", cursor: "pointer" }}>
+                          <X size={14} />
+                        </button>
+                      </>
+                    ) : (
+                      <>
+                        <button
+                          aria-label="Editar prueba"
+                          onClick={() => {
+                            setEditingId(t.id);
+                            setEditDistance(t.distance_m != null ? String(t.distance_m) : "");
+                            setEditTime(t.time_s != null ? String(t.time_s) : "");
+                            setEditHrAvg(t.hr_avg != null ? String(t.hr_avg) : "");
+                            setEditHrMax(t.hr_max != null ? String(t.hr_max) : "");
+                          }}
+                          style={{ border: 0, background: "none", color: "var(--muted)", cursor: "pointer", marginRight: 6 }}
+                        >
+                          <Pencil size={14} />
+                        </button>
+                        <button aria-label="Quitar prueba" onClick={async () => { await deleteEnduranceTest(t.id); setRows((rs) => rs.filter((x) => x.id !== t.id)); }} style={{ border: 0, background: "none", color: "var(--muted)", cursor: "pointer" }}>
+                          <Trash2 size={14} />
+                        </button>
+                      </>
+                    )}
                   </td>
                 </tr>
               ))}
@@ -852,6 +1116,8 @@ function MobilitySection({ assessmentId, rows, setRows }: { assessmentId: string
   const [side, setSide] = useState<MobilityTestRow["side"]>(null);
   const [value, setValue] = useState("");
   const [unit, setUnit] = useState<MobilityTestRow["unit"]>("degrees");
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [editValue, setEditValue] = useState("");
 
   const add = async () => {
     if (!movement.trim() || !value) return notify("Completa el movimiento y el valor.");
@@ -860,6 +1126,17 @@ function MobilitySection({ assessmentId, rows, setRows }: { assessmentId: string
       setRows((rs) => [...rs, created]);
       setMovement("");
       setValue("");
+    } catch (e: any) {
+      notify(e.message);
+    }
+  };
+
+  const saveEdit = async (id: string) => {
+    if (!editValue) return;
+    try {
+      await updateMobilityTest(id, { value: Number(editValue.replace(",", ".")) });
+      setRows((rs) => rs.map((r) => (r.id === id ? { ...r, value: Number(editValue.replace(",", ".")) } : r)));
+      setEditingId(null);
     } catch (e: any) {
       notify(e.message);
     }
@@ -876,11 +1153,33 @@ function MobilitySection({ assessmentId, rows, setRows }: { assessmentId: string
                 <tr key={m.id} style={{ borderBottom: "1px solid var(--line)" }}>
                   <td style={{ padding: "6px 4px" }}>{m.joint} — {m.movement}</td>
                   <td style={{ padding: "6px 4px" }}>{m.side ? (m.side === "both" ? "Ambos lados" : m.side === "left" ? "Izquierda" : "Derecha") : ""}</td>
-                  <td style={{ padding: "6px 4px" }}><b>{m.value} {m.unit === "degrees" ? "°" : m.unit}</b></td>
+                  <td style={{ padding: "6px 4px" }}>
+                    {editingId === m.id ? (
+                      <input className="input" style={{ maxWidth: 80, padding: "4px 8px" }} value={editValue} onChange={(e) => setEditValue(e.target.value)} autoFocus />
+                    ) : (
+                      <b>{m.value} {m.unit === "degrees" ? "°" : m.unit}</b>
+                    )}
+                  </td>
                   <td style={{ padding: "6px 4px", textAlign: "right" }}>
-                    <button aria-label="Quitar prueba" onClick={async () => { await deleteMobilityTest(m.id); setRows((rs) => rs.filter((x) => x.id !== m.id)); }} style={{ border: 0, background: "none", color: "var(--muted)", cursor: "pointer" }}>
-                      <Trash2 size={14} />
-                    </button>
+                    {editingId === m.id ? (
+                      <>
+                        <button aria-label="Guardar" onClick={() => saveEdit(m.id)} style={{ border: 0, background: "none", color: "var(--ok)", cursor: "pointer", marginRight: 6 }}>
+                          <Check size={14} />
+                        </button>
+                        <button aria-label="Cancelar" onClick={() => setEditingId(null)} style={{ border: 0, background: "none", color: "var(--muted)", cursor: "pointer" }}>
+                          <X size={14} />
+                        </button>
+                      </>
+                    ) : (
+                      <>
+                        <button aria-label="Editar prueba" onClick={() => { setEditingId(m.id); setEditValue(String(m.value)); }} style={{ border: 0, background: "none", color: "var(--muted)", cursor: "pointer", marginRight: 6 }}>
+                          <Pencil size={14} />
+                        </button>
+                        <button aria-label="Quitar prueba" onClick={async () => { await deleteMobilityTest(m.id); setRows((rs) => rs.filter((x) => x.id !== m.id)); }} style={{ border: 0, background: "none", color: "var(--muted)", cursor: "pointer" }}>
+                          <Trash2 size={14} />
+                        </button>
+                      </>
+                    )}
                   </td>
                 </tr>
               ))}
@@ -927,6 +1226,8 @@ function FlexibilitySection({ assessmentId, rows, setRows }: { assessmentId: str
   const [side, setSide] = useState<FlexibilityTestRow["side"]>(null);
   const [value, setValue] = useState("");
   const [unit, setUnit] = useState<FlexibilityTestRow["unit"]>("cm");
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [editValue, setEditValue] = useState("");
 
   const add = async () => {
     if (!testName.trim() || !value) return notify("Completa el nombre de la prueba y el valor.");
@@ -935,6 +1236,17 @@ function FlexibilitySection({ assessmentId, rows, setRows }: { assessmentId: str
       setRows((rs) => [...rs, created]);
       setTestName("");
       setValue("");
+    } catch (e: any) {
+      notify(e.message);
+    }
+  };
+
+  const saveEdit = async (id: string) => {
+    if (!editValue) return;
+    try {
+      await updateFlexibilityTest(id, { value: Number(editValue.replace(",", ".")) });
+      setRows((rs) => rs.map((r) => (r.id === id ? { ...r, value: Number(editValue.replace(",", ".")) } : r)));
+      setEditingId(null);
     } catch (e: any) {
       notify(e.message);
     }
@@ -951,11 +1263,33 @@ function FlexibilitySection({ assessmentId, rows, setRows }: { assessmentId: str
                 <tr key={f.id} style={{ borderBottom: "1px solid var(--line)" }}>
                   <td style={{ padding: "6px 4px" }}>{f.test_name}{f.muscle_group ? ` (${f.muscle_group})` : ""}</td>
                   <td style={{ padding: "6px 4px" }}>{f.side ? (f.side === "both" ? "Ambos lados" : f.side === "left" ? "Izquierda" : "Derecha") : ""}</td>
-                  <td style={{ padding: "6px 4px" }}><b>{f.value} {f.unit === "degrees" ? "°" : f.unit}</b></td>
+                  <td style={{ padding: "6px 4px" }}>
+                    {editingId === f.id ? (
+                      <input className="input" style={{ maxWidth: 80, padding: "4px 8px" }} value={editValue} onChange={(e) => setEditValue(e.target.value)} autoFocus />
+                    ) : (
+                      <b>{f.value} {f.unit === "degrees" ? "°" : f.unit}</b>
+                    )}
+                  </td>
                   <td style={{ padding: "6px 4px", textAlign: "right" }}>
-                    <button aria-label="Quitar prueba" onClick={async () => { await deleteFlexibilityTest(f.id); setRows((rs) => rs.filter((x) => x.id !== f.id)); }} style={{ border: 0, background: "none", color: "var(--muted)", cursor: "pointer" }}>
-                      <Trash2 size={14} />
-                    </button>
+                    {editingId === f.id ? (
+                      <>
+                        <button aria-label="Guardar" onClick={() => saveEdit(f.id)} style={{ border: 0, background: "none", color: "var(--ok)", cursor: "pointer", marginRight: 6 }}>
+                          <Check size={14} />
+                        </button>
+                        <button aria-label="Cancelar" onClick={() => setEditingId(null)} style={{ border: 0, background: "none", color: "var(--muted)", cursor: "pointer" }}>
+                          <X size={14} />
+                        </button>
+                      </>
+                    ) : (
+                      <>
+                        <button aria-label="Editar prueba" onClick={() => { setEditingId(f.id); setEditValue(String(f.value)); }} style={{ border: 0, background: "none", color: "var(--muted)", cursor: "pointer", marginRight: 6 }}>
+                          <Pencil size={14} />
+                        </button>
+                        <button aria-label="Quitar prueba" onClick={async () => { await deleteFlexibilityTest(f.id); setRows((rs) => rs.filter((x) => x.id !== f.id)); }} style={{ border: 0, background: "none", color: "var(--muted)", cursor: "pointer" }}>
+                          <Trash2 size={14} />
+                        </button>
+                      </>
+                    )}
                   </td>
                 </tr>
               ))}

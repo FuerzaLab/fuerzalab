@@ -96,6 +96,14 @@ export async function createAssessment(params: {
   return data as AssessmentRow;
 }
 
+export async function updateAssessment(id: string, fields: { assessedAt?: string; notes?: string }): Promise<void> {
+  const payload: Record<string, any> = {};
+  if (fields.assessedAt !== undefined) payload.assessed_at = fields.assessedAt;
+  if (fields.notes !== undefined) payload.notes = fields.notes || null;
+  const { error } = await supabase.from("assessments").update(payload).eq("id", id);
+  if (error) throw error;
+}
+
 export async function deleteAssessment(id: string): Promise<void> {
   const { error } = await supabase.from("assessments").delete().eq("id", id);
   if (error) throw error;
@@ -167,6 +175,14 @@ export async function addCircumference(params: {
   return data as CircumferenceRow;
 }
 
+export async function updateCircumference(id: string, fields: { valueCm?: number; side?: CircumferenceRow["side"] }): Promise<void> {
+  const payload: Record<string, any> = {};
+  if (fields.valueCm !== undefined) payload.value_cm = fields.valueCm;
+  if (fields.side !== undefined) payload.side = fields.side;
+  const { error } = await supabase.from("circumferences").update(payload).eq("id", id);
+  if (error) throw error;
+}
+
 export async function deleteCircumference(id: string): Promise<void> {
   const { error } = await supabase.from("circumferences").delete().eq("id", id);
   if (error) throw error;
@@ -201,6 +217,19 @@ export async function addStrengthTest(params: { assessmentId: string; exerciseId
       estimated_1rm: estimated,
       formula: isDirect ? null : "epley",
     })
+    .select("id, assessment_id, exercise_id, load_kg, reps, is_direct_1rm, estimated_1rm, exercises(name)")
+    .single();
+  if (error) throw error;
+  return { ...(data as any), exercise_name: (data as any).exercises?.name ?? "" } as StrengthTestRow;
+}
+
+export async function updateStrengthTest(id: string, fields: { loadKg: number; reps: number }): Promise<StrengthTestRow> {
+  const isDirect = fields.reps <= 1;
+  const estimated = estimate1RM(fields.loadKg, fields.reps);
+  const { data, error } = await supabase
+    .from("strength_tests")
+    .update({ load_kg: fields.loadKg, reps: fields.reps, is_direct_1rm: isDirect, estimated_1rm: estimated, formula: isDirect ? null : "epley" })
+    .eq("id", id)
     .select("id, assessment_id, exercise_id, load_kg, reps, is_direct_1rm, estimated_1rm, exercises(name)")
     .single();
   if (error) throw error;
@@ -255,6 +284,13 @@ export function sumSkinfolds8(skinfolds: SkinfoldRow[]): { sum: number; complete
   return { sum: Math.round(sum * 10) / 10, complete: missing.length === 0, missing };
 }
 
+export async function updateSkinfold(id: string, fields: { valueMm: number; side?: SkinfoldRow["side"] }): Promise<void> {
+  const payload: Record<string, any> = { value_mm: fields.valueMm };
+  if (fields.side !== undefined) payload.side = fields.side;
+  const { error } = await supabase.from("skinfolds").update(payload).eq("id", id);
+  if (error) throw error;
+}
+
 export async function deleteSkinfold(id: string): Promise<void> {
   const { error } = await supabase.from("skinfolds").delete().eq("id", id);
   if (error) throw error;
@@ -293,6 +329,13 @@ export async function addPowerTest(params: { assessmentId: string; testType: Pow
     .single();
   if (error) throw error;
   return data as PowerTestRow;
+}
+
+export async function updatePowerTest(id: string, fields: { value: number; implementWeightKg?: number | null }): Promise<void> {
+  const payload: Record<string, any> = { value: fields.value };
+  if (fields.implementWeightKg !== undefined) payload.implement_weight_kg = fields.implementWeightKg;
+  const { error } = await supabase.from("power_tests").update(payload).eq("id", id);
+  if (error) throw error;
 }
 
 export async function deletePowerTest(id: string): Promise<void> {
@@ -335,6 +378,14 @@ export async function addEnduranceTest(params: {
   return data as EnduranceTestRow;
 }
 
+export async function updateEnduranceTest(id: string, fields: { distanceM: number | null; timeS: number | null; hrAvg: number | null; hrMax: number | null }): Promise<void> {
+  const { error } = await supabase
+    .from("endurance_tests")
+    .update({ distance_m: fields.distanceM, time_s: fields.timeS, hr_avg: fields.hrAvg, hr_max: fields.hrMax })
+    .eq("id", id);
+  if (error) throw error;
+}
+
 export async function deleteEnduranceTest(id: string): Promise<void> {
   const { error } = await supabase.from("endurance_tests").delete().eq("id", id);
   if (error) throw error;
@@ -369,6 +420,13 @@ export async function addMobilityTest(params: { assessmentId: string; joint: str
   return data as MobilityTestRow;
 }
 
+export async function updateMobilityTest(id: string, fields: { value: number; side?: MobilityTestRow["side"] }): Promise<void> {
+  const payload: Record<string, any> = { value: fields.value };
+  if (fields.side !== undefined) payload.side = fields.side;
+  const { error } = await supabase.from("mobility_tests").update(payload).eq("id", id);
+  if (error) throw error;
+}
+
 export async function deleteMobilityTest(id: string): Promise<void> {
   const { error } = await supabase.from("mobility_tests").delete().eq("id", id);
   if (error) throw error;
@@ -399,6 +457,13 @@ export async function addFlexibilityTest(params: { assessmentId: string; testNam
     .single();
   if (error) throw error;
   return data as FlexibilityTestRow;
+}
+
+export async function updateFlexibilityTest(id: string, fields: { value: number; side?: FlexibilityTestRow["side"] }): Promise<void> {
+  const payload: Record<string, any> = { value: fields.value };
+  if (fields.side !== undefined) payload.side = fields.side;
+  const { error } = await supabase.from("flexibility_tests").update(payload).eq("id", id);
+  if (error) throw error;
 }
 
 export async function deleteFlexibilityTest(id: string): Promise<void> {
