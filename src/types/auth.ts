@@ -14,3 +14,28 @@ export interface Profile {
   created_at: string;
   updated_at: string;
 }
+
+/** Módulos de permisos de staff (mismos nombres que usa la base de datos). */
+export type StaffModule =
+  | "clients"
+  | "health"
+  | "assessments"
+  | "exercises"
+  | "programs"
+  | "logs"
+  | "messages"
+  | "payments"
+  | "reports"
+  | "files"
+  | "analytics";
+
+export type StaffLevel = "read" | "write";
+
+export type StaffPermissions = Partial<Record<StaffModule, StaffLevel>>;
+
+/** A qué entrenador asiste esta cuenta de staff, y con qué permisos. */
+export interface StaffAccess {
+  trainerId: string;
+  trainerName: string;
+  permissions: StaffPermissions;
+}

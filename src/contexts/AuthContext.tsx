@@ -7,7 +7,8 @@ import {
 } from "react";
 import type { Session, User } from "@supabase/supabase-js";
 import { supabase } from "../lib/supabase";
-import type { Profile } from "../types/auth";
+import type { Profile, StaffAccess, StaffModule, StaffLevel } from "../types/auth";
+import { hasLevel } from "../lib/staffModules";
 
 interface AuthContextValue {
   session: Session | null;
@@ -27,6 +28,17 @@ interface AuthContextValue {
   requestPasswordReset: (email: string) => Promise<{ error: string | null }>;
   updatePassword: (newPassword: string) => Promise<{ error: string | null }>;
   refreshProfile: () => Promise<void>;
+  /** Solo para cuentas de staff: a qué entrenador asiste y con qué permisos. */
+  staffAccess: StaffAccess | null;
+  /**
+   * El entrenador "dueño" de los datos con los que se está trabajando: el
+   * propio perfil si sos entrenador, el entrenador al que asistís si sos
+   * staff, null para Super Admin y clientes. Es el valor que va en
+   * trainer_id/owner_id al crear cosas nuevas.
+   */
+  actingTrainerId: string | null;
+  /** ¿Puede este usuario usar este módulo? El entrenador siempre puede. */
+  can: (module: StaffModule, level?: StaffLevel) => boolean;
 }
 
 const AuthContext = createContext<AuthContextValue | undefined>(undefined);
@@ -36,6 +48,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [profile, setProfile] = useState<Profile | null>(null);
   const [loading, setLoading] = useState(true);
   const [initialized, setInitialized] = useState(false);
+  const [staffAccess, setStaffAccess] = useState<StaffAccess | null>(null);
 
   const loadProfile = async (userId: string) => {
     const { data, error } = await supabase
@@ -48,7 +61,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setProfile(null);
       return;
     }
-    setProfile(data as Profile | null);
+    const p = data as Profile | null;
+    // Para el staff, se carga también a quién asiste antes de soltar el
+    // perfil — así ninguna pantalla llega a dibujarse sin saberlo.
+    setStaffAccess(p?.role === "staff" ? await loadStaffAccess(p.id) : null);
+    setProfile(p);
   };
 
   useEffect(() => {
@@ -69,6 +86,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         await loadProfile(newSession.user.id);
       } else {
         setProfile(null);
+        setStaffAccess(null);
       }
       setLoading(false);
       setInitialized(true);
@@ -119,6 +137,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     if (session) await loadProfile(session.user.id);
   };
 
+  const actingTrainerId =
+    profile?.role === "trainer" ? profile.id : profile?.role === "staff" ? staffAccess?.trainerId ?? null : null;
+
+  const can: AuthContextValue["can"] = (module, level = "read") => {
+    if (profile?.role === "trainer") return true;
+    if (profile?.role === "staff") return !!staffAccess && hasLevel(staffAccess.permissions, module, level);
+    return false;
+  };
+
   return (
     <AuthContext.Provider
       value={{
@@ -133,6 +160,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         requestPasswordReset,
         updatePassword,
         refreshProfile,
+        staffAccess,
+        actingTrainerId,
+        can,
       }}
     >
       {children}
@@ -144,6 +174,27 @@ export function useAuth() {
   const ctx = useContext(AuthContext);
   if (!ctx) throw new Error("useAuth debe usarse dentro de <AuthProvider>");
   return ctx;
+}
+
+async function loadStaffAccess(staffId: string): Promise<StaffAccess | null> {
+  const { data, error } = await supabase
+    .from("staff_permissions")
+    .select("trainer_id, permissions, trainer:profiles!staff_permissions_trainer_id_fkey(full_name)")
+    .eq("staff_id", staffId)
+    .order("created_at")
+    .limit(1)
+    .maybeSingle();
+  if (error || !data) {
+    if (error) console.error("No se pudo cargar el acceso de staff:", error.message);
+    return null;
+  }
+  const row = data as any;
+  const trainer = Array.isArray(row.trainer) ? row.trainer[0] : row.trainer;
+  return {
+    trainerId: row.trainer_id as string,
+    trainerName: (trainer?.full_name as string | undefined) ?? "tu entrenador",
+    permissions: (row.permissions ?? {}) as StaffAccess["permissions"],
+  };
 }
 
 /** Traduce los mensajes de error más comunes de Supabase Auth al español. */

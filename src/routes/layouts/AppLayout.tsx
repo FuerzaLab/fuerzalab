@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { NavLink, Outlet, useNavigate } from "react-router-dom";
+import { NavLink, Outlet, useLocation, useNavigate } from "react-router-dom";
 import {
   LayoutDashboard,
   Users,
@@ -21,10 +21,13 @@ import {
   CalendarClock,
   Menu,
   X,
+  UserCog,
+  Eye,
 } from "lucide-react";
 import { useAuth } from "../../contexts/AuthContext";
 import { paths } from "../paths";
-import type { Role } from "../../types/auth";
+import type { Role, StaffAccess } from "../../types/auth";
+import { routeRequirement, hasLevel } from "../../lib/staffModules";
 
 interface NavItem {
   to: string;
@@ -63,13 +66,12 @@ const NAV: Record<Role, NavItem[]> = {
     { to: paths.trainerSuggestions, label: "Sugerencias", icon: Lightbulb, group: "Seguimiento" },
 
     { to: paths.trainerPayments, label: "Pagos", icon: CreditCard, group: "Negocio" },
+    { to: paths.trainerTeam, label: "Equipo", icon: UserCog, group: "Negocio" },
     { to: paths.trainerSettings, label: "Configuración", icon: Settings, group: "Negocio" },
   ],
-  staff: [
-    { to: paths.trainerDashboard, label: "Inicio", icon: LayoutDashboard },
-    { to: paths.trainerClients, label: "Clientes", icon: Users },
-    { to: paths.trainerMessages, label: "Mensajes", icon: MessageSquare },
-  ],
+  // El menú del staff se arma a partir del del entrenador, filtrado según
+  // los permisos que le dio (ver staffNav más abajo).
+  staff: [],
   client: [
     { to: paths.clientDashboard, label: "Inicio", icon: Home },
     { to: paths.clientRoutine, label: "Mi rutina", icon: Dumbbell },
@@ -94,13 +96,24 @@ const GROUP_COLOR: Record<string, { bg: string; fg: string }> = {
 };
 const WELLNESS_COLOR = { bg: "#EDE7FB", fg: "#7B4FE0" };
 
+/** Las secciones del entrenador que este asistente tiene habilitadas. */
+function staffNav(access: StaffAccess | null): NavItem[] {
+  if (!access) return [];
+  return NAV.trainer.filter((item) => {
+    if (item.to === paths.trainerTeam) return false;
+    const req = routeRequirement(item.to);
+    if (!req) return true;
+    return hasLevel(access.permissions, req.module, req.level) && (!req.extra || hasLevel(access.permissions, req.extra, "read"));
+  });
+}
+
 export default function AppLayout() {
-  const { profile, signOut } = useAuth();
+  const { profile, signOut, staffAccess } = useAuth();
   const navigate = useNavigate();
 
   if (!profile) return null;
 
-  const items = NAV[profile.role];
+  const items = profile.role === "staff" ? staffNav(staffAccess) : NAV[profile.role];
 
   const handleLogout = async () => {
     if (!window.confirm("¿Cerrar sesión?")) return;
@@ -108,8 +121,18 @@ export default function AppLayout() {
     navigate(paths.login, { replace: true });
   };
 
-  if (profile.role === "trainer") {
-    return <TrainerLauncherShell items={items} profileName={profile.full_name} onLogout={handleLogout} />;
+  if (profile.role === "trainer" || profile.role === "staff") {
+    const roleText =
+      profile.role === "staff" ? `Asistente de ${staffAccess?.trainerName ?? "tu entrenador"}` : "Entrenador";
+    return (
+      <TrainerLauncherShell
+        items={items}
+        profileName={profile.full_name}
+        roleText={roleText}
+        staffAccess={profile.role === "staff" ? staffAccess : null}
+        onLogout={handleLogout}
+      />
+    );
   }
 
   return (
@@ -158,13 +181,23 @@ export default function AppLayout() {
 function TrainerLauncherShell({
   items,
   profileName,
+  roleText,
+  staffAccess,
   onLogout,
 }: {
   items: NavItem[];
   profileName: string;
+  roleText: string;
+  staffAccess: StaffAccess | null;
   onLogout: () => void;
 }) {
   const [open, setOpen] = useState(false);
+  const { pathname } = useLocation();
+  // Aviso de solo lectura: el staff con permiso "Solo ver" en esta sección
+  // ve los mismos botones que el entrenador, pero la base de datos no le
+  // deja guardar — mejor avisarlo arriba que dejar que lo descubra.
+  const req = staffAccess ? routeRequirement(pathname) : null;
+  const readOnly = !!(staffAccess && req && !hasLevel(staffAccess.permissions, req.module, "write"));
   const close = () => setOpen(false);
 
   const groups: { name: string; items: NavItem[] }[] = [];
@@ -190,10 +223,15 @@ function TrainerLauncherShell({
       </header>
 
       <header className="topbar">
-        <span className="note">{profileName} · Entrenador</span>
+        <span className="note">{profileName} · {roleText}</span>
       </header>
 
       <main>
+        {readOnly && (
+          <div className="readonly-banner" role="status">
+            <Eye size={15} /> Tenés acceso de <strong>solo lectura</strong> a esta sección: podés ver todo, pero los cambios no se van a guardar.
+          </div>
+        )}
         <Outlet />
       </main>
 
@@ -251,7 +289,7 @@ function roleLabel(role: Role): string {
     case "trainer":
       return "Entrenador";
     case "staff":
-      return "Staff";
+      return "Asistente";
     case "client":
       return "Cliente";
   }

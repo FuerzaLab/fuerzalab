@@ -154,3 +154,8 @@ select.input:hover { border-color: var(--pri); }
   .page { padding: 16px; }
   .topbar { padding: 10px 16px; }
 }
+
+/* Aviso de solo lectura para el staff (arriba de cada pantalla donde solo puede ver) */
+.readonly-banner { display: flex; align-items: center; gap: 8px; margin: 16px 24px 0; padding: 10px 14px; border-radius: 9px; background: #FBF0D6; color: #7A4F00; font-size: 13.5px; max-width: 1192px; }
+.readonly-banner svg { flex-shrink: 0; }
+@media (max-width: 860px) { .readonly-banner { margin: 12px 16px 0; } }

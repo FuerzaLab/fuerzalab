@@ -5,6 +5,7 @@ import AppLayout from "./layouts/AppLayout";
 import RequireAuth from "./guards/RequireAuth";
 import RequireRole from "./guards/RequireRole";
 import RequireOnboarding from "./guards/RequireOnboarding";
+import RequireStaffAccess from "./guards/RequireStaffAccess";
 import RoleRedirect from "./RoleRedirect";
 
 import Login from "../pages/auth/Login";
@@ -44,6 +45,7 @@ import TemplatesPage from "../pages/trainer/templates/TemplatesPage";
 import AgendaPage from "../pages/trainer/agenda/AgendaPage";
 import RunSessionPage from "../pages/trainer/run-session/RunSessionPage";
 import ClientProgressPhotos from "../pages/client/ProgressPhotos";
+import TeamPage from "../pages/trainer/team/TeamPage";
 
 import { paths } from "./paths";
 
@@ -78,6 +80,7 @@ export default function AppRoutes() {
         {/* Entrenador y Staff */}
         <Route element={<RequireRole allow={["trainer", "staff"]} />}>
           <Route element={<AppLayout />}>
+          <Route element={<RequireStaffAccess />}>
             <Route path={paths.trainerDashboard} element={<TrainerDashboard />} />
             <Route path={paths.trainerClients} element={<ClientsList />} />
             <Route path={paths.trainerClientDetailPattern} element={<ClientDetail />} />
@@ -97,6 +100,8 @@ export default function AppRoutes() {
             <Route path={paths.trainerPayments} element={<TrainerPaymentsPage />} />
             <Route path={paths.trainerReports} element={<ReportsPage />} />
             <Route path={paths.trainerSettings} element={<Settings />} />
+            <Route path={paths.trainerTeam} element={<TeamPage />} />
+          </Route>
           </Route>
         </Route>
 

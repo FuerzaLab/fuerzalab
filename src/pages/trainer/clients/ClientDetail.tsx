@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { ArrowLeft } from "lucide-react";
+import { useAuth } from "../../../contexts/AuthContext";
 import { useToast } from "../../../contexts/ToastContext";
 import ConfirmModal from "../../../components/ui/ConfirmModal";
 import Modal from "../../../components/ui/Modal";
@@ -65,6 +66,8 @@ export default function ClientDetail() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const { notify } = useToast();
+  const { profile } = useAuth();
+  const isTrainer = profile?.role === "trainer";
 
   const [client, setClient] = useState<ClientRow | null>(null);
   const [intake, setIntake] = useState<ClientProfileRow | null>(null);
@@ -167,9 +170,12 @@ export default function ClientDetail() {
               Dar de baja
             </button>
           )}
-          <button className="btn ghost" style={{ color: "var(--bad)" }} onClick={() => setShowDelete(true)}>
-            Eliminar
-          </button>
+          {/* Eliminar un cliente por completo es solo del entrenador; el staff puede "Dar de baja", que conserva todo. */}
+          {isTrainer && (
+            <button className="btn ghost" style={{ color: "var(--bad)" }} onClick={() => setShowDelete(true)}>
+              Eliminar
+            </button>
+          )}
         </div>
       </div>
 

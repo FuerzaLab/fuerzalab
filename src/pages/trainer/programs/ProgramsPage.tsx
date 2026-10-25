@@ -41,7 +41,7 @@ const PHASE_COLOR: Record<string, string> = {
 const BLOCK_COLORS = ["#3B4F8F", "#4F6BB8", "#6C86D1", "#8AA0DE", "#A9BCEA", "#C6D2F0"];
 
 export default function ProgramsPage() {
-  const { profile } = useAuth();
+  const { profile, actingTrainerId } = useAuth();
   const { notify, flashSaved } = useToast();
 
   const [clients, setClients] = useState<ClientRow[]>([]);
@@ -204,7 +204,7 @@ export default function ProgramsPage() {
                     await cloneProgram({
                       sourceProgram: program,
                       organizationId: profile.organization_id!,
-                      trainerId: profile.id,
+                      trainerId: (actingTrainerId ?? profile.id),
                       name: `${program.name} (plantilla)`,
                       targetClientId: null,
                     });
@@ -481,7 +481,7 @@ export default function ProgramsPage() {
       {showNew && (
         <NewProgramModal
           organizationId={profile.organization_id!}
-          trainerId={profile.id}
+          trainerId={(actingTrainerId ?? profile.id)}
           clientId={clientId}
           onClose={() => setShowNew(false)}
           onCreated={async (p) => {

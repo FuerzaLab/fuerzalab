@@ -33,6 +33,7 @@ export const paths = {
   trainerPayments: "/t/pagos",
   trainerReports: "/t/reportes",
   trainerSettings: "/t/configuracion",
+  trainerTeam: "/t/equipo",
 
   clientDashboard: "/c",
   clientRoutine: "/c/rutina",

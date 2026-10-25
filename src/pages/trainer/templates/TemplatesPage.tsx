@@ -19,7 +19,7 @@ import {
 } from "../../../services/templates";
 
 export default function TemplatesPage() {
-  const { profile } = useAuth();
+  const { profile, actingTrainerId } = useAuth();
   const { notify } = useToast();
   const [templates, setTemplates] = useState<ProgramRow[]>([]);
   const [looseTemplates, setLooseTemplates] = useState<WorkoutTemplateRow[]>([]);
@@ -102,7 +102,7 @@ export default function TemplatesPage() {
           template={applyingTo}
           clients={clients}
           organizationId={profile.organization_id!}
-          trainerId={profile.id}
+          trainerId={(actingTrainerId ?? profile.id)}
           onClose={() => setApplyingTo(null)}
           onApplied={() => {
             setApplyingTo(null);

@@ -30,7 +30,7 @@ const CLIENT_STATUS_LABEL: Record<ClientStatus, string> = { prospect: "Prospecto
 const CLIENT_STATUS_TONE: Record<ClientStatus, "ok" | "warn" | "bad" | ""> = { prospect: "", active: "ok", paused: "warn", archived: "bad" };
 
 export default function PaymentsPage() {
-  const { profile } = useAuth();
+  const { profile, actingTrainerId } = useAuth();
   const { notify } = useToast();
   const navigate = useNavigate();
   const [clients, setClients] = useState<ClientRow[]>([]);
@@ -196,7 +196,7 @@ export default function PaymentsPage() {
       {showNewPlan && (
         <NewPlanModal
           organizationId={profile.organization_id!}
-          trainerId={profile.id}
+          trainerId={(actingTrainerId ?? profile.id)}
           onClose={() => setShowNewPlan(false)}
           onCreated={(plan) => {
             setPlans((ps) => [...ps, plan]);
@@ -209,7 +209,7 @@ export default function PaymentsPage() {
       {showNewPayment && (
         <NewPaymentModal
           organizationId={profile.organization_id!}
-          trainerId={profile.id}
+          trainerId={(actingTrainerId ?? profile.id)}
           clients={clients}
           plans={plans}
           onClose={() => setShowNewPayment(false)}

@@ -177,7 +177,7 @@ export default function Register() {
 
 function rolLabel(role: string): string {
   if (role === "trainer") return "entrenador";
-  if (role === "staff") return "staff";
+  if (role === "staff") return "asistente";
   if (role === "client") return "cliente";
   return role;
 }

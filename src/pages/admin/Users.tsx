@@ -20,7 +20,7 @@ import Loading from "../../components/ui/Loading";
 const ROLE_LABEL: Record<Role, string> = {
   super_admin: "Super Admin",
   trainer: "Entrenador",
-  staff: "Staff",
+  staff: "Asistente",
   client: "Cliente",
 };
 

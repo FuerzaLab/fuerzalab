@@ -92,9 +92,12 @@ export default function ClientsList() {
           <h1 style={{ marginBottom: 4 }}>Clientes</h1>
           <p className="note">{clients.length} clientes en tu cartera</p>
         </div>
-        <button className="btn" onClick={() => setShowInvite(true)}>
-          <UserPlus size={16} /> Invitar cliente
-        </button>
+        {/* Invitar clientes nuevos queda reservado al entrenador (la base de datos tampoco se lo permite al staff). */}
+        {profile.role === "trainer" && (
+          <button className="btn" onClick={() => setShowInvite(true)}>
+            <UserPlus size={16} /> Invitar cliente
+          </button>
+        )}
       </div>
 
       <div style={{ display: "flex", flexWrap: "wrap", gap: 10, marginBottom: 16, alignItems: "center" }}>

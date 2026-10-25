@@ -18,7 +18,11 @@ const SESSION_STATUS_LABEL: Record<TodaysSession["status"], string> = {
 };
 
 export default function TrainerDashboard() {
-  const { profile } = useAuth();
+  const { profile, can } = useAuth();
+  // Para un asistente, Inicio muestra solo lo que tiene habilitado: sin
+  // permiso de Bienestar no ve ese panel, sin Sugerencias no ve el aviso.
+  const showWellness = can("health");
+  const showSuggestions = can("analytics");
   const { notify } = useToast();
   const navigate = useNavigate();
   const [clients, setClients] = useState<ClientRow[]>([]);
@@ -49,7 +53,9 @@ export default function TrainerDashboard() {
   return (
     <div className="page">
       <h1 style={{ marginBottom: 6 }}>Hola, {profile?.full_name}</h1>
-      <p className="note" style={{ marginBottom: 20 }}>Esto es lo que pasó hoy con el bienestar de tus clientes.</p>
+      <p className="note" style={{ marginBottom: 20 }}>
+        {profile?.role === "staff" ? "Esto es lo que está pasando hoy con los clientes." : "Esto es lo que pasó hoy con el bienestar de tus clientes."}
+      </p>
 
       {loading ? (
         <Loading />
@@ -72,7 +78,7 @@ export default function TrainerDashboard() {
             </div>
           )}
 
-          {(redToday.length > 0 || yellowToday.length > 0) && (
+          {showWellness && (redToday.length > 0 || yellowToday.length > 0) && (
             <div className="panel" style={{ marginBottom: 20, borderLeft: `4px solid ${redToday.length > 0 ? "var(--bad)" : "var(--warn)"}` }}>
               <div className="hd"><h3>Alertas de bienestar — hoy</h3></div>
               <div className="bd">
@@ -98,7 +104,7 @@ export default function TrainerDashboard() {
             </div>
           )}
 
-          {redToday.length === 0 && yellowToday.length === 0 && (
+          {showWellness && redToday.length === 0 && yellowToday.length === 0 && (
             <div className="panel" style={{ marginBottom: 20 }}>
               <div className="bd">
                 <p className="note">
@@ -109,7 +115,7 @@ export default function TrainerDashboard() {
               </div>
             </div>
           )}
-          {suggestionCount !== null && suggestionCount > 0 && (
+          {showSuggestions && suggestionCount !== null && suggestionCount > 0 && (
             <p className="note" style={{ cursor: "pointer" }} onClick={() => navigate(paths.trainerSuggestions)}>
               Hay {suggestionCount} sugerencia{suggestionCount === 1 ? "" : "s"} más esperando — ver Sugerencias.
             </p>

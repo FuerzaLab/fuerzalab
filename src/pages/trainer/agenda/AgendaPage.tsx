@@ -45,7 +45,7 @@ function fmtDayHeader(d: Date): string {
 }
 
 export default function AgendaPage() {
-  const { profile } = useAuth();
+  const { profile, actingTrainerId } = useAuth();
   const { notify } = useToast();
   const [weekStart, setWeekStart] = useState(() => startOfWeek(new Date()));
   const [viewMode, setViewMode] = useState<"list" | "grid">("list");
@@ -187,7 +187,7 @@ export default function AgendaPage() {
           defaultDate={editing.defaultDate}
           clients={clients}
           organizationId={profile.organization_id!}
-          trainerId={profile.id}
+          trainerId={(actingTrainerId ?? profile.id)}
           onClose={() => setEditing(null)}
           onSaved={async () => {
             setEditing(null);

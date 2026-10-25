@@ -25,7 +25,7 @@ import Chip from "../../../components/ui/Chip";
 import Loading from "../../../components/ui/Loading";
 
 export default function ExercisesPage({ scope }: { scope: "global" | "trainer" }) {
-  const { profile } = useAuth();
+  const { profile, actingTrainerId } = useAuth();
   const { notify } = useToast();
   const [exercises, setExercises] = useState<ExerciseRow[]>([]);
   const [muscles, setMuscles] = useState<CatalogItem[]>([]);
@@ -74,7 +74,7 @@ export default function ExercisesPage({ scope }: { scope: "global" | "trainer" }
     try {
       const file = await compressImage(raw);
       const folderPrefix = scope === "global" ? "global" : profile.organization_id!;
-      const { path, type } = await uploadExerciseMedia({ exerciseId: selected.id, folderPrefix, uploaderId: profile.id, file });
+      const { path, type } = await uploadExerciseMedia({ exerciseId: selected.id, folderPrefix, uploaderId: (actingTrainerId ?? profile.id), file });
       setExercises((es) => es.map((x) => (x.id === selected.id ? { ...x, media_path: path, media_type: type } : x)));
       setSelected((s) => (s ? { ...s, media_path: path, media_type: type } : s));
       notify("Archivo subido.");
@@ -359,7 +359,7 @@ export default function ExercisesPage({ scope }: { scope: "global" | "trainer" }
         <NewExerciseModal
           scope={scope}
           organizationId={profile.organization_id}
-          ownerId={profile.id}
+          ownerId={(actingTrainerId ?? profile.id)}
           muscles={muscles}
           patterns={patterns}
           equipment={equipment}
@@ -376,7 +376,7 @@ export default function ExercisesPage({ scope }: { scope: "global" | "trainer" }
         <ImportExercisesModal
           scope={scope}
           organizationId={profile.organization_id}
-          ownerId={profile.id}
+          ownerId={(actingTrainerId ?? profile.id)}
           muscles={muscles}
           patterns={patterns}
           equipment={equipment}

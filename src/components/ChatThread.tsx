@@ -2,7 +2,15 @@ import { useEffect, useRef, useState } from "react";
 import { Send } from "lucide-react";
 import { useAuth } from "../contexts/AuthContext";
 import { useToast } from "../contexts/ToastContext";
-import { listMessages, sendMessage, markThreadRead, type MessageRow } from "../services/messages";
+import {
+  listMessages,
+  sendMessage,
+  markThreadRead,
+  markClientMessagesRead,
+  getClientProfileId,
+  getSenderNames,
+  type MessageRow,
+} from "../services/messages";
 import Loading from "./ui/Loading";
 
 export default function ChatThread({ clientId, otherLabel }: { clientId: string; otherLabel: string }) {
@@ -12,6 +20,11 @@ export default function ChatThread({ clientId, otherLabel }: { clientId: string;
   const [text, setText] = useState("");
   const [loading, setLoading] = useState(true);
   const [sending, setSending] = useState(false);
+  // Solo del lado del entrenador/staff: la cuenta del cliente (para saber
+  // qué mensajes son suyos) y los nombres de los demás miembros del equipo.
+  const [clientProfileId, setClientProfileId] = useState<string | null>(null);
+  const [senderNames, setSenderNames] = useState<Record<string, string>>({});
+  const teamSide = profile?.role === "trainer" || profile?.role === "staff";
   const bottomRef = useRef<HTMLDivElement>(null);
 
   const load = async () => {
@@ -19,7 +32,15 @@ export default function ChatThread({ clientId, otherLabel }: { clientId: string;
     try {
       const msgs = await listMessages(clientId);
       setMessages(msgs);
-      if (profile) await markThreadRead(clientId, profile.id);
+      if (profile && teamSide) {
+        const cp = await getClientProfileId(clientId);
+        setClientProfileId(cp);
+        if (cp) await markClientMessagesRead(clientId, cp);
+        const otherTeam = Array.from(new Set(msgs.map((m) => m.sender_id))).filter((id) => id !== cp && id !== profile.id);
+        if (otherTeam.length) setSenderNames(await getSenderNames(otherTeam).catch((): Record<string, string> => ({})));
+      } else if (profile) {
+        await markThreadRead(clientId, profile.id);
+      }
     } catch (e: any) {
       notify(e.message);
     }
@@ -59,11 +80,21 @@ export default function ChatThread({ clientId, otherLabel }: { clientId: string;
         ) : (
           messages.map((m) => {
             const mine = m.sender_id === profile?.id;
+            // Del lado del equipo, lo que escribió otro miembro (el
+            // entrenador o un asistente) también va a la derecha, con su
+            // nombre y un tono más suave para distinguirlo de lo propio.
+            const fromTeammate = teamSide && !mine && clientProfileId != null && m.sender_id !== clientProfileId;
+            const right = mine || fromTeammate;
             return (
-              <div key={m.id} style={{ alignSelf: mine ? "flex-end" : "flex-start", maxWidth: "75%" }}>
+              <div key={m.id} style={{ alignSelf: right ? "flex-end" : "flex-start", maxWidth: "75%" }}>
+                {fromTeammate && (
+                  <div className="note" style={{ fontSize: 11, marginBottom: 2, textAlign: "right" }}>
+                    {senderNames[m.sender_id] ?? "Equipo"}
+                  </div>
+                )}
                 <div
                   style={{
-                    background: mine ? "var(--pri)" : "var(--bg)",
+                    background: mine ? "var(--pri)" : fromTeammate ? "var(--pri-soft)" : "var(--bg)",
                     color: mine ? "#fff" : "var(--ink)",
                     borderRadius: 12,
                     padding: "8px 12px",
@@ -72,7 +103,7 @@ export default function ChatThread({ clientId, otherLabel }: { clientId: string;
                 >
                   {m.body}
                 </div>
-                <div className="note" style={{ fontSize: 11, marginTop: 2, textAlign: mine ? "right" : "left" }}>
+                <div className="note" style={{ fontSize: 11, marginTop: 2, textAlign: right ? "right" : "left" }}>
                   {new Date(m.created_at).toLocaleString("es", { day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" })}
                 </div>
               </div>

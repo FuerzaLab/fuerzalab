@@ -70,7 +70,7 @@ import Loading from "../../../components/ui/Loading";
 const CATEGORY_ORDER: AssessmentCategory[] = ["body", "circumferences", "skinfolds", "strength", "power", "endurance", "mobility", "flexibility"];
 
 export default function AssessmentsPage() {
-  const { profile } = useAuth();
+  const { profile, actingTrainerId } = useAuth();
   const { notify } = useToast();
   const [clients, setClients] = useState<ClientRow[]>([]);
   const [clientId, setClientId] = useState("");
@@ -184,7 +184,7 @@ export default function AssessmentsPage() {
       {showNew && (
         <NewAssessmentModal
           organizationId={profile.organization_id!}
-          trainerId={profile.id}
+          trainerId={(actingTrainerId ?? profile.id)}
           clientId={clientId}
           onClose={() => setShowNew(false)}
           onCreated={async (a) => {

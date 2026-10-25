@@ -395,7 +395,7 @@ function SessionEditor({
   onRenamed: () => void;
 }) {
   const { notify, flashSaved } = useToast();
-  const { profile } = useAuth();
+  const { profile, actingTrainerId } = useAuth();
   const [session, setSession] = useState<SessionRow>(initialSession);
   const [setNotes, setSetNotes] = useState<Record<string, Record<number, string>>>({});
   const [notesExpandedId, setNotesExpandedId] = useState<string | null>(null);
@@ -903,7 +903,7 @@ function SessionEditor({
       {showSaveAsTemplate && profile && (
         <SaveAsTemplateModal
           organizationId={profile.organization_id!}
-          trainerId={profile.id}
+          trainerId={(actingTrainerId ?? profile.id)}
           session={session}
           exercises={items}
           onClose={() => setShowSaveAsTemplate(false)}
