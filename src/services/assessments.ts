@@ -44,6 +44,21 @@ export const SITE_LABEL: Record<CircumferenceSite, string> = {
   custom: "Personalizado",
 };
 
+/**
+ * Clave y nombre en español de una circunferencia, distinguiendo lado y
+ * zona personalizada — así "Brazo (izq.)" y "Brazo (der.)" son dos
+ * medidas distintas en los reportes, no una pisando a la otra.
+ */
+export function circumferenceKey(c: Pick<CircumferenceRow, "site" | "side" | "custom_label">): string {
+  return `${c.site}|${c.side}|${c.site === "custom" ? (c.custom_label ?? "").trim().toLowerCase() : ""}`;
+}
+
+export function circumferenceLabel(c: Pick<CircumferenceRow, "site" | "side" | "custom_label">): string {
+  const base = c.site === "custom" && c.custom_label?.trim() ? c.custom_label.trim() : SITE_LABEL[c.site] ?? c.site;
+  const side = c.side === "left" ? " (izq.)" : c.side === "right" ? " (der.)" : "";
+  return base + side;
+}
+
 export interface StrengthTestRow {
   id: string;
   assessment_id: string;

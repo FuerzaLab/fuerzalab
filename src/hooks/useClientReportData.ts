@@ -7,7 +7,8 @@ import {
   listStrengthTests,
   sumSkinfolds8,
   TYPE_LABEL,
-  type CircumferenceSite,
+  circumferenceKey,
+  circumferenceLabel,
   type StrengthTestRow,
 } from "../services/assessments";
 import { listRecentLogs, wellnessScore, WELLNESS_FIELDS, type WellnessField } from "../services/wellness";
@@ -29,8 +30,9 @@ export interface ClientReportData {
   loading: boolean;
   snapshots: AssessmentSnapshot[];
   bodyPoints: BodyPoint[];
-  circSiteOptions: CircumferenceSite[];
-  circSeriesFor: (site: CircumferenceSite) => { date: string; value: number }[];
+  /** [clave, nombre en español] de cada zona medida (con lado: "Brazo (izq.)"). */
+  circSiteOptions: [string, string][];
+  circSeriesFor: (key: string) => { date: string; value: number }[];
   skinfoldPoints: { date: string; sum: number }[];
   strengthExerciseOptions: [string, string][];
   strengthSeriesFor: (exerciseId: string) => { date: string; value: number }[];
@@ -79,7 +81,7 @@ export function useClientReportData(clientId: string | null): ClientReportData {
           weight: body?.weight_kg ?? null,
           bodyFat: body?.body_fat_pct ?? null,
           muscleMass: body?.muscle_mass_kg ?? null,
-          circumferences: circs.map((c) => ({ site: c.site, value: c.value_cm })),
+          circumferences: circs.map((c) => ({ key: circumferenceKey(c), label: circumferenceLabel(c), value: c.value_cm })),
           skinfoldSum: sigma8.complete ? sigma8.sum : null,
           strength: strength.map((s) => ({ exerciseName: s.exercise_name ?? "", value: s.estimated_1rm })),
         });
@@ -122,9 +124,15 @@ export function useClientReportData(clientId: string | null): ClientReportData {
     .filter((s) => s.weight != null || s.bodyFat != null)
     .map((s) => ({ date: s.date, weight: s.weight, bodyFat: s.bodyFat }));
 
-  const circSiteOptions = [...new Set(snapshots.flatMap((s) => s.circumferences.map((c) => c.site)))] as CircumferenceSite[];
-  const circSeriesFor = (site: CircumferenceSite) =>
-    snapshots.filter((s) => s.circumferences.some((c) => c.site === site)).map((s) => ({ date: s.date, value: s.circumferences.find((c) => c.site === site)!.value }));
+  const circSiteOptions: [string, string][] = (() => {
+    const seen = new Map<string, string>();
+    for (const snap of snapshots) for (const c of snap.circumferences) if (!seen.has(c.key)) seen.set(c.key, c.label);
+    return [...seen.entries()];
+  })();
+  const circSeriesFor = (key: string) =>
+    snapshots
+      .filter((s) => s.circumferences.some((c) => c.key === key))
+      .map((s) => ({ date: s.date, value: s.circumferences.find((c) => c.key === key)!.value }));
 
   const skinfoldPoints = snapshots.filter((s) => s.skinfoldSum != null).map((s) => ({ date: s.date, sum: s.skinfoldSum! }));
 

@@ -4,7 +4,6 @@ import { useToast } from "../../../contexts/ToastContext";
 import { listClients, type ClientRow } from "../../../services/clients";
 import { useClientReportData } from "../../../hooks/useClientReportData";
 import { exportReportPdf } from "../../../lib/exportReportPdf";
-import type { CircumferenceSite } from "../../../services/assessments";
 import {
   BodyCompositionChart,
   CircumferenceChart,
@@ -27,7 +26,7 @@ export default function ReportsPage() {
   const { notify } = useToast();
   const [clients, setClients] = useState<ClientRow[]>([]);
   const [clientId, setClientId] = useState("");
-  const [circSite, setCircSite] = useState<CircumferenceSite | "">("");
+  const [circSite, setCircSite] = useState<string>("");
   const [strengthExId, setStrengthExId] = useState("");
   const [progressExId, setProgressExId] = useState("");
   const progressDetailRef = useRef<HTMLDivElement>(null);
@@ -44,7 +43,7 @@ export default function ReportsPage() {
   }, []);
 
   useEffect(() => {
-    if (!circSite && data.circSiteOptions.length) setCircSite(data.circSiteOptions[0]);
+    if (!circSite && data.circSiteOptions.length) setCircSite(data.circSiteOptions[0][0]);
     if (!strengthExId && data.strengthExerciseOptions.length) setStrengthExId(data.strengthExerciseOptions[0][0]);
     if (!progressExId && data.exerciseProgressOptions.length) setProgressExId(data.exerciseProgressOptions[0][0]);
     // eslint-disable-next-line react-hooks/exhaustive-deps

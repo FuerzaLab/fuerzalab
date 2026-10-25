@@ -1,6 +1,5 @@
 import { useEffect, useState } from "react";
 import { LineChart, Line, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from "recharts";
-import { SITE_LABEL, type CircumferenceSite } from "../../services/assessments";
 import { WELLNESS_FIELDS, WELLNESS_FIELD_LABEL, type WellnessField } from "../../services/wellness";
 import type { WeeklyPoint, ExerciseSummary } from "../../services/reports";
 import {
@@ -138,17 +137,18 @@ export function CircumferenceChart({
   onSiteChange,
   series,
 }: {
-  siteOptions: CircumferenceSite[];
-  site: CircumferenceSite | "";
-  onSiteChange: (s: CircumferenceSite) => void;
+  /** [clave, nombre en español] — ver circumferenceKey/circumferenceLabel. */
+  siteOptions: [string, string][];
+  site: string;
+  onSiteChange: (key: string) => void;
   series: CircSeriesPoint[];
 }) {
   if (siteOptions.length === 0) return <p className="note">Este cliente todavía no tiene circunferencias registradas en Evaluaciones.</p>;
   return (
     <>
-      <select className="input" style={{ maxWidth: 220, marginBottom: 14 }} value={site} onChange={(e) => onSiteChange(e.target.value as CircumferenceSite)}>
-        {siteOptions.map((s) => <option key={s} value={s}>{SITE_LABEL[s]}</option>)}
-      </select>
+      <SearchSelect className="input" style={{ maxWidth: 240, marginBottom: 14 }} value={site} onChange={(e) => onSiteChange(e.target.value)}>
+        {siteOptions.map(([key, label]) => <option key={key} value={key}>{label}</option>)}
+      </SearchSelect>
       {series.length < 2 ? (
         <p className="note">Hacen falta al menos 2 mediciones de esta zona para ver una tendencia.</p>
       ) : (
@@ -156,9 +156,9 @@ export function CircumferenceChart({
           <LineChart data={series.map((p) => ({ ...p, dateLabel: fmtDate(p.date) }))}>
             <CartesianGrid strokeDasharray="3 3" stroke="#eee" />
             <XAxis dataKey="dateLabel" fontSize={12} height={X_H} label={xTitle("Fecha")} />
-            <YAxis fontSize={12} width={Y_W} label={yTitle(site ? `${SITE_LABEL[site]} (cm)` : "Circunferencia (cm)")} />
+            <YAxis fontSize={12} width={Y_W} label={yTitle(`${siteOptions.find(([k]) => k === site)?.[1] ?? "Circunferencia"} (cm)`)} />
             <Tooltip />
-            <Line type="monotone" dataKey="value" name="cm" stroke={COLORS.pri} strokeWidth={2} dot />
+            <Line type="monotone" dataKey="value" name="Circunferencia (cm)" stroke={COLORS.pri} strokeWidth={2} dot />
           </LineChart>
         </ResponsiveContainer>
       )}
@@ -261,7 +261,7 @@ export function WellnessScoreChart({ points }: { points: { date: string; score: 
         <XAxis dataKey="dateLabel" fontSize={12} height={X_H} label={xTitle("Fecha")} />
         <YAxis domain={[0, 100]} fontSize={12} width={Y_W} label={yTitle("Puntaje (0 a 100)")} />
         <Tooltip />
-        <Line type="monotone" dataKey="score" name="Wellness Score" stroke={COLORS.ok} strokeWidth={2} dot={false} />
+        <Line type="monotone" dataKey="score" name="Puntaje de bienestar" stroke={COLORS.ok} strokeWidth={2} dot={false} />
       </LineChart>
     </ResponsiveContainer>
   );
@@ -330,7 +330,8 @@ export interface AssessmentSnapshot {
   weight: number | null;
   bodyFat: number | null;
   muscleMass: number | null;
-  circumferences: { site: string; value: number }[];
+  /** key distingue zona + lado; label es el nombre en español para mostrar. */
+  circumferences: { key: string; label: string; value: number }[];
   skinfoldSum: number | null;
   strength: { exerciseName: string; value: number }[];
 }
@@ -361,9 +362,12 @@ export function AssessmentComparison({
 }) {
   if (options.length < 2) return <p className="note">Hacen falta al menos 2 evaluaciones para comparar.</p>;
 
-  const circSites = snapshotA && snapshotB
-    ? [...new Set([...snapshotA.circumferences.map((c) => c.site), ...snapshotB.circumferences.map((c) => c.site)])]
-    : [];
+  const circSites: [string, string][] = (() => {
+    if (!snapshotA || !snapshotB) return [];
+    const seen = new Map<string, string>();
+    for (const c of [...snapshotA.circumferences, ...snapshotB.circumferences]) if (!seen.has(c.key)) seen.set(c.key, c.label);
+    return [...seen.entries()];
+  })();
   const exercises = snapshotA && snapshotB
     ? [...new Set([...snapshotA.strength.map((s) => s.exerciseName), ...snapshotB.strength.map((s) => s.exerciseName)])]
     : [];
@@ -392,8 +396,8 @@ export function AssessmentComparison({
           <thead>
             <tr style={{ textAlign: "left", color: "var(--muted)", fontSize: 12.5 }}>
               <th style={{ padding: "6px 8px" }}></th>
-              <th style={{ padding: "6px 8px" }}>{snapshotA.date}</th>
-              <th style={{ padding: "6px 8px" }}>{snapshotB.date}</th>
+              <th style={{ padding: "6px 8px" }}>{fmtFullDate(snapshotA.date)}</th>
+              <th style={{ padding: "6px 8px" }}>{fmtFullDate(snapshotB.date)}</th>
               <th style={{ padding: "6px 8px" }}>Cambio</th>
             </tr>
           </thead>
@@ -422,12 +426,12 @@ export function AssessmentComparison({
               <td style={{ padding: "6px 8px" }}>{snapshotB.skinfoldSum ?? "—"} mm</td>
               <td style={{ padding: "6px 8px" }}>{deltaText(snapshotA.skinfoldSum, snapshotB.skinfoldSum, "mm")}</td>
             </tr>
-            {circSites.map((site) => {
-              const a = snapshotA.circumferences.find((c) => c.site === site)?.value ?? null;
-              const b = snapshotB.circumferences.find((c) => c.site === site)?.value ?? null;
+            {circSites.map(([key, label]) => {
+              const a = snapshotA.circumferences.find((c) => c.key === key)?.value ?? null;
+              const b = snapshotB.circumferences.find((c) => c.key === key)?.value ?? null;
               return (
-                <tr key={site} style={{ borderTop: "1px solid var(--line)" }}>
-                  <td style={{ padding: "6px 8px" }}>{site}</td>
+                <tr key={key} style={{ borderTop: "1px solid var(--line)" }}>
+                  <td style={{ padding: "6px 8px" }}>{label}</td>
                   <td style={{ padding: "6px 8px" }}>{a ?? "—"} cm</td>
                   <td style={{ padding: "6px 8px" }}>{b ?? "—"} cm</td>
                   <td style={{ padding: "6px 8px" }}>{deltaText(a, b, "cm")}</td>
