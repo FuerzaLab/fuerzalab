@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { Check, ArrowLeft } from "lucide-react";
+import { Check, ArrowLeft, Flame } from "lucide-react";
 import { useToast } from "../../contexts/ToastContext";
 import Modal from "../../components/ui/Modal";
 import Chip from "../../components/ui/Chip";
@@ -16,6 +16,7 @@ import {
   computeWeekStatuses,
   WEEK_STATUS_COLOR,
   WEEK_STATUS_LABEL,
+  listSetNotesForExercises,
   type SessionRow,
   type SessionBlockRow,
   type WorkoutExerciseRow,
@@ -293,6 +294,7 @@ export function TrainSession({ sessionId, onExit, backLabel = "Volver a mi rutin
   const [restAnchor, setRestAnchor] = useState<string | null>(null);
   const [lastPerf, setLastPerf] = useState<Record<string, LastPerformance | null>>({});
   const [variations, setVariations] = useState<Record<string, ExerciseVariationRow[]>>({});
+  const [setNotesByExercise, setSetNotesByExercise] = useState<Record<string, Record<number, string>>>({});
 
   useEffect(() => {
     if (!restEndsAt) {
@@ -343,6 +345,8 @@ export function TrainSession({ sessionId, onExit, backLabel = "Volver a mi rutin
         uniqueExerciseIds.map(async (exId) => [exId, await listVariationsFor(exId).catch((e: any) => { notify(`No pudimos cargar las alternativas: ${e.message}`); return []; })] as const)
       );
       setVariations(Object.fromEntries(variationEntries));
+
+      setSetNotesByExercise(await listSetNotesForExercises(ex.map((e) => e.id)).catch(() => ({})));
     } catch (e: any) {
       notify(e.message);
     }
@@ -437,6 +441,7 @@ export function TrainSession({ sessionId, onExit, backLabel = "Volver a mi rutin
                       onSkipRest={() => setRestEndsAt(null)}
                       lastPerf={lastPerf}
                       variations={variations}
+                      setNotesByExercise={setNotesByExercise}
                     />
                   ) : (
                     g.map((ex) => (
@@ -452,6 +457,7 @@ export function TrainSession({ sessionId, onExit, backLabel = "Volver a mi rutin
                         onSkipRest={() => setRestEndsAt(null)}
                         lastPerf={lastPerf[ex.exercise_id] ?? null}
                         variations={variations[ex.exercise_id] ?? []}
+                        setNotes={setNotesByExercise[ex.id] ?? {}}
                       />
                     ))
                   )
@@ -590,6 +596,7 @@ function SupersetTrainer({
   onSkipRest,
   lastPerf,
   variations,
+  setNotesByExercise,
 }: {
   exercises: WorkoutExerciseRow[];
   logFor: (workoutExerciseId: string, setNumber: number) => SetLogRow | undefined;
@@ -601,6 +608,7 @@ function SupersetTrainer({
   onSkipRest: () => void;
   lastPerf: Record<string, LastPerformance | null>;
   variations: Record<string, ExerciseVariationRow[]>;
+  setNotesByExercise: Record<string, Record<number, string>>;
 }) {
   const label = exercises.length === 2 ? "Biserie" : exercises.length === 3 ? "Triserie" : "Serie gigante";
   const maxSets = Math.max(...exercises.map((ex) => ex.sets ?? 3));
@@ -640,18 +648,22 @@ function SupersetTrainer({
                   if (roundNumber > (ex.sets ?? 3)) return null;
                   const existing = logFor(ex.id, roundNumber);
                   const repsTarget = ex.reps_min && ex.reps_max ? `${ex.reps_min}–${ex.reps_max}` : ex.reps_min ?? ex.reps_max ?? "—";
+                  const note = setNotesByExercise[ex.id]?.[roundNumber];
                   return (
-                    <div key={ex.id} className="complete-transition" style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap", background: existing?.completed ? "var(--ok-soft)" : "var(--bg)", borderRadius: 8, padding: 8 }}>
-                      <span style={{ minWidth: 26, fontWeight: 700, color: "var(--pri)" }}>{SUPERSET_LETTERS[i]}{roundNumber}</span>
-                      <span style={{ flex: 1, minWidth: 120 }}>{ex.exercise_name}</span>
-                      <span className="note" style={{ fontSize: 12.5 }}>Obj: {repsTarget}{ex.load_value ? ` @ ${ex.load_value}kg` : ""}</span>
-                      <MiniSetInputs
-                        defaultReps={ex.reps_max ?? ex.reps_min ?? 0}
-                        defaultLoad={ex.load_value}
-                        defaultRir={ex.rir}
-                        existing={existing}
-                        onSave={(fields) => onSaveSet(ex, roundNumber, fields)}
-                      />
+                    <div key={ex.id} style={{ display: "grid", gap: 6 }}>
+                      {note && <SetNoteBanner note={note} />}
+                      <div className="complete-transition" style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap", background: existing?.completed ? "var(--ok-soft)" : "var(--bg)", borderRadius: 8, padding: 8 }}>
+                        <span style={{ minWidth: 26, fontWeight: 700, color: "var(--pri)" }}>{SUPERSET_LETTERS[i]}{roundNumber}</span>
+                        <span style={{ flex: 1, minWidth: 120 }}>{ex.exercise_name}</span>
+                        <span className="note" style={{ fontSize: 12.5 }}>Obj: {repsTarget}{ex.load_value ? ` @ ${ex.load_value}kg` : ""}</span>
+                        <MiniSetInputs
+                          defaultReps={ex.reps_max ?? ex.reps_min ?? 0}
+                          defaultLoad={ex.load_value}
+                          defaultRir={ex.rir}
+                          existing={existing}
+                          onSave={(fields) => onSaveSet(ex, roundNumber, fields)}
+                        />
+                      </div>
                     </div>
                   );
                 })}
@@ -719,6 +731,7 @@ function ExerciseTrainer({
   onSkipRest,
   lastPerf,
   variations,
+  setNotes,
 }: {
   ex: WorkoutExerciseRow;
   logFor: (workoutExerciseId: string, setNumber: number) => SetLogRow | undefined;
@@ -730,6 +743,7 @@ function ExerciseTrainer({
   onSkipRest: () => void;
   lastPerf: LastPerformance | null;
   variations: ExerciseVariationRow[];
+  setNotes: Record<number, string>;
 }) {
   const showRestHere = restRemaining > 0 && restAnchor != null && restAnchor.startsWith(`${ex.id}:`);
   const isCardio = ex.duration_min != null || ex.distance_km != null || ex.steps_target != null;
@@ -806,6 +820,7 @@ function ExerciseTrainer({
                   defaultRir={ex.rir}
                   existing={existing}
                   onSave={(fields) => onSaveSet(ex, setNumber, fields)}
+                  note={setNotes?.[setNumber]}
                 />
               );
             })}
@@ -817,6 +832,27 @@ function ExerciseTrainer({
   );
 }
 
+function SetNoteBanner({ note }: { note: string }) {
+  return (
+    <div
+      style={{
+        display: "flex",
+        alignItems: "flex-start",
+        gap: 8,
+        background: "var(--warn-soft)",
+        color: "var(--warn)",
+        borderRadius: 8,
+        padding: "8px 10px",
+        fontSize: 13,
+        fontWeight: 600,
+      }}
+    >
+      <Flame size={15} style={{ flex: "none", marginTop: 1 }} />
+      <span>{note}</span>
+    </div>
+  );
+}
+
 function SetRow({
   setNumber,
   defaultReps,
@@ -824,6 +860,7 @@ function SetRow({
   defaultRir,
   existing,
   onSave,
+  note,
 }: {
   setNumber: number;
   defaultReps: number;
@@ -831,6 +868,7 @@ function SetRow({
   defaultRir: number | null;
   existing: SetLogRow | undefined;
   onSave: (fields: { reps: number; loadKg: number | null; rir: number | null; completed: boolean }) => void;
+  note?: string;
 }) {
   const [reps, setReps] = useState(String(existing?.reps ?? defaultReps ?? ""));
   const [load, setLoad] = useState(existing?.load_kg != null ? String(existing.load_kg) : defaultLoad != null ? String(defaultLoad) : "");
@@ -847,7 +885,15 @@ function SetRow({
   };
 
   return (
-    <tr className="complete-transition" style={{ borderTop: "1px solid var(--line)", background: completed ? "var(--ok-soft)" : undefined }}>
+    <>
+      {note && (
+        <tr>
+          <td colSpan={5} style={{ padding: "4px 10px" }}>
+            <SetNoteBanner note={note} />
+          </td>
+        </tr>
+      )}
+      <tr className="complete-transition" style={{ borderTop: "1px solid var(--line)", background: completed ? "var(--ok-soft)" : undefined }}>
       <td style={{ padding: "6px 10px" }}>{setNumber}</td>
       <td style={{ padding: "6px" }}>
         <input className="input" style={{ width: 60, padding: "6px 4px", textAlign: "center" }} value={reps} onChange={(e) => setReps(e.target.value)} onBlur={() => commit()} />
@@ -867,6 +913,7 @@ function SetRow({
           <Check size={13} className={completed ? "check-pop" : undefined} /> {completed ? "Hecha" : "Marcar"}
         </button>
       </td>
-    </tr>
+      </tr>
+    </>
   );
 }

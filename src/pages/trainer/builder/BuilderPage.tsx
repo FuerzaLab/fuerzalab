@@ -1,5 +1,5 @@
-import { useEffect, useMemo, useState } from "react";
-import { Plus, Trash2, X, Copy, FileUp, ChevronLeft, ChevronRight, ChevronUp, ChevronDown } from "lucide-react";
+import { Fragment, useEffect, useMemo, useState } from "react";
+import { Plus, Trash2, X, Copy, FileUp, ChevronLeft, ChevronRight, ChevronUp, ChevronDown, MessageSquare } from "lucide-react";
 import ImportRoutineModal, { applyImportedRows } from "./ImportRoutineModal";
 import Modal from "../../../components/ui/Modal";
 import { useToast } from "../../../contexts/ToastContext";
@@ -36,6 +36,8 @@ import {
   ungroupSuperset,
   applyStrengthSuggestion,
   copyWeek,
+  listSetNotesForExercises,
+  upsertSetNote,
   BLOCK_LABEL,
   BLOCK_ORDER,
   STRENGTH_TYPES,
@@ -288,19 +290,17 @@ export default function BuilderPage() {
                 >
                   <Copy size={12} />
                 </button>
-                {sessions.length > 1 && (
-                  <button
-                    aria-label={`Eliminar ${s.name}`}
-                    onClick={async () => {
-                      await deleteSession(s.id);
-                      await loadSessions(weekId);
-                      notify("Rutina eliminada");
-                    }}
-                    style={{ border: 0, background: "none", color: "inherit", cursor: "pointer", display: "inline-flex" }}
-                  >
-                    <X size={12} />
-                  </button>
-                )}
+                <button
+                  aria-label={`Eliminar ${s.name}`}
+                  onClick={async () => {
+                    await deleteSession(s.id);
+                    await loadSessions(weekId);
+                    notify("Rutina eliminada");
+                  }}
+                  style={{ border: 0, background: "none", color: "inherit", cursor: "pointer", display: "inline-flex" }}
+                >
+                  <X size={12} />
+                </button>
               </span>
             ))}
             <button
@@ -397,6 +397,10 @@ function SessionEditor({
   const { notify, flashSaved } = useToast();
   const { profile } = useAuth();
   const [session, setSession] = useState<SessionRow>(initialSession);
+  const [setNotes, setSetNotes] = useState<Record<string, Record<number, string>>>({});
+  const [notesExpandedId, setNotesExpandedId] = useState<string | null>(null);
+  const [noteDrafts, setNoteDrafts] = useState<Record<number, string>>({});
+  const [savingNotes, setSavingNotes] = useState(false);
   const [blocks, setBlocks] = useState<SessionBlockRow[]>([]);
   const [items, setItems] = useState<WorkoutExerciseRow[]>([]);
   const [selected, setSelected] = useState<string[]>([]);
@@ -412,6 +416,7 @@ function SessionEditor({
     const [bl, ex] = await Promise.all([listSessionBlocks(sessionId), listWorkoutExercises(sessionId)]);
     setBlocks(bl);
     setItems(ex);
+    setSetNotes(await listSetNotesForExercises(ex.map((e) => e.id)).catch(() => ({})));
   };
 
   useEffect(() => {
@@ -455,6 +460,35 @@ function SessionEditor({
     updateWorkoutExercise(id, { [field]: value } as any)
       .then(() => flashSaved())
       .catch((e) => notify(e.message));
+  };
+
+  const toggleNotesPanel = (item: WorkoutExerciseRow) => {
+    if (notesExpandedId === item.id) {
+      setNotesExpandedId(null);
+      return;
+    }
+    const existing = setNotes[item.id] ?? {};
+    const drafts: Record<number, string> = {};
+    for (let n = 1; n <= item.sets; n++) drafts[n] = existing[n] ?? "";
+    setNoteDrafts(drafts);
+    setNotesExpandedId(item.id);
+  };
+
+  const saveNotes = async (workoutExerciseId: string) => {
+    setSavingNotes(true);
+    try {
+      await Promise.all(Object.entries(noteDrafts).map(([setNumber, note]) => upsertSetNote(workoutExerciseId, Number(setNumber), note)));
+      const refreshed: Record<number, string> = {};
+      for (const [setNumber, note] of Object.entries(noteDrafts)) {
+        if (note.trim()) refreshed[Number(setNumber)] = note.trim();
+      }
+      setSetNotes((sn) => ({ ...sn, [workoutExerciseId]: refreshed }));
+      setNotesExpandedId(null);
+      flashSaved();
+    } catch (e: any) {
+      notify(e.message);
+    }
+    setSavingNotes(false);
   };
 
   const removeItem = async (id: string) => {
@@ -668,7 +702,8 @@ function SessionEditor({
                 </thead>
                 <tbody>
                   {rows.map((it, i) => (
-                    <tr key={it.id} style={{ borderTop: "1px solid var(--line)" }}>
+                    <Fragment key={it.id}>
+                    <tr style={{ borderTop: "1px solid var(--line)" }}>
                       <td style={{ padding: "8px 10px" }}>
                         <input type="checkbox" checked={selected.includes(it.id)} onChange={() => toggleSelect(it.id)} />
                       </td>
@@ -738,11 +773,51 @@ function SessionEditor({
                         >
                           <ChevronDown size={14} />
                         </button>
+                        <button
+                          aria-label={`Notas por serie de ${it.exercise_name}`}
+                          title="Notas por serie (ej. TUT, Myo-reps)"
+                          onClick={() => toggleNotesPanel(it)}
+                          style={{ border: 0, background: "none", color: setNotes[it.id] && Object.keys(setNotes[it.id]).length > 0 ? "var(--warn)" : "var(--muted)", cursor: "pointer" }}
+                        >
+                          <MessageSquare size={14} />
+                        </button>
                         <button aria-label="Quitar ejercicio" onClick={() => removeItem(it.id)} style={{ border: 0, background: "none", color: "var(--muted)", cursor: "pointer" }}>
                           <Trash2 size={15} />
                         </button>
                       </td>
                     </tr>
+                    {notesExpandedId === it.id && !isCardio && (
+                      <tr>
+                        <td colSpan={10} style={{ padding: "10px 14px", background: "var(--bg)" }}>
+                          <p className="note" style={{ marginBottom: 8 }}>
+                            Notas por serie — se muestran destacadas al cliente mientras entrena esa serie en particular. Dejá vacío lo que no necesite nota.
+                          </p>
+                          <div style={{ display: "grid", gap: 6, marginBottom: 10 }}>
+                            {Array.from({ length: it.sets }, (_, idx) => idx + 1).map((n) => (
+                              <div key={n} style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                                <span className="note" style={{ width: 54, flex: "none" }}>Serie {n}</span>
+                                <input
+                                  className="input"
+                                  style={{ flex: 1 }}
+                                  placeholder="Ej. TUT 4-0-2, continuar hasta el fallo…"
+                                  value={noteDrafts[n] ?? ""}
+                                  onChange={(e) => setNoteDrafts((d) => ({ ...d, [n]: e.target.value }))}
+                                />
+                              </div>
+                            ))}
+                          </div>
+                          <div style={{ display: "flex", gap: 8 }}>
+                            <button className="btn" style={{ padding: "6px 14px", fontSize: 13 }} onClick={() => saveNotes(it.id)} disabled={savingNotes}>
+                              {savingNotes ? "Guardando…" : "Guardar notas"}
+                            </button>
+                            <button className="btn ghost" style={{ padding: "6px 14px", fontSize: 13 }} onClick={() => setNotesExpandedId(null)}>
+                              Cancelar
+                            </button>
+                          </div>
+                        </td>
+                      </tr>
+                    )}
+                    </Fragment>
                   ))}
                 </tbody>
               </table>

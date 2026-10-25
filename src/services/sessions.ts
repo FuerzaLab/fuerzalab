@@ -528,6 +528,40 @@ export async function cloneProgram(params: {
   return program as ProgramRow;
 }
 
+export interface SetNoteRow {
+  id: string;
+  workout_exercise_id: string;
+  set_number: number;
+  note: string;
+}
+
+/** Las notas de serie de varios ejercicios a la vez, agrupadas por ejercicio y número de serie — pensado para cargar toda una rutina de una. */
+export async function listSetNotesForExercises(workoutExerciseIds: string[]): Promise<Record<string, Record<number, string>>> {
+  if (workoutExerciseIds.length === 0) return {};
+  const { data, error } = await supabase.from("workout_exercise_set_notes").select("*").in("workout_exercise_id", workoutExerciseIds);
+  if (error) throw error;
+  const map: Record<string, Record<number, string>> = {};
+  for (const row of (data ?? []) as SetNoteRow[]) {
+    if (!map[row.workout_exercise_id]) map[row.workout_exercise_id] = {};
+    map[row.workout_exercise_id][row.set_number] = row.note;
+  }
+  return map;
+}
+
+/** Crea o actualiza la nota de una serie puntual. Si el texto queda vacío, la borra en vez de guardar una nota vacía. */
+export async function upsertSetNote(workoutExerciseId: string, setNumber: number, note: string): Promise<void> {
+  const trimmed = note.trim();
+  if (!trimmed) {
+    const { error } = await supabase.from("workout_exercise_set_notes").delete().eq("workout_exercise_id", workoutExerciseId).eq("set_number", setNumber);
+    if (error) throw error;
+    return;
+  }
+  const { error } = await supabase
+    .from("workout_exercise_set_notes")
+    .upsert({ workout_exercise_id: workoutExerciseId, set_number: setNumber, note: trimmed }, { onConflict: "workout_exercise_id,set_number" });
+  if (error) throw error;
+}
+
 export type WeekStatus = "empty" | "planned" | "started";
 
 export const WEEK_STATUS_COLOR: Record<WeekStatus, string> = {
@@ -647,29 +681,44 @@ export async function copyWeek(
     const blockKindToNewId = new Map(newBlocks.map((b) => [b.kind, b.id]));
     const oldBlockIdToKind = new Map(oldBlocks.map((b) => [b.id, b.kind]));
 
+    const oldExerciseIds = exercises.map((ex) => ex.id);
+    const oldNotesByExercise = oldExerciseIds.length ? await listSetNotesForExercises(oldExerciseIds).catch(() => ({})) : {};
+
     for (const ex of exercises) {
       const kind = ex.block_id ? oldBlockIdToKind.get(ex.block_id) : undefined;
       const newBlockId = kind ? blockKindToNewId.get(kind) : newBlocks[0]?.id;
       if (!newBlockId) continue;
-      await supabase.from("workout_exercises").insert({
-        session_id: newSession.id,
-        block_id: newBlockId,
-        exercise_id: ex.exercise_id,
-        sort_order: ex.sort_order,
-        sets: ex.sets,
-        reps_min: ex.reps_min,
-        reps_max: ex.reps_max,
-        load_value: ex.load_value != null ? loadOverrides?.[ex.id] ?? Number(ex.load_value) + loadIncrement : null,
-        rir: ex.rir,
-        rest_s: ex.rest_s,
-        tempo: ex.tempo,
-        superset_group: ex.superset_group,
-        duration_min: ex.duration_min,
-        distance_km: ex.distance_km,
-        steps_target: ex.steps_target,
-        hr_zone: ex.hr_zone,
-        prescription_type: ex.duration_min != null ? "time" : "reps",
-      });
+      const { data: newEx, error } = await supabase
+        .from("workout_exercises")
+        .insert({
+          session_id: newSession.id,
+          block_id: newBlockId,
+          exercise_id: ex.exercise_id,
+          sort_order: ex.sort_order,
+          sets: ex.sets,
+          reps_min: ex.reps_min,
+          reps_max: ex.reps_max,
+          load_value: ex.load_value != null ? loadOverrides?.[ex.id] ?? Number(ex.load_value) + loadIncrement : null,
+          rir: ex.rir,
+          rest_s: ex.rest_s,
+          tempo: ex.tempo,
+          superset_group: ex.superset_group,
+          duration_min: ex.duration_min,
+          distance_km: ex.distance_km,
+          steps_target: ex.steps_target,
+          hr_zone: ex.hr_zone,
+          prescription_type: ex.duration_min != null ? "time" : "reps",
+        })
+        .select("id")
+        .single();
+      if (error) throw error;
+
+      const notesForThisExercise = oldNotesByExercise[ex.id];
+      if (notesForThisExercise) {
+        for (const [setNumber, note] of Object.entries(notesForThisExercise)) {
+          await upsertSetNote(newEx.id, Number(setNumber), note).catch(() => {});
+        }
+      }
     }
   }
   void programId;
