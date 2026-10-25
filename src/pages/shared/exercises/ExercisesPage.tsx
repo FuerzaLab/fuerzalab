@@ -14,6 +14,7 @@ import {
   removeVariation,
   RELATION_LABEL,
   deleteExercise,
+  getProfileNames,
   type ExerciseRow,
   type CatalogItem,
   type ExerciseVariationRow,
@@ -52,6 +53,7 @@ export default function ExercisesPage({ scope }: { scope: "global" | "trainer" }
   const mediaInputRef = useRef<HTMLInputElement>(null);
   const [editingExercise, setEditingExercise] = useState<ExerciseRow | null>(null);
   const [toDelete, setToDelete] = useState<ExerciseRow | null>(null);
+  const [ownerNames, setOwnerNames] = useState<Record<string, string>>({});
 
   useEffect(() => {
     if (selected?.media_path) {
@@ -113,6 +115,10 @@ export default function ExercisesPage({ scope }: { scope: "global" | "trainer" }
         listCatalog("equipment"),
       ]);
       setExercises(ex);
+      if (scope === "global") {
+        const ownerIds = Array.from(new Set(ex.map((x) => x.owner_id).filter((x): x is string => !!x)));
+        setOwnerNames(await getProfileNames(ownerIds).catch((): Record<string, string> => ({})));
+      }
       setMuscles(mu);
       setPatterns(pa);
       setEquipment(eq);
@@ -145,10 +151,15 @@ export default function ExercisesPage({ scope }: { scope: "global" | "trainer" }
   // Qué ejercicios se pueden editar/eliminar desde esta pantalla: en la
   // biblioteca global (Super Admin), los globales; en la del entrenador,
   // solo los propios — los globales se ven, pero no se tocan.
+  // (El Super Admin puede todos — requiere part3q_migration.sql.)
   const canEdit = (e: ExerciseRow) =>
     scope === "global"
-      ? e.scope === "global"
+      ? true
       : e.scope === "trainer" && e.owner_id === (actingTrainerId ?? profile.id) && can("exercises", "write");
+
+  // En la vista del Super Admin, de quién es cada ejercicio que no es global.
+  const originLabel = (e: ExerciseRow) =>
+    e.scope === "global" ? "Global" : `De ${ownerNames[e.owner_id ?? ""] ?? "un entrenador"}`;
 
   const confirmDelete = async () => {
     const ex = toDelete;
@@ -247,6 +258,9 @@ export default function ExercisesPage({ scope }: { scope: "global" | "trainer" }
                     >
                       <td style={{ padding: "10px 14px" }}>
                         <b>{e.name}</b>
+                        {scope === "global" && e.scope !== "global" && (
+                          <div className="note" style={{ fontSize: 12 }}>{originLabel(e)}</div>
+                        )}
                       </td>
                       <td style={{ padding: "10px 14px" }}>{muscleById[e.primary_muscle_id ?? ""]?.label ?? "—"}</td>
                       <td style={{ padding: "10px 14px" }}>{difficultyLabel(e.difficulty)}</td>
@@ -284,6 +298,16 @@ export default function ExercisesPage({ scope }: { scope: "global" | "trainer" }
                 )}
               </div>
               <div className="bd">
+                {scope === "global" && (
+                  <div style={{ marginBottom: 12 }}>
+                    <Chip tone={selected.scope === "global" ? "pri" : "warn"}>{originLabel(selected)}</Chip>
+                    {selected.scope !== "global" && (
+                      <span className="note" style={{ marginLeft: 8, fontSize: 12.5 }}>
+                        Está en la biblioteca de ese entrenador, no en la global.
+                      </span>
+                    )}
+                  </div>
+                )}
                 <div style={{ marginBottom: 14 }}>
                   {selected.media_path && mediaUrl ? (
                     <div>
@@ -423,7 +447,7 @@ export default function ExercisesPage({ scope }: { scope: "global" | "trainer" }
       {toDelete && (
         <ConfirmModal
           title="Eliminar ejercicio"
-          message={`¿Eliminar "${toDelete.name}" de tu biblioteca? Si ya lo usaste en alguna rutina, evaluación o entrenamiento registrado, no se borra ese historial: el ejercicio deja de aparecer en la biblioteca y no se puede elegir para rutinas nuevas, pero donde ya estaba se sigue viendo.`}
+          message={`¿Eliminar "${toDelete.name}"${scope === "global" && toDelete.scope !== "global" ? ` (${originLabel(toDelete)})` : ""} de la biblioteca? Si ya lo usaste en alguna rutina, evaluación o entrenamiento registrado, no se borra ese historial: el ejercicio deja de aparecer en la biblioteca y no se puede elegir para rutinas nuevas, pero donde ya estaba se sigue viendo.`}
           confirmLabel="Eliminar"
           danger
           onClose={() => setToDelete(null)}

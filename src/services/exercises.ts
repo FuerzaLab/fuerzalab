@@ -272,3 +272,13 @@ export async function deleteExercise(id: string): Promise<"deleted" | "archived"
   await supabase.from("exercise_variations").delete().or(`exercise_id.eq.${id},related_exercise_id.eq.${id}`);
   return "archived";
 }
+
+/** Nombres de los dueños de ejercicios (para la vista del Super Admin). */
+export async function getProfileNames(ids: string[]): Promise<Record<string, string>> {
+  if (!ids.length) return {};
+  const { data, error } = await supabase.from("profiles").select("id, full_name").in("id", ids);
+  if (error) throw error;
+  const out: Record<string, string> = {};
+  for (const r of data ?? []) out[r.id as string] = r.full_name as string;
+  return out;
+}
