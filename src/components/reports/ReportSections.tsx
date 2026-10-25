@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { LineChart, Line, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from "recharts";
 import { SITE_LABEL, type CircumferenceSite } from "../../services/assessments";
 import { WELLNESS_FIELDS, WELLNESS_FIELD_LABEL, type WellnessField } from "../../services/wellness";
-import type { WeeklyPoint } from "../../services/reports";
+import type { WeeklyPoint, ExerciseSummary } from "../../services/reports";
 import {
   listProgressPhotos,
   groupPhotosBySession,
@@ -17,6 +17,24 @@ export const COLORS = { pri: "#1E3FA8", ok: "#2E8B6E", warn: "#B77800", bad: "#D
 const LINE_PALETTE = [COLORS.pri, COLORS.bad, COLORS.ok, COLORS.warn, COLORS.purple];
 
 export const fmtDate = (d: string) => new Date(d).toLocaleDateString("es", { day: "2-digit", month: "2-digit" });
+
+/**
+ * Títulos de los ejes de los gráficos. El eje X lleva espacio extra abajo
+ * (height) para que el título no se pise con las fechas ni con la leyenda;
+ * los ejes Y, ancho extra (width) para el título vertical.
+ */
+const AXIS_TITLE = { fontSize: 12, fill: "#5E6A73" };
+const xTitle = (value: string) => ({ value, position: "insideBottom" as const, offset: 0, ...AXIS_TITLE });
+const yTitle = (value: string, side: "left" | "right" = "left") => ({
+  value,
+  angle: side === "left" ? -90 : 90,
+  position: side === "left" ? ("insideLeft" as const) : ("insideRight" as const),
+  style: { textAnchor: "middle" as const },
+  ...AXIS_TITLE,
+});
+const X_H = 44; // alto del eje X con título
+const Y_W = 62; // ancho de un eje Y con título
+const LEGEND_STYLE = { paddingTop: 6 };
 
 const fmtFullDate = (d: string) => new Date(d).toLocaleDateString("es", { day: "2-digit", month: "2-digit", year: "numeric" });
 
@@ -100,11 +118,11 @@ export function BodyCompositionChart({ points }: { points: BodyPoint[] }) {
     <ResponsiveContainer width="100%" height={260}>
       <LineChart data={points.map((p) => ({ ...p, dateLabel: fmtDate(p.date) }))}>
         <CartesianGrid strokeDasharray="3 3" stroke="#eee" />
-        <XAxis dataKey="dateLabel" fontSize={12} />
-        <YAxis yAxisId="weight" fontSize={12} />
-        <YAxis yAxisId="fat" orientation="right" fontSize={12} />
+        <XAxis dataKey="dateLabel" fontSize={12} height={X_H} label={xTitle("Fecha")} />
+        <YAxis yAxisId="weight" fontSize={12} width={Y_W} label={yTitle("Peso (kg)")} />
+        <YAxis yAxisId="fat" orientation="right" fontSize={12} width={Y_W} label={yTitle("Grasa corporal (%)", "right")} />
         <Tooltip />
-        <Legend />
+        <Legend wrapperStyle={LEGEND_STYLE} />
         <Line yAxisId="weight" type="monotone" dataKey="weight" name="Peso (kg)" stroke={COLORS.pri} strokeWidth={2} dot connectNulls />
         <Line yAxisId="fat" type="monotone" dataKey="bodyFat" name="% grasa" stroke={COLORS.warn} strokeWidth={2} dot connectNulls />
       </LineChart>
@@ -137,8 +155,8 @@ export function CircumferenceChart({
         <ResponsiveContainer width="100%" height={240}>
           <LineChart data={series.map((p) => ({ ...p, dateLabel: fmtDate(p.date) }))}>
             <CartesianGrid strokeDasharray="3 3" stroke="#eee" />
-            <XAxis dataKey="dateLabel" fontSize={12} />
-            <YAxis fontSize={12} />
+            <XAxis dataKey="dateLabel" fontSize={12} height={X_H} label={xTitle("Fecha")} />
+            <YAxis fontSize={12} width={Y_W} label={yTitle(site ? `${SITE_LABEL[site]} (cm)` : "Circunferencia (cm)")} />
             <Tooltip />
             <Line type="monotone" dataKey="value" name="cm" stroke={COLORS.pri} strokeWidth={2} dot />
           </LineChart>
@@ -154,8 +172,8 @@ export function SkinfoldSumChart({ points }: { points: { date: string; sum: numb
     <ResponsiveContainer width="100%" height={240}>
       <LineChart data={points.map((p) => ({ ...p, dateLabel: fmtDate(p.date) }))}>
         <CartesianGrid strokeDasharray="3 3" stroke="#eee" />
-        <XAxis dataKey="dateLabel" fontSize={12} />
-        <YAxis fontSize={12} />
+        <XAxis dataKey="dateLabel" fontSize={12} height={X_H} label={xTitle("Fecha")} />
+        <YAxis fontSize={12} width={Y_W} label={yTitle("Suma de 8 pliegues (mm)")} />
         <Tooltip />
         <Line type="monotone" dataKey="sum" name="Σ8 (mm)" stroke={COLORS.purple} strokeWidth={2} dot />
       </LineChart>
@@ -186,8 +204,8 @@ export function StrengthChart({
         <ResponsiveContainer width="100%" height={240}>
           <LineChart data={series.map((p) => ({ ...p, dateLabel: fmtDate(p.date) }))}>
             <CartesianGrid strokeDasharray="3 3" stroke="#eee" />
-            <XAxis dataKey="dateLabel" fontSize={12} />
-            <YAxis fontSize={12} />
+            <XAxis dataKey="dateLabel" fontSize={12} height={X_H} label={xTitle("Fecha")} />
+            <YAxis fontSize={12} width={Y_W} label={yTitle("1RM estimado (kg)")} />
             <Tooltip />
             <Line type="monotone" dataKey="value" name="1RM estimado (kg)" stroke={COLORS.pri} strokeWidth={2} dot />
           </LineChart>
@@ -222,10 +240,10 @@ export function WellnessBreakdownChart({ points }: { points: ({ date: string } &
     <ResponsiveContainer width="100%" height={280}>
       <LineChart data={points.map((p) => ({ ...p, dateLabel: fmtDate(p.date) }))}>
         <CartesianGrid strokeDasharray="3 3" stroke="#eee" />
-        <XAxis dataKey="dateLabel" fontSize={12} />
-        <YAxis domain={[1, 5]} fontSize={12} />
+        <XAxis dataKey="dateLabel" fontSize={12} height={X_H} label={xTitle("Fecha")} />
+        <YAxis domain={[1, 5]} fontSize={12} width={Y_W} label={yTitle("Puntaje (1 a 5)")} />
         <Tooltip />
-        <Legend />
+        <Legend wrapperStyle={LEGEND_STYLE} />
         {WELLNESS_FIELDS.map((f, i) => (
           <Line key={f} type="monotone" dataKey={f} name={WELLNESS_FIELD_LABEL[f]} stroke={LINE_PALETTE[i % LINE_PALETTE.length]} strokeWidth={2} dot={false} />
         ))}
@@ -240,8 +258,8 @@ export function WellnessScoreChart({ points }: { points: { date: string; score: 
     <ResponsiveContainer width="100%" height={220}>
       <LineChart data={points.map((p) => ({ ...p, dateLabel: fmtDate(p.date) }))}>
         <CartesianGrid strokeDasharray="3 3" stroke="#eee" />
-        <XAxis dataKey="dateLabel" fontSize={12} />
-        <YAxis domain={[0, 100]} fontSize={12} />
+        <XAxis dataKey="dateLabel" fontSize={12} height={X_H} label={xTitle("Fecha")} />
+        <YAxis domain={[0, 100]} fontSize={12} width={Y_W} label={yTitle("Puntaje (0 a 100)")} />
         <Tooltip />
         <Line type="monotone" dataKey="score" name="Wellness Score" stroke={COLORS.ok} strokeWidth={2} dot={false} />
       </LineChart>
@@ -265,8 +283,8 @@ export function TrainingWeeklyCharts({
       <ResponsiveContainer width="100%" height={180}>
         <BarChart data={sessionsPerWeek.map((p) => ({ ...p, weekLabel: fmtDate(p.week) }))}>
           <CartesianGrid strokeDasharray="3 3" stroke="#eee" />
-          <XAxis dataKey="weekLabel" fontSize={12} />
-          <YAxis allowDecimals={false} fontSize={12} />
+          <XAxis dataKey="weekLabel" fontSize={12} height={X_H} label={xTitle("Semana (lunes)")} />
+          <YAxis allowDecimals={false} fontSize={12} width={Y_W} label={yTitle("Sesiones")} />
           <Tooltip />
           <Bar dataKey="value" name="Sesiones" fill={COLORS.pri} radius={[4, 4, 0, 0]} />
         </BarChart>
@@ -278,8 +296,8 @@ export function TrainingWeeklyCharts({
           <ResponsiveContainer width="100%" height={180}>
             <LineChart data={volumePerWeek.map((p) => ({ ...p, weekLabel: fmtDate(p.week) }))}>
               <CartesianGrid strokeDasharray="3 3" stroke="#eee" />
-              <XAxis dataKey="weekLabel" fontSize={12} />
-              <YAxis fontSize={12} />
+              <XAxis dataKey="weekLabel" fontSize={12} height={X_H} label={xTitle("Semana (lunes)")} />
+              <YAxis fontSize={12} width={Y_W} label={yTitle("Volumen (kg)")} />
               <Tooltip />
               <Line type="monotone" dataKey="value" name="Volumen (kg)" stroke={COLORS.pri} strokeWidth={2} dot />
             </LineChart>
@@ -293,8 +311,8 @@ export function TrainingWeeklyCharts({
           <ResponsiveContainer width="100%" height={180}>
             <LineChart data={rpePerWeek.map((p) => ({ ...p, weekLabel: fmtDate(p.week) }))}>
               <CartesianGrid strokeDasharray="3 3" stroke="#eee" />
-              <XAxis dataKey="weekLabel" fontSize={12} />
-              <YAxis domain={[0, 10]} fontSize={12} />
+              <XAxis dataKey="weekLabel" fontSize={12} height={X_H} label={xTitle("Semana (lunes)")} />
+              <YAxis domain={[0, 10]} fontSize={12} width={Y_W} label={yTitle("RPE (0 a 10)")} />
               <Tooltip />
               <Line type="monotone" dataKey="value" name="RPE" stroke={COLORS.bad} strokeWidth={2} dot />
             </LineChart>
@@ -435,6 +453,114 @@ export function AssessmentComparison({
   );
 }
 
+/** Mini-gráfico de tendencia, en SVG puro (liviano, y sale bien en el PDF). */
+function Sparkline({ values, color }: { values: number[]; color: string }) {
+  const w = 120;
+  const h = 34;
+  if (values.length < 2) return <svg width="100%" height={h} viewBox={`0 0 ${w} ${h}`} />;
+  const min = Math.min(...values);
+  const max = Math.max(...values);
+  const span = max - min || 1;
+  const pts = values.map((v, i) => {
+    const x = (i / (values.length - 1)) * (w - 4) + 2;
+    const y = h - 3 - ((v - min) / span) * (h - 6);
+    return [x, y] as const;
+  });
+  const last = pts[pts.length - 1];
+  return (
+    <svg width="100%" height={h} viewBox={`0 0 ${w} ${h}`} preserveAspectRatio="none" aria-hidden="true">
+      <polyline
+        points={pts.map(([x, y]) => `${x.toFixed(1)},${y.toFixed(1)}`).join(" ")}
+        fill="none"
+        stroke={color}
+        strokeWidth={2}
+        strokeLinejoin="round"
+        strokeLinecap="round"
+        vectorEffect="non-scaling-stroke"
+      />
+      <circle cx={last[0]} cy={last[1]} r={2.5} fill={color} />
+    </svg>
+  );
+}
+
+const fmtNum = (n: number) => (Number.isInteger(n) ? String(n) : n.toFixed(1));
+
+/**
+ * Resumen de todos los ejercicios entrenados: una tarjeta por ejercicio con
+ * su tendencia y cuánto cambió desde la primera sesión. Tocar una tarjeta
+ * abre ese ejercicio en el gráfico de detalle de abajo.
+ *
+ * Con carga, la medida es el 1RM estimado (junta peso y reps); sin carga
+ * (peso corporal), las reps máximas del día. Un cambio de menos de ±1% se
+ * muestra como "estable", para no pintar de rojo una diferencia de redondeo.
+ */
+export function ExerciseProgressOverview({
+  summaries,
+  selectedId,
+  onSelect,
+}: {
+  summaries: ExerciseSummary[];
+  selectedId: string;
+  onSelect: (id: string) => void;
+}) {
+  const [showAll, setShowAll] = useState(false);
+  const LIMIT = 12;
+  if (summaries.length === 0) return null;
+  const shown = showAll ? summaries : summaries.slice(0, LIMIT);
+
+  return (
+    <div style={{ marginBottom: 18 }}>
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill,minmax(170px,1fr))", gap: 10 }}>
+        {shown.map((x) => {
+          const pct = x.pctChange;
+          const tone = pct == null ? COLORS.muted : pct > 1 ? COLORS.ok : pct < -1 ? COLORS.bad : COLORS.muted;
+          const active = x.exerciseId === selectedId;
+          return (
+            <button
+              key={x.exerciseId}
+              type="button"
+              onClick={() => onSelect(x.exerciseId)}
+              style={{
+                textAlign: "left",
+                border: `1.5px solid ${active ? COLORS.pri : "var(--line)"}`,
+                background: active ? "var(--pri-soft)" : "#fff",
+                borderRadius: 10,
+                padding: "10px 12px 8px",
+                cursor: "pointer",
+                font: "inherit",
+                color: "var(--ink)",
+              }}
+            >
+              <div style={{ fontWeight: 600, fontSize: 13.5, lineHeight: 1.25, minHeight: 34, overflow: "hidden" }}>{x.exerciseName}</div>
+              <Sparkline values={x.series.map((p) => p.value)} color={tone === COLORS.muted ? COLORS.pri : tone} />
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", gap: 6, marginTop: 2 }}>
+                <span style={{ fontSize: 13 }}>
+                  <b>{fmtNum(x.last)}</b> {x.kind === "load" ? "kg" : "reps"}
+                </span>
+                <span style={{ fontSize: 12.5, fontWeight: 700, color: tone }}>
+                  {pct == null ? "" : Math.abs(pct) <= 1 ? "estable" : `${pct > 0 ? "▲" : "▼"} ${Math.abs(pct).toFixed(0)}%`}
+                </span>
+              </div>
+              <div className="note" style={{ fontSize: 11.5 }}>
+                {x.kind === "load" ? "1RM estimado" : "reps máx."} · {x.sessions} {x.sessions === 1 ? "sesión" : "sesiones"}
+              </div>
+            </button>
+          );
+        })}
+      </div>
+      {summaries.length > LIMIT && (
+        <button type="button" className="btn ghost" style={{ marginTop: 10, padding: "6px 12px", fontSize: 13 }} onClick={() => setShowAll((v) => !v)}>
+          {showAll ? "Ver menos" : `Ver los ${summaries.length} ejercicios`}
+        </button>
+      )}
+      <p className="note" style={{ fontSize: 12, margin: "10px 0 0" }}>
+        El 1RM estimado combina peso y repeticiones (fórmula de Epley): sube tanto si levantó más peso como si hizo más
+        repeticiones con el mismo peso. Tocá un ejercicio para ver su detalle.
+      </p>
+    </div>
+  );
+}
+
 export function ExerciseProgressChart({
   exerciseOptions,
   exerciseId,
@@ -444,27 +570,31 @@ export function ExerciseProgressChart({
   exerciseOptions: [string, string][];
   exerciseId: string;
   onExerciseChange: (id: string) => void;
-  series: { date: string; load: number; reps: number }[];
+  series: { date: string; load: number; reps: number; e1rm?: number }[];
 }) {
-  if (exerciseOptions.length === 0) return <p className="note">Este cliente todavía no entrenó ningún ejercicio con carga registrada.</p>;
+  if (exerciseOptions.length === 0) return <p className="note">Este cliente todavía no tiene entrenamientos registrados.</p>;
+  const hasLoad = series.some((p) => p.load > 0);
   return (
     <>
-      <SearchSelect className="input" style={{ maxWidth: 260, marginBottom: 14 }} value={exerciseId} onChange={(e) => onExerciseChange(e.target.value)}>
+      <SearchSelect className="input" style={{ maxWidth: 300, marginBottom: 14 }} value={exerciseId} onChange={(e) => onExerciseChange(e.target.value)}>
         {exerciseOptions.map(([id, name]) => <option key={id} value={id}>{name}</option>)}
       </SearchSelect>
       {series.length < 2 ? (
         <p className="note">Hace falta al menos 2 sesiones con este ejercicio para ver una tendencia.</p>
       ) : (
-        <ResponsiveContainer width="100%" height={240}>
-          <LineChart data={series.map((p) => ({ ...p, dateLabel: fmtDate(p.date) }))}>
+        <ResponsiveContainer width="100%" height={260}>
+          <LineChart data={series.map((p) => ({ ...p, e1rm: p.e1rm || null, dateLabel: fmtDate(p.date) }))}>
             <CartesianGrid strokeDasharray="3 3" stroke="#eee" />
-            <XAxis dataKey="dateLabel" fontSize={12} />
-            <YAxis yAxisId="load" fontSize={12} />
-            <YAxis yAxisId="reps" orientation="right" fontSize={12} />
+            <XAxis dataKey="dateLabel" fontSize={12} height={X_H} label={xTitle("Fecha")} />
+            {hasLoad && <YAxis yAxisId="load" fontSize={12} width={Y_W} label={yTitle("Carga y 1RM (kg)")} />}
+            <YAxis yAxisId="reps" orientation={hasLoad ? "right" : "left"} fontSize={12} allowDecimals={false} width={Y_W} label={yTitle("Repeticiones", hasLoad ? "right" : "left")} />
             <Tooltip />
-            <Legend />
-            <Line yAxisId="load" type="monotone" dataKey="load" name="Carga máxima (kg)" stroke={COLORS.pri} strokeWidth={2} dot />
-            <Line yAxisId="reps" type="monotone" dataKey="reps" name="Reps en esa serie" stroke={COLORS.ok} strokeWidth={2} dot />
+            <Legend wrapperStyle={LEGEND_STYLE} />
+            {hasLoad && <Line yAxisId="load" type="monotone" dataKey="load" name="Carga máxima (kg)" stroke={COLORS.pri} strokeWidth={2} dot />}
+            {hasLoad && (
+              <Line yAxisId="load" type="monotone" dataKey="e1rm" name="1RM estimado (kg)" stroke={COLORS.purple} strokeWidth={2} strokeDasharray="5 4" dot={false} connectNulls />
+            )}
+            <Line yAxisId="reps" type="monotone" dataKey="reps" name={hasLoad ? "Reps en esa serie" : "Reps máximas"} stroke={COLORS.ok} strokeWidth={2} dot />
           </LineChart>
         </ResponsiveContainer>
       )}

@@ -15,6 +15,7 @@ import {
   WellnessScoreChart,
   TrainingWeeklyCharts,
   ExerciseProgressChart,
+  ExerciseProgressOverview,
   AssessmentComparison,
   PhotoBeforeAfter,
   fmtDate,
@@ -29,6 +30,7 @@ export default function ReportsPage() {
   const [circSite, setCircSite] = useState<CircumferenceSite | "">("");
   const [strengthExId, setStrengthExId] = useState("");
   const [progressExId, setProgressExId] = useState("");
+  const progressDetailRef = useRef<HTMLDivElement>(null);
   const [cmpA, setCmpA] = useState("");
   const [cmpB, setCmpB] = useState("");
   const [exporting, setExporting] = useState(false);
@@ -170,12 +172,22 @@ export default function ReportsPage() {
           <div className="panel">
             <div className="hd"><h3>Progreso por ejercicio entrenado</h3></div>
             <div className="bd">
-              <ExerciseProgressChart
-                exerciseOptions={data.exerciseProgressOptions}
-                exerciseId={progressExId}
-                onExerciseChange={setProgressExId}
-                series={progressExId ? data.exerciseProgressFor(progressExId) : []}
+              <ExerciseProgressOverview
+                summaries={data.exerciseSummaries}
+                selectedId={progressExId}
+                onSelect={(id) => {
+                  setProgressExId(id);
+                  progressDetailRef.current?.scrollIntoView({ behavior: "smooth", block: "nearest" });
+                }}
               />
+              <div ref={progressDetailRef}>
+                <ExerciseProgressChart
+                  exerciseOptions={data.exerciseProgressOptions}
+                  exerciseId={progressExId}
+                  onExerciseChange={setProgressExId}
+                  series={progressExId ? data.exerciseProgressFor(progressExId) : []}
+                />
+              </div>
             </div>
           </div>
 

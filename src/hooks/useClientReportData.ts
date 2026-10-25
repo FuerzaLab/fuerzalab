@@ -16,10 +16,12 @@ import {
   listSetLogsForClient,
   listExerciseSetsForClient,
   dailyTopLoad,
+  exerciseSummaries,
   weeklyCompletedSessions,
   weeklyAvgRPE,
   weeklyVolume,
   type WeeklyPoint,
+  type ExerciseSummary,
 } from "../services/reports";
 import type { AssessmentSnapshot, BodyPoint, PersonalRecord } from "../components/reports/ReportSections";
 
@@ -39,7 +41,9 @@ export interface ClientReportData {
   volumePerWeek: WeeklyPoint[];
   rpePerWeek: WeeklyPoint[];
   exerciseProgressOptions: [string, string][];
-  exerciseProgressFor: (exerciseId: string) => { date: string; load: number; reps: number }[];
+  exerciseProgressFor: (exerciseId: string) => { date: string; load: number; reps: number; e1rm: number }[];
+  /** Una tarjeta por ejercicio entrenado, los más entrenados primero. */
+  exerciseSummaries: ExerciseSummary[];
 }
 
 /** Junta todo lo que necesitan las pantallas de Reportes (del entrenador y del cliente) a partir del id del cliente. */
@@ -150,11 +154,10 @@ export function useClientReportData(clientId: string | null): ClientReportData {
     return row;
   });
 
-  const exerciseProgressOptions: [string, string][] = (() => {
-    const seen = new Map<string, string>();
-    for (const e of exerciseSets) seen.set(e.exercise_id, e.exercise_name);
-    return [...seen.entries()];
-  })();
+  const summaries = exerciseSummaries(exerciseSets);
+  // Mismo orden que las tarjetas (más entrenados primero), así el ejercicio
+  // que se abre por defecto en el detalle es el principal del cliente.
+  const exerciseProgressOptions: [string, string][] = summaries.map((x) => [x.exerciseId, x.exerciseName]);
   const exerciseProgressFor = (exerciseId: string) => dailyTopLoad(exerciseSets.filter((e) => e.exercise_id === exerciseId));
 
   return {
@@ -174,5 +177,6 @@ export function useClientReportData(clientId: string | null): ClientReportData {
     rpePerWeek,
     exerciseProgressOptions,
     exerciseProgressFor,
+    exerciseSummaries: summaries,
   };
 }
