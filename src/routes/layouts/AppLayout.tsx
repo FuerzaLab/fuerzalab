@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { NavLink, Outlet, useNavigate } from "react-router-dom";
 import {
   LayoutDashboard,
@@ -18,6 +19,8 @@ import {
   Camera,
   Copy,
   CalendarClock,
+  Menu,
+  X,
 } from "lucide-react";
 import { useAuth } from "../../contexts/AuthContext";
 import { paths } from "../paths";
@@ -79,6 +82,18 @@ const NAV: Record<Role, NavItem[]> = {
   ],
 };
 
+// Un color por grupo (no por botón) para que el menú del entrenador no se
+// vuelva un arcoíris — Bienestar es la única excepción, con el mismo
+// violeta que ya usa en el resto de la app.
+const GROUP_COLOR: Record<string, { bg: string; fg: string }> = {
+  Hoy: { bg: "#E5EAF8", fg: "#1E3FA8" },
+  Clientes: { bg: "#FBE4EC", fg: "#C23A68" },
+  Entrenamiento: { bg: "#E1F1EA", fg: "#1F6B52" },
+  Seguimiento: { bg: "#FBF0D6", fg: "#9A6300" },
+  Negocio: { bg: "#E6E9F7", fg: "#3A4A9E" },
+};
+const WELLNESS_COLOR = { bg: "#EDE7FB", fg: "#7B4FE0" };
+
 export default function AppLayout() {
   const { profile, signOut } = useAuth();
   const navigate = useNavigate();
@@ -92,6 +107,10 @@ export default function AppLayout() {
     await signOut();
     navigate(paths.login, { replace: true });
   };
+
+  if (profile.role === "trainer") {
+    return <TrainerLauncherShell items={items} profileName={profile.full_name} onLogout={handleLogout} />;
+  }
 
   return (
     <div className="shell">
@@ -124,6 +143,102 @@ export default function AppLayout() {
           </span>
         </header>
         <Outlet />
+      </div>
+    </div>
+  );
+}
+
+/**
+ * El menú del entrenador, como "ventana" que se abre con un click en
+ * "Menú" (igual en computadora y celular, nunca por cercanía del mouse) y
+ * se cierra sola al elegir algo. Reemplaza la barra lateral fija, que acá
+ * tenía 16 ítems — demasiados para quedar siempre visibles sin ocupar
+ * espacio todo el tiempo.
+ */
+function TrainerLauncherShell({
+  items,
+  profileName,
+  onLogout,
+}: {
+  items: NavItem[];
+  profileName: string;
+  onLogout: () => void;
+}) {
+  const [open, setOpen] = useState(false);
+  const close = () => setOpen(false);
+
+  const groups: { name: string; items: NavItem[] }[] = [];
+  for (const item of items) {
+    const groupName = item.group ?? "";
+    let g = groups.find((x) => x.name === groupName);
+    if (!g) {
+      g = { name: groupName, items: [] };
+      groups.push(g);
+    }
+    g.items.push(item);
+  }
+
+  return (
+    <div className="shell-launcher">
+      <header className="launcher-topbar">
+        <div className="brand">
+          Fuerza<span>Lab</span>
+        </div>
+        <button className="menu-trigger" aria-expanded={open} onClick={() => setOpen((o) => !o)}>
+          <Menu size={17} /> Menú
+        </button>
+      </header>
+
+      <header className="topbar">
+        <span className="note">{profileName} · Entrenador</span>
+      </header>
+
+      <main>
+        <Outlet />
+      </main>
+
+      <div className={`menu-overlay${open ? " open" : ""}`} onClick={close} aria-hidden={!open} />
+      <div className={`menu-panel${open ? " open" : ""}`} role="dialog" aria-label="Menú principal">
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 18 }}>
+          <h2 style={{ margin: 0, fontFamily: "'Barlow Condensed',sans-serif", fontSize: 19, color: "var(--ink)" }}>Menú</h2>
+          <button
+            aria-label="Cerrar menú"
+            onClick={close}
+            style={{ width: 30, height: 30, borderRadius: 99, border: 0, background: "var(--bg)", color: "var(--muted)", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center" }}
+          >
+            <X size={14} />
+          </button>
+        </div>
+
+        {groups.map((g) => (
+          <div key={g.name || "default"}>
+            {g.name && <p className="menu-group-title" style={{ color: GROUP_COLOR[g.name]?.fg ?? "var(--pri)" }}>{g.name}</p>}
+            <div className="menu-grid">
+              {g.items.map(({ to, label, icon: Icon, accent }) => {
+                const color = accent === "wellness" ? WELLNESS_COLOR : GROUP_COLOR[g.name] ?? GROUP_COLOR.Hoy;
+                return (
+                  <NavLink
+                    key={to}
+                    to={to}
+                    end
+                    onClick={close}
+                    className={({ isActive }) => `menu-tile${isActive ? " active" : ""}`}
+                    style={{ background: color.bg, color: color.fg }}
+                  >
+                    <span className="ic" style={{ background: color.fg }}>
+                      <Icon size={18} />
+                    </span>
+                    <span className="lbl">{label}</span>
+                  </NavLink>
+                );
+              })}
+            </div>
+          </div>
+        ))}
+
+        <button className="menu-logout" onClick={onLogout}>
+          <LogOut size={16} /> Cerrar sesión
+        </button>
       </div>
     </div>
   );
