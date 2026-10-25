@@ -28,6 +28,7 @@ import { useAuth } from "../../contexts/AuthContext";
 import { paths } from "../paths";
 import type { Role, StaffAccess } from "../../types/auth";
 import { routeRequirement, hasLevel } from "../../lib/staffModules";
+import Brand from "../../components/ui/Brand";
 
 interface NavItem {
   to: string;
@@ -138,9 +139,7 @@ export default function AppLayout() {
   return (
     <div className="shell">
       <nav className="side" aria-label="Navegación principal">
-        <div className="brand">
-          Fuerza<span>Lab</span>
-        </div>
+        <Brand />
         {items.map(({ to, label, icon: Icon, group, accent }, i) => (
           <div key={to} className="nav-item">
             {group && group !== items[i - 1]?.group && <div className="nav-group">{group}</div>}
@@ -214,9 +213,7 @@ function TrainerLauncherShell({
   return (
     <div className="shell-launcher">
       <header className="launcher-topbar">
-        <div className="brand">
-          Fuerza<span>Lab</span>
-        </div>
+        <Brand />
         <button className="menu-trigger" aria-expanded={open} onClick={() => setOpen((o) => !o)}>
           <Menu size={17} /> Menú
         </button>
