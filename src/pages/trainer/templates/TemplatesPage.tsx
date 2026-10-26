@@ -57,7 +57,7 @@ export default function TemplatesPage() {
 
       <h2 style={{ fontSize: 18, marginBottom: 4 }}>Programas completos</h2>
       <p className="note" style={{ marginBottom: 14 }}>
-        Programas guardados sin un cliente asignado, con todas sus semanas y bloques. Para crear uno, andá a Planificación con un cliente, armá el programa como quieras, y tocá "Guardar como plantilla".
+        Programas guardados sin un cliente asignado, con todas sus semanas y bloques. Para crear uno, ve a Planificación con un cliente, arma el programa como quieras, y toca "Guardar como plantilla".
       </p>
 
       {loading ? (
@@ -85,7 +85,7 @@ export default function TemplatesPage() {
 
       <h2 style={{ fontSize: 18, marginBottom: 4, marginTop: 28 }}>Rutinas sueltas</h2>
       <p className="note" style={{ marginBottom: 14 }}>
-        Días de entrenamiento guardados por separado — útil para un split que usás con varios clientes, sin tener que armarlo entero cada vez. Para crear uno, andá al Constructor de rutinas y tocá "Guardar como plantilla" sobre la rutina que tengas abierta.
+        Días de entrenamiento guardados por separado — útil para un split que usas con varios clientes, sin tener que armarlo entero cada vez. Para crear uno, ve al Constructor de rutinas y toca "Guardar como plantilla" sobre la rutina que tengas abierta.
       </p>
 
       {loading ? null : looseTemplates.length === 0 ? (
@@ -107,7 +107,7 @@ export default function TemplatesPage() {
           onClose={() => setApplyingTo(null)}
           onApplied={() => {
             setApplyingTo(null);
-            notify("Plantilla aplicada. Elegí a ese cliente en Planificación para ajustar lo que haga falta.");
+            notify("Plantilla aplicada. Elige a ese cliente en Planificación para ajustar lo que haga falta.");
           }}
         />
       )}
@@ -151,7 +151,7 @@ export default function TemplatesPage() {
           onClose={() => setApplyingDay(null)}
           onApplied={() => {
             setApplyingDay(null);
-            notify("Rutina aplicada. Buscala en el Constructor para ajustar lo que haga falta.");
+            notify("Rutina aplicada. Búscala en el Constructor para ajustar lo que haga falta.");
           }}
         />
       )}
@@ -253,7 +253,7 @@ function ApplyTemplateDayModal({
     try {
       const program = await getActiveProgramForClient(id);
       if (!program) {
-        setError("Este cliente todavía no tiene un programa activo — creá uno primero en Planificación.");
+        setError("Este cliente todavía no tiene un programa activo — crea uno primero en Planificación.");
       } else {
         setError("");
         const ws = await listWeeks(program.id);
@@ -268,7 +268,7 @@ function ApplyTemplateDayModal({
 
   const submit = async () => {
     if (!weekId) {
-      setError("Elegí una semana.");
+      setError("Elige una semana.");
       return;
     }
     setError("");
@@ -292,7 +292,7 @@ function ApplyTemplateDayModal({
     <Modal title={`Usar "${day.name}"`} onClose={onClose}>
       <label className="field-label">Cliente</label>
       <SearchSelect className="input" style={{ marginBottom: 14 }} value={clientId} onChange={(e) => pickClient(e.target.value)}>
-        <option value="">Elegí un cliente</option>
+        <option value="">Elige un cliente</option>
         {clients.map((c) => <option key={c.id} value={c.id}>{c.full_name}</option>)}
       </SearchSelect>
 
@@ -337,7 +337,7 @@ function ApplyTemplateModal({
 
   const submit = async () => {
     if (!clientId) {
-      notify("Elegí un cliente.");
+      notify("Elige un cliente.");
       return;
     }
     setSaving(true);
@@ -360,7 +360,7 @@ function ApplyTemplateModal({
     <Modal title={`Usar "${template.name}"`} onClose={onClose}>
       <label className="field-label">Cliente</label>
       <SearchSelect className="input" style={{ marginBottom: 14 }} value={clientId} onChange={(e) => setClientId(e.target.value)}>
-        <option value="">Elegí un cliente</option>
+        <option value="">Elige un cliente</option>
         {clients.map((c) => <option key={c.id} value={c.id}>{c.full_name}</option>)}
       </SearchSelect>
       <label className="field-label">Nombre del programa para este cliente</label>

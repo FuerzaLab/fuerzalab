@@ -96,7 +96,7 @@ export default function RunSessionPage() {
     <div className="page">
       <h1 style={{ marginBottom: 4 }}>Entrenar con un cliente</h1>
       <p className="note" style={{ marginBottom: 20 }}>
-        Para cuando das la asesoría en persona: abrí la rutina de tu cliente vos mismo y cargá las series mientras lo acompañás. Queda guardado en su historial exactamente igual que si lo hubiera cargado él.
+        Para cuando das la asesoría en persona: abre la rutina de tu cliente tú mismo y carga las series mientras lo acompañas. Queda guardado en su historial exactamente igual que si lo hubiera cargado él.
       </p>
 
       <div style={{ marginBottom: 20, maxWidth: 320 }}>

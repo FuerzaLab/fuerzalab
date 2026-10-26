@@ -1,0 +1,17 @@
+{
+  "name": "FuerzaLab",
+  "short_name": "FuerzaLab",
+  "description": "Tu entrenamiento, tu progreso y tu entrenador en un solo lugar.",
+  "lang": "es",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#0F1A33",
+  "theme_color": "#0F1A33",
+  "icons": [
+    { "src": "/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
+    { "src": "/icon-maskable-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ]
+}

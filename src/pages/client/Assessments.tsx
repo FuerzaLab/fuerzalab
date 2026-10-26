@@ -253,7 +253,7 @@ function SelfReportModal({ clientId, onClose, onSaved }: { clientId: string; onC
   return (
     <Modal title="Registrar mis medidas" onClose={onClose}>
       <p className="note" style={{ marginBottom: 16 }}>
-        Completá lo que quieras medirte hoy — no hace falta llenar todo. Queda guardado junto al resto de tu historial, para que tu entrenador también lo vea.
+        Completa lo que quieras medirte hoy — no hace falta llenar todo. Queda guardado junto al resto de tu historial, para que tu entrenador también lo vea.
       </p>
       <label className="field-label">Peso (kg)</label>
       <input className="input" style={{ marginBottom: 14, maxWidth: 160 }} inputMode="decimal" value={weight} onChange={(e) => setWeight(e.target.value)} />

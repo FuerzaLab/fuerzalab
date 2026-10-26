@@ -226,7 +226,7 @@ function TrainerLauncherShell({
       <main>
         {readOnly && (
           <div className="readonly-banner" role="status">
-            <Eye size={15} /> Tenés acceso de <strong>solo lectura</strong> a esta sección: podés ver todo, pero los cambios no se van a guardar.
+            <Eye size={15} /> Tienes acceso de <strong>solo lectura</strong> a esta sección: puedes ver todo, pero los cambios no se van a guardar.
           </div>
         )}
         <Outlet />

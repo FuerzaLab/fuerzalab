@@ -209,7 +209,7 @@ export default function ProgramsPage() {
                       name: `${program.name} (plantilla)`,
                       targetClientId: null,
                     });
-                    notify(`Guardado como plantilla. Buscalo en "Plantillas" para usarlo con otro cliente.`);
+                    notify(`Guardado como plantilla. Búscalo en "Plantillas" para usarlo con otro cliente.`);
                   } catch (e: any) {
                     notify(e.message);
                   }
@@ -243,7 +243,7 @@ export default function ProgramsPage() {
               </div>
               <label className="field-label">Duración total: {realWeeksTotal} semana{realWeeksTotal === 1 ? "" : "s"}</label>
               <p className="note" style={{ marginBottom: unclaimedWeeks > 0 ? 6 : 14 }}>
-                Es la suma de los bloques de abajo — crece sola a medida que añades bloques o alargas uno existente. Si acortás un bloque, las semanas ya creadas no se borran (podrían tener rutinas armadas en el Constructor).
+                Es la suma de los bloques de abajo — crece sola a medida que añades bloques o alargas uno existente. Si acortas un bloque, las semanas ya creadas no se borran (podrían tener rutinas armadas en el Constructor).
               </p>
               {unclaimedWeeks > 0 && (
                 <UnclaimedWeeksPanel
@@ -328,7 +328,7 @@ export default function ProgramsPage() {
 
                   <div style={{ display: "grid", gridTemplateColumns: `repeat(${weekSeries.length || 1},minmax(0,1fr))`, gap: 6, marginTop: 14 }}>
                     {weekSeries.map((w) => (
-                      <div key={w.n} style={{ textAlign: "center" }} title={w.segIndex === -1 ? "Esta semana ya existe (de un bloque que se acortó antes) pero ningún bloque actual la reclama. Alargá un bloque para asignarla." : undefined}>
+                      <div key={w.n} style={{ textAlign: "center" }} title={w.segIndex === -1 ? "Esta semana ya existe (de un bloque que se acortó antes) pero ningún bloque actual la reclama. Alarga un bloque para asignarla." : undefined}>
                         {w.segIndex === -1 ? (
                           <div style={{ height: 60, display: "flex", alignItems: "flex-end", justifyContent: "center" }}>
                             <div style={{ width: 8, height: 10, borderRadius: 2, background: "var(--line)" }} />

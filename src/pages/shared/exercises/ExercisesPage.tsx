@@ -385,7 +385,7 @@ export default function ExercisesPage({ scope }: { scope: "global" | "trainer" }
                   {addingVariation && (
                     <div style={{ display: "grid", gap: 10 }}>
                       <SearchSelect className="input" value={newRelatedId} onChange={(e) => setNewRelatedId(e.target.value)}>
-                        <option value="">Elegí un ejercicio</option>
+                        <option value="">Elige un ejercicio</option>
                         {exercises.filter((e) => e.id !== selected.id).map((e) => (
                           <option key={e.id} value={e.id}>{e.name}</option>
                         ))}

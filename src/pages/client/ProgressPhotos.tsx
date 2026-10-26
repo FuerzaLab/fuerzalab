@@ -60,7 +60,7 @@ export default function ClientProgressPhotos() {
       <div style={{ display: "flex", flexWrap: "wrap", justifyContent: "space-between", gap: 12, marginBottom: 20 }}>
         <div>
           <h1 style={{ marginBottom: 4 }}>Mi progreso</h1>
-          <p className="note">Fotos para ver tu propio cambio en el tiempo. Solo vos y tu entrenador las ven.</p>
+          <p className="note">Fotos para ver tu propio cambio en el tiempo. Solo tú y tu entrenador las ven.</p>
         </div>
         {clientId && (
           <button className="btn" onClick={() => setShowUpload(true)}>
@@ -200,7 +200,7 @@ function UploadPhotoSetModal({
 
   return (
     <Modal title="Subir fotos de progreso" onClose={onClose}>
-      <p className="note" style={{ marginBottom: 14 }}>Subí las que tengas — no hace falta completar las 4 juntas.</p>
+      <p className="note" style={{ marginBottom: 14 }}>Sube las que tengas — no hace falta completar las 4 juntas.</p>
       <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(150px,1fr))", gap: 12, marginBottom: 16 }}>
         {ANGLE_ORDER.map((angle) => (
           <div key={angle}>

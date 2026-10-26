@@ -570,7 +570,7 @@ function SessionEditor({
               <option key={k} value={k}>{l}</option>
             ))}
           </select>
-          <p className="note" style={{ marginBottom: 14 }}>Si le asignás un día, el cliente la ve marcada como "Hoy" cuando corresponda, en vez de tener que adivinar cuál le toca.</p>
+          <p className="note" style={{ marginBottom: 14 }}>Si le asignas un día, el cliente la ve marcada como "Hoy" cuando corresponda, en vez de tener que adivinar cuál le toca.</p>
 
           <label className="field-label">Tipo de fuerza a trabajar</label>
           <select
@@ -792,7 +792,7 @@ function SessionEditor({
                       <tr>
                         <td colSpan={10} style={{ padding: "10px 14px", background: "var(--bg)" }}>
                           <p className="note" style={{ marginBottom: 8 }}>
-                            Notas por serie — se muestran destacadas al cliente mientras entrena esa serie en particular. Dejá vacío lo que no necesite nota.
+                            Notas por serie — se muestran destacadas al cliente mientras entrena esa serie en particular. Deja vacío lo que no necesite nota.
                           </p>
                           <div style={{ display: "grid", gap: 6, marginBottom: 10 }}>
                             {Array.from({ length: it.sets ?? 3 }, (_, idx) => idx + 1).map((n) => (
@@ -910,7 +910,7 @@ function SessionEditor({
           onClose={() => setShowSaveAsTemplate(false)}
           onSaved={() => {
             setShowSaveAsTemplate(false);
-            notify(`"${session.name}" guardada como plantilla. Buscala en "Plantillas" para reutilizarla.`);
+            notify(`"${session.name}" guardada como plantilla. Búscala en "Plantillas" para reutilizarla.`);
           }}
         />
       )}
@@ -963,7 +963,7 @@ function SaveAsTemplateModal({
       return;
     }
     if (mode === "existing" && !templateId) {
-      setError("Elegí a qué plantilla sumar este día.");
+      setError("Elige a qué plantilla sumar este día.");
       return;
     }
     setError("");
@@ -1023,14 +1023,14 @@ function SaveAsTemplateModal({
           <label className="field-label">Visibilidad</label>
           <select className="input" style={{ marginBottom: 16 }} value={visibility} onChange={(e) => setVisibility(e.target.value as "private" | "organization")}>
             <option value="private">Solo yo</option>
-            <option value="organization">Todo mi equipo (si trabajás con asistentes)</option>
+            <option value="organization">Todo mi equipo (si trabajas con asistentes)</option>
           </select>
         </>
       ) : (
         <>
           <label className="field-label">Plantilla</label>
           <SearchSelect className="input" style={{ marginBottom: 16 }} value={templateId} onChange={(e) => setTemplateId(e.target.value)}>
-            <option value="">Elegí una plantilla</option>
+            <option value="">Elige una plantilla</option>
             {templates.map((t) => <option key={t.id} value={t.id}>{t.name}</option>)}
           </SearchSelect>
         </>
@@ -1087,7 +1087,7 @@ function AutoregulationModal({
   return (
     <Modal title={`Copiar semana ${sourceWeekLabel ?? "?"} → semana ${targetWeekLabel}`} onClose={onClose}>
       <p className="note" style={{ marginBottom: 14 }}>
-        Carga sugerida según el RIR real que logró el cliente contra el que prescribiste. Revisá y ajustá lo que haga falta antes de confirmar — los ejercicios sin series registradas usan el incremento estándar de +2,5 kg.
+        Carga sugerida según el RIR real que logró el cliente contra el que prescribiste. Revisa y ajusta lo que haga falta antes de confirmar — los ejercicios sin series registradas usan el incremento estándar de +2,5 kg.
       </p>
       {preview.length === 0 ? (
         <p className="note" style={{ marginBottom: 16 }}>Esta semana no tiene ejercicios con carga para progresar.</p>

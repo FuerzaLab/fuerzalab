@@ -20,6 +20,8 @@ import { listPayments, type PaymentRow } from "../../services/payments";
 import { getDashboardHighlight, type DashboardHighlight } from "../../services/reports";
 import { listAssessments } from "../../services/assessments";
 import Watermark from "../../components/ui/Watermark";
+import InstallAppCard from "../../components/InstallAppCard";
+import { getMyTrainerName, getMonthlySessionCounts, listMyRecentRecords, describeRecord, type MyRecord } from "../../services/clientHome";
 
 const SESSION_STATUS_LABEL: Record<TodaysSession["status"], string> = {
   pending: "Todavía no la empezaste",
@@ -42,6 +44,26 @@ export default function ClientDashboard() {
   const [mainGoal, setMainGoal] = useState<string | null>(null);
   const [highlight, setHighlight] = useState<DashboardHighlight | null>(null);
   const [daysSinceMeasurement, setDaysSinceMeasurement] = useState<number | null>(null);
+  const [trainerName, setTrainerName] = useState<string | null>(null);
+  const [monthly, setMonthly] = useState<{ thisMonth: number; lastMonth: number } | null>(null);
+  const [records, setRecords] = useState<MyRecord[]>([]);
+  // Bienvenida: se muestra hasta que el alumno la cierra (una vez por cuenta y dispositivo).
+  const welcomeKey = `fl-welcome-${profile?.id ?? ""}`;
+  const [showWelcome, setShowWelcome] = useState(() => {
+    try {
+      return localStorage.getItem(welcomeKey) !== "1";
+    } catch {
+      return false;
+    }
+  });
+  const closeWelcome = () => {
+    setShowWelcome(false);
+    try {
+      localStorage.setItem(welcomeKey, "1");
+    } catch {
+      /* nada */
+    }
+  };
 
   useEffect(() => {
     (async () => {
@@ -49,6 +71,10 @@ export default function ClientDashboard() {
         const cId = await getMyClientId();
         if (!cId) return;
         setClientId(cId);
+        // Lo nuevo del Inicio: si falla, el resto se muestra igual.
+        getMyTrainerName(cId).then(setTrainerName).catch(() => {});
+        getMonthlySessionCounts(cId).then(setMonthly).catch(() => {});
+        listMyRecentRecords(cId).then(setRecords).catch(() => {});
         const [session, wellness, messages, payments, clientProfile, dashHighlight, assessments] = await Promise.all([
           getTodaysSessionForClient(cId).catch(() => null),
           getTodayLog(cId).catch(() => null),
@@ -91,20 +117,34 @@ export default function ClientDashboard() {
   return (
     <div className="page">
       <Watermark />
-      <h1 style={{ marginBottom: 6 }}>Hola, {profile?.full_name}</h1>
+      <h1 style={{ marginBottom: 6 }}>Hola, {profile?.full_name?.split(" ")[0]}</h1>
       <p className="note" style={{ marginBottom: 20 }}>Esto es lo que te toca hoy.</p>
+
+      {showWelcome && (
+        <div className="welcome-card">
+          <div style={{ fontSize: 28, lineHeight: 1 }}>👋</div>
+          <div style={{ flex: 1 }}>
+            <b style={{ fontSize: 17 }}>Te damos la bienvenida a FuerzaLab</b>
+            <p style={{ margin: "6px 0 10px" }}>
+              {trainerName ? <><b>{trainerName}</b> armó tu plan de entrenamiento.</> : "Tu entrenador armó tu plan de entrenamiento."} Aquí vas a
+              encontrar la rutina de cada día, tu progreso y tus récords, y un chat directo con tu entrenador.
+            </p>
+            <button className="btn" style={{ background: "#fff", color: "var(--nav)" }} onClick={closeWelcome}>¡Empecemos!</button>
+          </div>
+        </div>
+      )}
 
       {loading ? (
         <Loading />
       ) : (
         <div style={{ display: "grid", gap: 14 }}>
-          <div className="panel">
-            <div className="bd">
+          <div className="today-hero">
+            <div>
               {todaysSession ? (
                 <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 10 }}>
                   <div>
                     <div className="note" style={{ marginBottom: 2 }}>Hoy — {DAY_OF_WEEK_LABEL[new Date().getDay() === 0 ? 7 : new Date().getDay()]}</div>
-                    <b style={{ fontSize: 17 }}>{todaysSession.session.name}</b>
+                    <b className="today-hero-title">{todaysSession.session.name}</b>
                     <div className="note">{SESSION_STATUS_LABEL[todaysSession.status]}</div>
                   </div>
                   {todaysSession.status !== "completed" && (
@@ -117,7 +157,7 @@ export default function ClientDashboard() {
                 <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 10 }}>
                   <div>
                     <div className="note" style={{ marginBottom: 2 }}>{nextSession.isToday ? "Hoy" : `Tu próxima rutina — ${nextSession.dayLabel}`}</div>
-                    <b style={{ fontSize: 17 }}>{nextSession.session.name}</b>
+                    <b className="today-hero-title">{nextSession.session.name}</b>
                   </div>
                   {nextSession.isToday && (
                     <button className="btn" onClick={() => navigate(paths.clientRoutine)}>Entrenar ahora</button>
@@ -125,12 +165,48 @@ export default function ClientDashboard() {
                 </div>
               ) : (
                 <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 10 }}>
-                  <p className="note">No tenés una rutina asignada para hoy específicamente — revisá tu semana completa cuando quieras.</p>
+                  <p className="note">No tienes una rutina asignada para hoy específicamente — revisa tu semana completa cuando quieras.</p>
                   <button className="btn ghost" onClick={() => navigate(paths.clientRoutine)}>Ver mi rutina</button>
                 </div>
               )}
             </div>
           </div>
+
+          <InstallAppCard />
+
+          {monthly && (monthly.thisMonth > 0 || monthly.lastMonth > 0) && (
+            <div className="panel">
+              <div className="bd">
+                <b style={{ fontSize: 16 }}>
+                  Este mes entrenaste {monthly.thisMonth} {monthly.thisMonth === 1 ? "vez" : "veces"}
+                </b>
+                <div className="note">
+                  {monthly.thisMonth > monthly.lastMonth
+                    ? `${monthly.thisMonth - monthly.lastMonth} más que el mes pasado 💪`
+                    : monthly.thisMonth === monthly.lastMonth
+                      ? "Igual que el mes pasado — ¡sigue así!"
+                      : `El mes pasado fueron ${monthly.lastMonth}. ¡Todavía estás a tiempo!`}
+                </div>
+              </div>
+            </div>
+          )}
+
+          {records.length > 0 && (
+            <div className="panel" style={{ borderLeft: "4px solid var(--ok)" }}>
+              <div className="hd"><h3>🏆 Tus récords recientes</h3></div>
+              <div className="bd" style={{ display: "grid", gap: 8 }}>
+                {records.slice(0, 3).map((r) => (
+                  <div key={r.id}>
+                    <b>{r.exercise_name}</b>{" "}
+                    <span className="note" style={{ fontSize: 12.5 }}>
+                      {new Date(r.performed_at).toLocaleDateString("es", { day: "2-digit", month: "short" })}
+                    </span>
+                    <div className="note" style={{ fontSize: 13 }}>{describeRecord(r)}</div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
 
           {hasHighlight && (
             <div className="panel">
@@ -164,7 +240,7 @@ export default function ClientDashboard() {
               <div className="bd" style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 10 }}>
                 <p className="note">
                   {daysSinceMeasurement === null
-                    ? "Todavía no registraste tus medidas — probá cargarlas para empezar a ver tu progreso."
+                    ? "Todavía no registraste tus medidas — prueba cargarlas para empezar a ver tu progreso."
                     : `Pasaron ${daysSinceMeasurement} días desde tu última medición. Es un buen momento para registrar de nuevo.`}
                 </p>
                 <button className="btn ghost" onClick={() => navigate(paths.clientAssessments)}>Registrar medidas</button>
@@ -198,7 +274,7 @@ export default function ClientDashboard() {
             <div className="panel">
               <div className="bd" style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 10 }}>
                 <p className="note">
-                  Tenés {unreadCount} mensaje{unreadCount === 1 ? "" : "s"} sin leer de tu entrenador.
+                  Tienes {unreadCount} mensaje{unreadCount === 1 ? "" : "s"} sin leer de tu entrenador.
                 </p>
                 <button className="btn ghost" onClick={() => navigate(paths.clientMessages)}>Ver mensajes</button>
               </div>

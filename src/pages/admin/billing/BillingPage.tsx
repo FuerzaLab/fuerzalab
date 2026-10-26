@@ -75,7 +75,7 @@ export default function BillingPage() {
     <div className="page">
       <h1 style={{ marginBottom: 4 }}>Pagos de la plataforma</h1>
       <p className="note" style={{ marginBottom: 20 }}>
-        Esto es lo que cada organización te paga a vos por usar FuerzaLab — separado de "Pagos" del entrenador, que es lo que sus clientes le pagan a él.
+        Esto es lo que cada organización te paga a ti por usar FuerzaLab — separado de "Pagos" del entrenador, que es lo que sus clientes le pagan a él.
       </p>
 
       {loading ? (
@@ -284,7 +284,7 @@ function PlanModal({ plan, onClose, onSaved }: { plan: PlatformPlanRow | null; o
       </div>
       {period === "biweekly" && (
         <p className="note" style={{ marginBottom: 12 }}>
-          Pensada para períodos de prueba gratuitos de 15 días — poné el precio en 0 si es justamente eso.
+          Pensada para períodos de prueba gratuitos de 15 días — pon el precio en 0 si es justamente eso.
         </p>
       )}
       <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12, marginBottom: 16 }}>

@@ -559,7 +559,7 @@ export function ExerciseProgressOverview({
       )}
       <p className="note" style={{ fontSize: 12, margin: "10px 0 0" }}>
         El 1RM estimado combina peso y repeticiones (fórmula de Epley): sube tanto si levantó más peso como si hizo más
-        repeticiones con el mismo peso. Tocá un ejercicio para ver su detalle.
+        repeticiones con el mismo peso. Toca un ejercicio para ver su detalle.
       </p>
     </div>
   );

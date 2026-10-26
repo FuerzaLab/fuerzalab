@@ -206,7 +206,7 @@ function FeedPanel({ clients }: { clients: ClientRow[] }) {
           </>
         )}
         <p className="note" style={{ fontSize: 12, margin: "10px 0 0" }}>
-          Se muestran los últimos 30 días (bienestar: últimos 7). Lo que marcás como atendido deja de aparecer solo para vos.
+          Se muestran los últimos 30 días (bienestar: últimos 7). Lo que marcas como atendido deja de aparecer solo para ti.
         </p>
       </div>
 

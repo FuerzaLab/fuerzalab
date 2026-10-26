@@ -67,7 +67,7 @@ export default function ProgressPhotosPage() {
     try {
       await setPhotoVisibility(p.id, next);
       setPhotos((ps) => ps.map((x) => (x.id === p.id ? { ...x, visibility: next } : x)));
-      notify(next === "trainer_only" ? "Ahora solo vos la ves." : "Ahora el cliente también la ve.");
+      notify(next === "trainer_only" ? "Ahora solo tú la ves." : "Ahora el cliente también la ve.");
     } catch (e: any) {
       notify(e.message);
     }
@@ -122,7 +122,7 @@ export default function ProgressPhotosPage() {
                       <div style={{ display: "flex", justifyContent: "space-between" }}>
                         <button
                           onClick={() => toggleVisibility(p)}
-                          title={p.visibility === "trainer_only" ? "Solo vos la ves — clic para mostrarla al cliente" : "El cliente la ve — clic para ocultarla"}
+                          title={p.visibility === "trainer_only" ? "Solo tú la ves — clic para mostrarla al cliente" : "El cliente la ve — clic para ocultarla"}
                           style={{ border: 0, background: "none", color: "var(--muted)", cursor: "pointer", display: "flex", alignItems: "center" }}
                         >
                           {p.visibility === "trainer_only" ? <EyeOff size={14} /> : <Eye size={14} />}
@@ -238,7 +238,7 @@ function UploadPhotoSetModal({
 
   return (
     <Modal title="Subir fotos de progreso" onClose={onClose}>
-      <p className="note" style={{ marginBottom: 14 }}>Subí las que tengas — no hace falta completar las 4 juntas.</p>
+      <p className="note" style={{ marginBottom: 14 }}>Sube las que tengas — no hace falta completar las 4 juntas.</p>
       <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(150px,1fr))", gap: 12, marginBottom: 16 }}>
         {ANGLE_ORDER.map((angle) => (
           <div key={angle}>

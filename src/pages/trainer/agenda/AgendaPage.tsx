@@ -416,7 +416,7 @@ function AppointmentModal({
 
   const submit = async () => {
     if (!clientId) {
-      setError("Elegí un cliente.");
+      setError("Elige un cliente.");
       return;
     }
     const startsAt = new Date(`${date}T${startTime}:00`);
@@ -503,7 +503,7 @@ function AppointmentModal({
         </div>
       ) : (
         <SearchSelect className="input" style={{ marginBottom: 14 }} value={clientId} onChange={(e) => setClientId(e.target.value)}>
-          <option value="">Elegí un cliente</option>
+          <option value="">Elige un cliente</option>
           {localClients.map((c) => <option key={c.id} value={c.id}>{c.full_name}</option>)}
         </SearchSelect>
       )}

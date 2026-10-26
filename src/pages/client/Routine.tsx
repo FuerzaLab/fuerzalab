@@ -38,6 +38,7 @@ import {
 import WellnessForm from "../../components/WellnessForm";
 import { getExerciseMediaUrl, listVariationsFor, RELATION_LABEL, type ExerciseVariationRow } from "../../services/exercises";
 import Loading from "../../components/ui/Loading";
+import { listRecordsForWorkout, describeRecord, type MyRecord } from "../../services/clientHome";
 
 const STATUS_LABEL: Record<WorkoutLogRow["status"], string> = {
   pending: "Pendiente",
@@ -245,15 +246,15 @@ export default function ClientRoutine() {
       {blockedByDailyLimit && (
         <Modal title="Ya entrenaste hoy" onClose={() => setBlockedByDailyLimit(null)}>
           <p>
-            Ya completaste "{blockedByDailyLimit}" hoy. Tu entrenador no habilitó más de una rutina por día en este programa — si hoy te toca otra, avisale.
+            Ya completaste "{blockedByDailyLimit}" hoy. Tu entrenador no habilitó más de una rutina por día en este programa — si hoy te toca otra, avísale.
           </p>
         </Modal>
       )}
 
       {pendingWarning && (
-        <Modal title="Tenés una semana sin terminar" onClose={() => setPendingWarning(null)}>
+        <Modal title="Tienes una semana sin terminar" onClose={() => setPendingWarning(null)}>
           <p style={{ marginBottom: 18 }}>
-            Todavía te falta completar rutinas de la {pendingWarning.weekLabel}. ¿Igual querés entrenar esta ahora?
+            Todavía te falta completar rutinas de la {pendingWarning.weekLabel}. ¿Igual quieres entrenar esta ahora?
           </p>
           <div style={{ display: "flex", gap: 10, justifyContent: "flex-end" }}>
             <button className="btn ghost" onClick={() => setPendingWarning(null)}>Volver</button>
@@ -283,11 +284,12 @@ export function TrainSession({ sessionId, onExit, backLabel = "Volver a mi rutin
   const [finishing, setFinishing] = useState(false);
   const [rpe, setRpe] = useState("");
   const [comments, setComments] = useState("");
+  const [celebration, setCelebration] = useState<MyRecord[] | null>(null);
   const [saving, setSaving] = useState(false);
   const [restTotal, setRestTotal] = useState(0);
   const [restRemaining, setRestRemaining] = useState(0);
   // Guarda el momento real en que termina el descanso, en vez de solo restar de a uno
-  // cada segundo — así, si el celular se bloquea o cambiás de app durante el descanso
+  // cada segundo — así, si el celular se bloquea o cambias de app durante el descanso
   // (el navegador pausa los conteos en ese caso para ahorrar batería), al volver el
   // cronómetro muestra el tiempo real que pasó, no el tiempo que alcanzó a contar.
   const [restEndsAt, setRestEndsAt] = useState<number | null>(null);
@@ -387,13 +389,44 @@ export function TrainSession({ sessionId, onExit, backLabel = "Volver a mi rutin
     setSaving(true);
     try {
       await completeWorkout({ workoutLogId: log.id, sessionRpe: rpe ? Number(rpe) : null, comments, startedAt: log.started_at });
-      notify("¡Sesión completada! Buen trabajo.");
-      onExit();
+      // ¿Batió algún récord en esta sesión? Si sí, se celebra antes de salir.
+      const recs = await listRecordsForWorkout(log.id).catch((): MyRecord[] => []);
+      if (recs.length > 0) {
+        setCelebration(recs);
+      } else {
+        notify("¡Sesión completada! Buen trabajo.");
+        onExit();
+      }
     } catch (e: any) {
       notify(e.message);
     }
     setSaving(false);
   };
+
+  if (celebration) {
+    return (
+      <div className="page">
+        <div className="panel celebrate">
+          <div className="bd" style={{ padding: "28px 22px" }}>
+            <div className="burst">🏆</div>
+            <h2 style={{ margin: "10px 0 4px" }}>
+              {celebration.length === 1 ? "¡Nuevo récord!" : `¡${celebration.length} récords nuevos!`}
+            </h2>
+            <p className="note" style={{ marginTop: 0 }}>Sesión completada. Hoy superaste tu mejor marca en:</p>
+            <div style={{ display: "grid", gap: 10, textAlign: "left", margin: "16px 0 20px" }}>
+              {celebration.map((r) => (
+                <div key={r.id} style={{ background: "var(--ok-soft)", borderRadius: 9, padding: "10px 12px" }}>
+                  <b>{r.exercise_name}</b>
+                  <div className="note" style={{ fontSize: 13 }}>{describeRecord(r)}</div>
+                </div>
+              ))}
+            </div>
+            <button className="btn" style={{ width: "100%" }} onClick={onExit}>¡Genial!</button>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   if (loading) return <div className="page"><Loading /></div>;
 
@@ -636,7 +669,7 @@ function SupersetTrainer({
           </div>
         ))}
         <p className="note" style={{ marginBottom: 14 }}>
-          Hacé una serie de cada ejercicio, en orden, sin descansar entre ellos — el descanso va después de completar la ronda entera.
+          Haz una serie de cada ejercicio, en orden, sin descansar entre ellos — el descanso va después de completar la ronda entera.
         </p>
         {rounds.map((roundNumber) => {
           const showRestHere = restRemaining > 0 && exercises.some((ex) => restAnchor === `${ex.id}:${roundNumber}`);

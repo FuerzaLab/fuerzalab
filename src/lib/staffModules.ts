@@ -75,7 +75,7 @@ export const PRESETS: { name: string; description: string; permissions: StaffPer
   },
   {
     name: "Coentrenador",
-    description: "Puede hacer todo lo que hacés vos con tus clientes, salvo ver los pagos.",
+    description: "Puede hacer todo lo que haces tú con tus clientes, salvo ver los pagos.",
     permissions: {
       clients: "write",
       health: "write",

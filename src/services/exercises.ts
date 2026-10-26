@@ -245,7 +245,7 @@ export async function createExercise(
 export async function updateExercise(id: string, input: NewExerciseInput): Promise<ExerciseRow> {
   const { data, error } = await supabase.from("exercises").update(input).eq("id", id).select();
   if (error) throw error;
-  if (!data || data.length === 0) throw new Error("No tenés permiso para editar este ejercicio.");
+  if (!data || data.length === 0) throw new Error("No tienes permiso para editar este ejercicio.");
   return data[0] as ExerciseRow;
 }
 
@@ -259,7 +259,7 @@ export async function updateExercise(id: string, input: NewExerciseInput): Promi
 export async function deleteExercise(id: string): Promise<"deleted" | "archived"> {
   const { data, error } = await supabase.from("exercises").delete().eq("id", id).select("id");
   if (!error) {
-    if (!data || data.length === 0) throw new Error("No tenés permiso para eliminar este ejercicio.");
+    if (!data || data.length === 0) throw new Error("No tienes permiso para eliminar este ejercicio.");
     return "deleted";
   }
   // 23503 = el ejercicio está referenciado desde otra tabla (rutinas, historial…)
@@ -267,7 +267,7 @@ export async function deleteExercise(id: string): Promise<"deleted" | "archived"
 
   const { data: upd, error: updErr } = await supabase.from("exercises").update({ is_active: false }).eq("id", id).select("id");
   if (updErr) throw updErr;
-  if (!upd || upd.length === 0) throw new Error("No tenés permiso para eliminar este ejercicio.");
+  if (!upd || upd.length === 0) throw new Error("No tienes permiso para eliminar este ejercicio.");
   // Que no siga apareciendo como "alternativa" de otro ejercicio en Mi rutina.
   await supabase.from("exercise_variations").delete().or(`exercise_id.eq.${id},related_exercise_id.eq.${id}`);
   return "archived";

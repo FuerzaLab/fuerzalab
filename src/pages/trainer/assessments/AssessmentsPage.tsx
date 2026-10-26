@@ -422,7 +422,7 @@ function AssessmentDetail({
 
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-end", gap: 12, marginBottom: 18, flexWrap: "wrap" }}>
         <div>
-          <label className="field-label">Qué evaluación querés registrar</label>
+          <label className="field-label">Qué evaluación quieres registrar</label>
           <select className="input" style={{ minWidth: 240 }} value={active} onChange={(e) => setActive(e.target.value as AssessmentCategory | "photos")}>
             {CATEGORY_ORDER.map((c) => (
               <option key={c} value={c}>

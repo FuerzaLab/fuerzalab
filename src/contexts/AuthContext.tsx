@@ -32,7 +32,7 @@ interface AuthContextValue {
   staffAccess: StaffAccess | null;
   /**
    * El entrenador "dueño" de los datos con los que se está trabajando: el
-   * propio perfil si sos entrenador, el entrenador al que asistís si sos
+   * propio perfil si eres entrenador, el entrenador al que asistes si eres
    * staff, null para Super Admin y clientes. Es el valor que va en
    * trainer_id/owner_id al crear cosas nuevas.
    */

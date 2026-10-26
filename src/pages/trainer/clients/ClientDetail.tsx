@@ -458,7 +458,7 @@ function ClientNotesPanel({ clientId, organizationId, trainerId }: { clientId: s
       </div>
       <div className="bd">
         <p className="note" style={{ marginBottom: 14 }}>
-          Solo las ves vos (y tu equipo, si tiene permiso) — el cliente nunca tiene acceso a esta sección.
+          Solo las ves tú (y tu equipo, si tiene permiso) — el cliente nunca tiene acceso a esta sección.
         </p>
         <textarea
           className="input"

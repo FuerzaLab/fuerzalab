@@ -115,7 +115,7 @@ export default function AssessmentPhotosSection({
         }}
       >
         <option value="client_and_trainer">La ve el cliente</option>
-        <option value="trainer_only">Solo vos</option>
+        <option value="trainer_only">Solo tú</option>
       </select>
     </div>
   );
@@ -131,13 +131,13 @@ export default function AssessmentPhotosSection({
       <div className="bd">
         <p className="note" style={{ marginTop: 0 }}>
           Se guardan con la fecha de la evaluación y aparecen también en Fotos, en la comparación antes/ahora y en Reportes.
-          Podés subir los cuatro ángulos o solo los que tengas.
+          Puedes subir los cuatro ángulos o solo los que tengas.
         </p>
         <div style={{ display: "flex", gap: 8, alignItems: "center", marginBottom: 14, flexWrap: "wrap" }}>
           <label className="field-label" style={{ margin: 0 }}>Las fotos nuevas:</label>
           <select className="input" style={{ width: "auto" }} value={visibility} onChange={(e) => setVisibility(e.target.value as PhotoVisibility)}>
             <option value="client_and_trainer">Las ve el cliente</option>
-            <option value="trainer_only">Solo las ves vos</option>
+            <option value="trainer_only">Solo las ves tú</option>
           </select>
         </div>
 

@@ -80,7 +80,7 @@ export default function TeamPage() {
         </button>
       </div>
       <p className="note" style={{ marginBottom: 20, maxWidth: 720 }}>
-        Sumá asistentes que trabajen con tus clientes en tu nombre. Vos decidís qué secciones ve cada uno y si solo puede
+        Suma asistentes que trabajen con tus clientes en tu nombre. Tú decides qué secciones ve cada uno y si solo puede
         mirar o también editar. Nunca ven tus pagos ni la salud de tus clientes a menos que se lo habilites.
       </p>
 
@@ -92,7 +92,7 @@ export default function TeamPage() {
             <div className="hd"><h3>Asistentes</h3></div>
             <div className="bd">
               {members.length === 0 ? (
-                <p className="note" style={{ margin: 0 }}>Todavía no tenés asistentes. Invitá al primero con el botón de arriba.</p>
+                <p className="note" style={{ margin: 0 }}>Todavía no tienes asistentes. Invita al primero con el botón de arriba.</p>
               ) : (
                 <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
                   {members.map((m) => (
@@ -228,7 +228,7 @@ export default function TeamPage() {
           title={toToggle.is_active ? "Desactivar asistente" : "Reactivar asistente"}
           message={
             toToggle.is_active
-              ? `${toToggle.full_name} deja de poder entrar a la app desde ahora. No se borra nada de lo que cargó, y podés reactivarlo cuando quieras con los mismos permisos.`
+              ? `${toToggle.full_name} deja de poder entrar a la app desde ahora. No se borra nada de lo que cargó, y puedes reactivarlo cuando quieras con los mismos permisos.`
               : `${toToggle.full_name} vuelve a poder entrar, con los mismos permisos que tenía.`
           }
           confirmLabel={toToggle.is_active ? "Desactivar" : "Reactivar"}
@@ -332,11 +332,11 @@ function InviteStaffModal({
 
   const submit = async () => {
     if (!fullName.trim()) {
-      setError("Escribí el nombre del asistente.");
+      setError("Escribe el nombre del asistente.");
       return;
     }
     if (Object.keys(permissions).length === 0) {
-      setError("Habilitale al menos una sección.");
+      setError("Habilítale al menos una sección.");
       return;
     }
     setError("");
@@ -356,8 +356,8 @@ function InviteStaffModal({
       {!code ? (
         <>
           <p className="note" style={{ marginBottom: 14 }}>
-            Se genera un código de un solo uso que vence en 14 días. Al registrarse con él, la cuenta queda vinculada a vos
-            con los permisos que elijas acá (los podés cambiar después).
+            Se genera un código de un solo uso que vence en 14 días. Al registrarse con él, la cuenta queda vinculada a ti
+            con los permisos que elijas acá (los puedes cambiar después).
           </p>
           <label className="field-label">Nombre completo</label>
           <input className="input" style={{ marginBottom: 12 }} value={fullName} onChange={(e) => setFullName(e.target.value)} autoFocus />
@@ -375,7 +375,7 @@ function InviteStaffModal({
           </select>
           <p className="note" style={{ fontSize: 12.5, marginBottom: 18 }}>
             {clientScope === "assigned"
-              ? "Empieza sin ningún cliente. Cuando acepte la invitación, le asignás los que quieras desde el botón \"Clientes\" en esta pantalla. Un cliente nuevo no le aparece hasta que se lo asignes."
+              ? "Empieza sin ningún cliente. Cuando acepte la invitación, le asignas los que quieras desde el botón \"Clientes\" en esta pantalla. Un cliente nuevo no le aparece hasta que se lo asignes."
               : "Ve a todos tus clientes, también a los que sumes más adelante."}
           </p>
           <PermissionEditor value={permissions} onChange={setPermissions} />
@@ -386,7 +386,7 @@ function InviteStaffModal({
         </>
       ) : (
         <>
-          <p className="note" style={{ marginBottom: 12 }}>Compartí este enlace con tu asistente para que cree su cuenta.</p>
+          <p className="note" style={{ marginBottom: 12 }}>Comparte este enlace con tu asistente para que cree su cuenta.</p>
           <div
             style={{
               background: "var(--bg)",
@@ -535,7 +535,7 @@ function ClientAccessModal({
         (loading ? (
           <Loading />
         ) : clients.length === 0 ? (
-          <p className="note">Todavía no tenés clientes para asignar.</p>
+          <p className="note">Todavía no tienes clientes para asignar.</p>
         ) : (
           <>
             <div style={{ display: "flex", gap: 8, alignItems: "center", marginBottom: 8 }}>
