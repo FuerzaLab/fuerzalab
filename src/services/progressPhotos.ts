@@ -119,3 +119,31 @@ export async function deleteProgressPhoto(id: string, storagePath: string): Prom
   // El storage no bloquea si falla (el archivo puede haber quedado huérfano antes); no es crítico.
   await supabase.storage.from("client-files").remove([storagePath]);
 }
+
+/** Fotos de progreso de un cliente con una fecha puntual (las de una evaluación). */
+export async function listPhotosOnDate(clientId: string, date: string): Promise<ProgressPhotoRow[]> {
+  const { data, error } = await supabase
+    .from("client_files")
+    .select("id, client_id, storage_path, taken_at, visibility, notes, angle, created_at")
+    .eq("client_id", clientId)
+    .eq("kind", "progress_photo")
+    .eq("taken_at", date)
+    .order("created_at");
+  if (error) throw error;
+  return (data ?? []) as ProgressPhotoRow[];
+}
+
+/**
+ * Cuando se cambia la fecha de una evaluación, sus fotos (las de la fecha
+ * vieja) pasan a la fecha nueva, para que sigan apareciendo juntas.
+ */
+export async function movePhotosDate(clientId: string, from: string, to: string): Promise<void> {
+  if (from === to) return;
+  const { error } = await supabase
+    .from("client_files")
+    .update({ taken_at: to })
+    .eq("client_id", clientId)
+    .eq("kind", "progress_photo")
+    .eq("taken_at", from);
+  if (error) throw error;
+}

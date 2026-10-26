@@ -67,6 +67,8 @@ import {
 } from "../../../services/assessments";
 import Loading from "../../../components/ui/Loading";
 import SearchSelect from "../../../components/ui/SearchSelect";
+import AssessmentPhotosSection from "./AssessmentPhotosSection";
+import { movePhotosDate, listPhotosOnDate } from "../../../services/progressPhotos";
 
 const CATEGORY_ORDER: AssessmentCategory[] = ["body", "circumferences", "skinfolds", "strength", "power", "endurance", "mobility", "flexibility"];
 
@@ -276,7 +278,12 @@ function AssessmentDetail({
   onDelete: () => void;
 }) {
   const { notify } = useToast();
-  const [active, setActive] = useState<AssessmentCategory>(suggestedCategories?.[0] ?? "body");
+  const { can } = useAuth();
+  // "photos" no es una categoría de la base de datos: son las fotos de
+  // progreso del cliente con la fecha de esta evaluación.
+  const [active, setActive] = useState<AssessmentCategory | "photos">(suggestedCategories?.[0] ?? "body");
+  const [photoCount, setPhotoCount] = useState(0);
+  const [savedDate, setSavedDate] = useState(assessment.assessed_at.slice(0, 10));
 
   const [body, setBody] = useState<BodyMeasurementRow | null>(null);
   const [circs, setCircs] = useState<CircumferenceRow[]>([]);
@@ -296,10 +303,25 @@ function AssessmentDetail({
   const [editingHeader, setEditingHeader] = useState(false);
   const [savingHeader, setSavingHeader] = useState(false);
 
+  // Cuántas fotos tiene la evaluación, para mostrarlo en el selector sin
+  // tener que abrir la sección.
+  useEffect(() => {
+    if (!can("files")) return;
+    listPhotosOnDate(assessment.client_id, savedDate)
+      .then((l) => setPhotoCount(l.length))
+      .catch(() => {});
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [assessment.client_id, savedDate]);
+
   const saveHeader = async () => {
     setSavingHeader(true);
     try {
       await updateAssessment(assessment.id, { assessedAt, notes: notesText });
+      // Las fotos de la evaluación se mueven con ella a la nueva fecha.
+      if (assessedAt !== savedDate && can("files", "write")) {
+        await movePhotosDate(assessment.client_id, savedDate, assessedAt).catch(() => {});
+      }
+      setSavedDate(assessedAt);
       setEditingHeader(false);
       notify("Fecha y notas actualizadas.");
     } catch (e: any) {
@@ -401,7 +423,7 @@ function AssessmentDetail({
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-end", gap: 12, marginBottom: 18, flexWrap: "wrap" }}>
         <div>
           <label className="field-label">Qué evaluación querés registrar</label>
-          <select className="input" style={{ minWidth: 240 }} value={active} onChange={(e) => setActive(e.target.value as AssessmentCategory)}>
+          <select className="input" style={{ minWidth: 240 }} value={active} onChange={(e) => setActive(e.target.value as AssessmentCategory | "photos")}>
             {CATEGORY_ORDER.map((c) => (
               <option key={c} value={c}>
                 {CATEGORY_LABEL[c]}
@@ -409,6 +431,7 @@ function AssessmentDetail({
                 {suggestedCategories?.includes(c) ? " — sugerida" : ""}
               </option>
             ))}
+            {can("files") && <option value="photos">Fotos de progreso{photoCount > 0 ? ` (${photoCount})` : ""}</option>}
           </select>
         </div>
         <button className="btn ghost" style={{ color: "var(--bad)" }} onClick={onDelete}>
@@ -436,6 +459,7 @@ function AssessmentDetail({
       {active === "endurance" && <EnduranceSection assessmentId={assessment.id} rows={endurance} setRows={setEndurance} />}
       {active === "mobility" && <MobilitySection assessmentId={assessment.id} rows={mobility} setRows={setMobility} />}
       {active === "flexibility" && <FlexibilitySection assessmentId={assessment.id} rows={flexibility} setRows={setFlexibility} />}
+      {active === "photos" && <AssessmentPhotosSection clientId={assessment.client_id} date={savedDate} onCountChange={setPhotoCount} />}
     </div>
   );
 }
