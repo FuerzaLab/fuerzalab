@@ -162,7 +162,7 @@ async function workoutItems(): Promise<FeedItem[]> {
       .select("id, client_id, completed_at, session_rpe, comments, sessions(name)")
       .eq("status", "completed")
       .gte("completed_at", since)
-      .or("comments.not.is.null,session_rpe.gte.9")
+      .or("comments.not.is.null,session_rpe.gt.8,session_rpe.lt.5")
       .order("completed_at", { ascending: false })
       .limit(200),
     supabase
@@ -178,16 +178,30 @@ async function workoutItems(): Promise<FeedItem[]> {
   for (const l of (done.data ?? []) as any[]) {
     const comment = (l.comments as string | null)?.trim();
     const rpe = l.session_rpe != null ? Number(l.session_rpe) : null;
-    if (!comment && !(rpe != null && rpe >= 9)) continue;
+    // Alerta de esfuerzo solo fuera del rango esperado: por encima de 8
+    // (muy exigente) o por debajo de 5 (muy liviana). Entre 5 y 8 el RPE
+    // se muestra solo si acompaña a un comentario.
+    const rpeHigh = rpe != null && rpe > 8;
+    const rpeLow = rpe != null && rpe < 5;
+    if (!comment && !rpeHigh && !rpeLow) continue;
     const session = one<any>(l.sessions)?.name ?? "su rutina";
     items.push({
       key: `note:${l.id}`,
       kind: "note",
       clientId: l.client_id,
       at: l.completed_at,
-      title: comment ? `Dejó un comentario al terminar ${session}` : `Terminó ${session} con esfuerzo muy alto`,
-      detail: [comment ? `“${comment}”` : null, rpe != null ? `RPE ${rpe}/10` : null].filter(Boolean).join(" · "),
-      tone: rpe != null && rpe >= 9 ? "warn" : "",
+      title: comment
+        ? `Dejó un comentario al terminar ${session}`
+        : rpeHigh
+          ? `Terminó ${session} con esfuerzo muy alto`
+          : `Terminó ${session} con esfuerzo muy bajo`,
+      detail: [
+        comment ? `“${comment}”` : null,
+        rpe != null ? `RPE ${rpe}/10${rpeHigh ? " — por encima de 8" : rpeLow ? " — por debajo de 5" : ""}` : null,
+      ]
+        .filter(Boolean)
+        .join(" · "),
+      tone: rpeHigh || rpeLow ? "warn" : "",
     });
   }
   for (const l of (skipped.data ?? []) as any[]) {
