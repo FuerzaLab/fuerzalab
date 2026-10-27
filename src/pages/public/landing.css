@@ -104,6 +104,11 @@
 .lp-foot-links { display: flex; gap: 18px; flex-wrap: wrap; }
 .lp-foot a { color: var(--muted); }
 
+/* Video */
+.lp-video-section { background: #fff; }
+.lp-video { display: block; width: 100%; max-width: 960px; aspect-ratio: 16 / 9; border-radius: 14px; background: var(--navy); box-shadow: 0 24px 50px -24px rgba(15,26,51,.45); }
+.lp-video.vertical { max-width: 380px; aspect-ratio: 9 / 16; margin: 0 auto; }
+
 @media (max-width: 900px) {
   .lp-hero { padding: 44px 0 56px; }
   .lp-hero-grid { grid-template-columns: 1fr; gap: 36px; }

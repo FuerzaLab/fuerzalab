@@ -79,6 +79,34 @@ const FEATURES: [string, string][] = [
   ["Negocio", "Planes, pagos, vencimientos y agenda presencial u online."],
 ];
 
+/**
+ * Video de 1 minuto: horizontal en pantallas anchas, vertical en celular.
+ * preload="none": no se descarga nada hasta que el visitante toca play
+ * (cuida el tráfico del hosting). Los subtítulos van incrustados.
+ */
+function DemoVideo() {
+  const [vertical, setVertical] = useState(() => typeof window !== "undefined" && window.matchMedia?.("(max-width: 640px)").matches);
+  useEffect(() => {
+    const mq = window.matchMedia?.("(max-width: 640px)");
+    if (!mq) return;
+    const on = () => setVertical(mq.matches);
+    mq.addEventListener?.("change", on);
+    return () => mq.removeEventListener?.("change", on);
+  }, []);
+  return (
+    <video
+      key={vertical ? "v" : "h"}
+      className={`lp-video${vertical ? " vertical" : ""}`}
+      controls
+      playsInline
+      preload="none"
+      poster={vertical ? "/video/poster-vertical.jpg" : "/video/poster.jpg"}
+    >
+      <source src={vertical ? "/video/fuerzalab-demo-vertical.mp4" : "/video/fuerzalab-demo.mp4"} type="video/mp4" />
+    </video>
+  );
+}
+
 export default function Landing() {
   const { signIn } = useAuth();
   const navigate = useNavigate();
@@ -189,6 +217,13 @@ export default function Landing() {
             )}
             {shownFeed.length > 0 && <p className="lp-feed-hint">Prueba marcarlas como atendidas.</p>}
           </div>
+        </div>
+      </section>
+
+      <section className="lp-section lp-video-section">
+        <div className="lp-wrap">
+          <h2>FuerzaLab en 1 minuto</h2>
+          <DemoVideo />
         </div>
       </section>
 
