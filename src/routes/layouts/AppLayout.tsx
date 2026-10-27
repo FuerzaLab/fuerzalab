@@ -30,6 +30,7 @@ import type { Role, StaffAccess } from "../../types/auth";
 import { routeRequirement, hasLevel } from "../../lib/staffModules";
 import Brand from "../../components/ui/Brand";
 import DemoGate from "../../components/DemoGate";
+import { useIsStudioOwner } from "../../hooks/useIsStudioOwner";
 
 interface NavItem {
   to: string;
@@ -68,6 +69,7 @@ const NAV: Record<Role, NavItem[]> = {
     { to: paths.trainerSuggestions, label: "Sugerencias", icon: Lightbulb, group: "Seguimiento" },
 
     { to: paths.trainerPayments, label: "Pagos", icon: CreditCard, group: "Negocio" },
+    { to: paths.trainerStudio, label: "Tu estudio", icon: Building2, group: "Negocio" },
     { to: paths.trainerTeam, label: "Equipo", icon: UserCog, group: "Negocio" },
     { to: paths.trainerSettings, label: "Configuración", icon: Settings, group: "Negocio" },
   ],
@@ -102,7 +104,7 @@ const WELLNESS_COLOR = { bg: "#EDE7FB", fg: "#7B4FE0" };
 function staffNav(access: StaffAccess | null): NavItem[] {
   if (!access) return [];
   return NAV.trainer.filter((item) => {
-    if (item.to === paths.trainerTeam) return false;
+    if (item.to === paths.trainerTeam || item.to === paths.trainerStudio) return false;
     const req = routeRequirement(item.to);
     if (!req) return true;
     return hasLevel(access.permissions, req.module, req.level) && (!req.extra || hasLevel(access.permissions, req.extra, "read"));
@@ -112,10 +114,17 @@ function staffNav(access: StaffAccess | null): NavItem[] {
 export default function AppLayout() {
   const { profile, signOut, staffAccess } = useAuth();
   const navigate = useNavigate();
+  const isOwner = useIsStudioOwner();
 
   if (!profile) return null;
 
-  const items = profile.role === "staff" ? staffNav(staffAccess) : NAV[profile.role];
+  // "Tu estudio" solo aparece para el dueño del estudio.
+  const items =
+    profile.role === "staff"
+      ? staffNav(staffAccess)
+      : profile.role === "trainer" && !isOwner
+        ? NAV.trainer.filter((i) => i.to !== paths.trainerStudio)
+        : NAV[profile.role];
 
   const handleLogout = async () => {
     if (!window.confirm("¿Cerrar sesión?")) return;

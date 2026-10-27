@@ -7,6 +7,8 @@ export interface OrganizationRow {
   slug: string;
   status: "active" | "suspended";
   created_at: string;
+  /** Entrenador dueño del estudio (part3u_migration.sql); null si no tiene. */
+  owner_id?: string | null;
 }
 
 export interface UserRow {
@@ -75,7 +77,10 @@ export async function deleteOrganization(id: string): Promise<void> {
 export async function listUsers(): Promise<UserRow[]> {
   const { data, error } = await supabase
     .from("profiles")
-    .select("id, organization_id, role, full_name, email, is_active, last_sign_in_at, organizations(name)")
+    // "!organization_id": desde part3u_migration.sql, profiles y organizations
+    // están conectadas de dos formas (la organización de cada perfil, y el
+    // dueño de cada organización). Hay que decir cuál usar, o la consulta falla.
+    .select("id, organization_id, role, full_name, email, is_active, last_sign_in_at, organizations!organization_id(name)")
     .neq("role", "super_admin")
     .order("full_name");
   if (error) throw error;
@@ -156,4 +161,14 @@ export async function inviteTrainer(params: {
     .single();
   if (error) throw error;
   return data.code as string;
+}
+
+/** Elige qué entrenador es el dueño del estudio (o ninguno). Ver part3u_migration.sql. */
+export async function setOrganizationOwner(orgId: string, ownerId: string | null): Promise<void> {
+  const { data, error } = await supabase.from("organizations").update({ owner_id: ownerId }).eq("id", orgId).select("id");
+  if (error) {
+    if (/owner_id/.test(error.message)) throw new Error("Falta correr part3u_migration.sql en Supabase.");
+    throw error;
+  }
+  if (!data || data.length === 0) throw new Error("No se pudo guardar el dueño del estudio.");
 }

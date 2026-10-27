@@ -6,6 +6,9 @@ import Modal from "../../components/ui/Modal";
 import Chip from "../../components/ui/Chip";
 import {
   listOrganizations,
+  listUsers,
+  setOrganizationOwner,
+  type UserRow,
   createOrganization,
   toggleOrganizationStatus,
   countOrganizationMembers,
@@ -24,11 +27,17 @@ export default function Organizations() {
   const [showNew, setShowNew] = useState(false);
   const [inviteFor, setInviteFor] = useState<OrganizationRow | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<OrganizationRow | null>(null);
+  const [trainers, setTrainers] = useState<UserRow[]>([]);
 
   const load = async () => {
     setLoading(true);
     try {
-      setOrgs(await listOrganizations());
+      const [o, u] = await Promise.all([listOrganizations(), listUsers().catch((err: any): UserRow[] => {
+        notify(`No se pudo cargar la lista de entrenadores: ${err.message}`);
+        return [];
+      })]);
+      setOrgs(o);
+      setTrainers(u.filter((x) => x.role === "trainer"));
     } catch (e: any) {
       notify(e.message);
     }
@@ -75,6 +84,7 @@ export default function Organizations() {
                 <tr style={{ textAlign: "left", color: "var(--muted)", fontSize: 13 }}>
                   <th style={{ padding: "10px 16px" }}>Organización</th>
                   <th style={{ padding: "10px 16px" }}>Estado</th>
+                  <th style={{ padding: "10px 16px" }} title="El dueño ve la pantalla «Tu estudio» con el resumen de todos los entrenadores">Dueño del estudio</th>
                   <th style={{ padding: "10px 16px" }}>Acciones</th>
                 </tr>
               </thead>
@@ -84,6 +94,36 @@ export default function Organizations() {
                     <td style={{ padding: "11px 16px" }}><b>{o.name}</b></td>
                     <td style={{ padding: "11px 16px" }}>
                       <Chip tone={o.status === "active" ? "ok" : "bad"}>{o.status === "active" ? "Activa" : "Suspendida"}</Chip>
+                    </td>
+                    <td style={{ padding: "11px 16px", minWidth: 200 }}>
+                      {(() => {
+                        const orgTrainers = trainers.filter((t) => t.organization_id === o.id);
+                        if (orgTrainers.length < 2) {
+                          return <span className="note" style={{ fontSize: 13 }}>{orgTrainers.length === 1 ? "Un solo entrenador" : "Sin entrenadores"}</span>;
+                        }
+                        return (
+                          <select
+                            className="input"
+                            style={{ padding: "5px 8px", fontSize: 13.5 }}
+                            value={o.owner_id ?? ""}
+                            onChange={async (e) => {
+                              const ownerId = e.target.value || null;
+                              try {
+                                await setOrganizationOwner(o.id, ownerId);
+                                setOrgs((xs) => xs.map((x) => (x.id === o.id ? { ...x, owner_id: ownerId } : x)));
+                                notify(ownerId ? "Dueño del estudio guardado." : "El estudio quedó sin dueño.");
+                              } catch (err: any) {
+                                notify(err.message);
+                              }
+                            }}
+                          >
+                            <option value="">Sin dueño</option>
+                            {orgTrainers.map((t) => (
+                              <option key={t.id} value={t.id}>{t.full_name || t.email}</option>
+                            ))}
+                          </select>
+                        );
+                      })()}
                     </td>
                     <td style={{ padding: "11px 16px" }}>
                       <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
@@ -102,7 +142,7 @@ export default function Organizations() {
                 ))}
                 {orgs.length === 0 && (
                   <tr>
-                    <td colSpan={3} className="note" style={{ padding: 16 }}>Todavía no hay organizaciones.</td>
+                    <td colSpan={4} className="note" style={{ padding: 16 }}>Todavía no hay organizaciones.</td>
                   </tr>
                 )}
               </tbody>

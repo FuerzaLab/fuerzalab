@@ -46,6 +46,7 @@ import AgendaPage from "../pages/trainer/agenda/AgendaPage";
 import RunSessionPage from "../pages/trainer/run-session/RunSessionPage";
 import ClientProgressPhotos from "../pages/client/ProgressPhotos";
 import TeamPage from "../pages/trainer/team/TeamPage";
+import StudioPage from "../pages/trainer/studio/StudioPage";
 
 import { paths } from "./paths";
 
@@ -105,6 +106,7 @@ export default function AppRoutes() {
             <Route path={paths.trainerReports} element={<ReportsPage />} />
             <Route path={paths.trainerSettings} element={<Settings />} />
             <Route path={paths.trainerTeam} element={<TeamPage />} />
+            <Route path={paths.trainerStudio} element={<StudioPage />} />
           </Route>
           </Route>
         </Route>

@@ -4,7 +4,7 @@ import { routeRequirement, hasLevel } from "../../lib/staffModules";
 import { paths } from "../paths";
 
 /** Pantallas que son solo del entrenador, nunca del staff. */
-const TRAINER_ONLY = [paths.trainerTeam];
+const TRAINER_ONLY: string[] = [paths.trainerTeam, paths.trainerStudio];
 
 /**
  * Para cuentas de staff: deja pasar solo a las pantallas para las que el
@@ -35,7 +35,7 @@ export default function RequireStaffAccess() {
     );
   }
 
-  if (TRAINER_ONLY.includes(pathname as (typeof TRAINER_ONLY)[number])) {
+  if (TRAINER_ONLY.includes(pathname)) {
     return <Navigate to={paths.trainerDashboard} replace />;
   }
 

@@ -34,6 +34,7 @@ export const paths = {
   trainerReports: "/t/reportes",
   trainerSettings: "/t/configuracion",
   trainerTeam: "/t/equipo",
+  trainerStudio: "/t/estudio",
 
   clientDashboard: "/c",
   clientRoutine: "/c/rutina",
