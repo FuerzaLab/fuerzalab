@@ -18,6 +18,7 @@ import {
   ExerciseProgressOverview,
 } from "../../components/reports/ReportSections";
 import Loading from "../../components/ui/Loading";
+import { ReportBrandHeader } from "../../components/ui/Brand";
 
 export default function ClientReports() {
   const { notify } = useToast();
@@ -73,6 +74,7 @@ export default function ClientReports() {
 
       {clientId && !data.loading && (
         <div ref={reportRef} style={{ display: "grid", gap: 20, background: "#fff" }}>
+          <ReportBrandHeader />
           <div className="panel">
             <div className="hd"><h3>Fotos de progreso</h3></div>
             <div className="bd"><PhotoBeforeAfter clientId={clientId} restrictToShared={true} /></div>

@@ -22,6 +22,7 @@ import { listAssessments } from "../../services/assessments";
 import Watermark from "../../components/ui/Watermark";
 import InstallAppCard from "../../components/InstallAppCard";
 import { getMyTrainerName, getMonthlySessionCounts, listMyRecentRecords, describeRecord, type MyRecord } from "../../services/clientHome";
+import { useOrgBrand } from "../../hooks/useOrgBrand";
 
 const SESSION_STATUS_LABEL: Record<TodaysSession["status"], string> = {
   pending: "Todavía no la empezaste",
@@ -47,6 +48,7 @@ export default function ClientDashboard() {
   const [trainerName, setTrainerName] = useState<string | null>(null);
   const [monthly, setMonthly] = useState<{ thisMonth: number; lastMonth: number } | null>(null);
   const [records, setRecords] = useState<MyRecord[]>([]);
+  const orgBrand = useOrgBrand();
   // Bienvenida: se muestra hasta que el alumno la cierra (una vez por cuenta y dispositivo).
   const welcomeKey = `fl-welcome-${profile?.id ?? ""}`;
   const [showWelcome, setShowWelcome] = useState(() => {
@@ -122,9 +124,13 @@ export default function ClientDashboard() {
 
       {showWelcome && (
         <div className="welcome-card">
-          <div style={{ fontSize: 28, lineHeight: 1 }}>👋</div>
+          {orgBrand?.logoUrl ? (
+            <img src={orgBrand.logoUrl} alt="" style={{ width: 44, height: 44, borderRadius: 10, objectFit: "contain", background: "#fff", flex: "none" }} />
+          ) : (
+            <div style={{ fontSize: 28, lineHeight: 1 }}>👋</div>
+          )}
           <div style={{ flex: 1 }}>
-            <b style={{ fontSize: 17 }}>Te damos la bienvenida a FuerzaLab</b>
+            <b style={{ fontSize: 17 }}>Te damos la bienvenida{orgBrand?.name ? ` a ${orgBrand.name}` : " a FuerzaLab"}</b>
             <p style={{ margin: "6px 0 10px" }}>
               {trainerName ? <><b>{trainerName}</b> armó tu plan de entrenamiento.</> : "Tu entrenador armó tu plan de entrenamiento."} Aquí vas a
               encontrar la rutina de cada día, tu progreso y tus récords, y un chat directo con tu entrenador.

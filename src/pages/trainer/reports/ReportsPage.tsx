@@ -21,6 +21,7 @@ import {
 } from "../../../components/reports/ReportSections";
 import Loading from "../../../components/ui/Loading";
 import SearchSelect from "../../../components/ui/SearchSelect";
+import { ReportBrandHeader } from "../../../components/ui/Brand";
 
 export default function ReportsPage() {
   const { notify } = useToast();
@@ -97,6 +98,7 @@ export default function ReportsPage() {
 
       {clientId && !data.loading && (
         <div ref={reportRef} style={{ display: "grid", gap: 20, background: "#fff" }}>
+          <ReportBrandHeader />
           <h2 style={{ margin: 0 }}>{clientName}</h2>
 
           <div className="panel">

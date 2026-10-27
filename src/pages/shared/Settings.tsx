@@ -4,6 +4,7 @@ import { useToast } from "../../contexts/ToastContext";
 import { supabase } from "../../lib/supabase";
 import PasswordInput from "../../components/ui/PasswordInput";
 import { isDemoAccount } from "../../lib/demo";
+import BrandSettingsPanel from "../../components/BrandSettingsPanel";
 
 export default function Settings() {
   const { profile, updatePassword, refreshProfile } = useAuth();
@@ -53,6 +54,8 @@ export default function Settings() {
   return (
     <div className="page">
       <h1 style={{ marginBottom: 20 }}>Configuración</h1>
+
+      <BrandSettingsPanel />
 
       <div className="panel" style={{ marginBottom: 18, maxWidth: 420 }}>
         <div className="hd"><h3>Tus datos</h3></div>

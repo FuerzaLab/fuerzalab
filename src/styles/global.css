@@ -218,3 +218,31 @@ select.input:hover { border-color: var(--pri); }
 .demo-cta { margin-top: 18px; padding: 14px; border: 1.5px dashed var(--pri); border-radius: 10px; background: var(--pri-soft); }
 .demo-banner { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; margin: 16px 24px 0; padding: 10px 14px; border-radius: 9px; background: var(--pri-soft); color: var(--nav); font-size: 13.5px; max-width: 1192px; }
 @media (max-width: 860px) { .demo-banner { margin: 12px 16px 0; } }
+
+/* Marca del entrenador/estudio junto a FuerzaLab (mismo tamaño y peso) */
+.brand-item { display: inline-flex; align-items: center; gap: 10px; min-width: 0; }
+.brand-item .brand-text { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.org-logo { object-fit: contain; background: #fff; }
+.org-initials { display: inline-flex; align-items: center; justify-content: center; background: #1E3FA8; color: #fff; font-family: 'Barlow Condensed', sans-serif; font-weight: 700; font-size: 16px; letter-spacing: .5px; }
+.brand.cobrand .org-name { color: #fff; }
+.cobrand-sep { width: 1px; align-self: stretch; background: rgba(255,255,255,.28); margin: 2px 4px; }
+/* Menú lateral (240 px): una marca arriba de la otra, separadas por una línea */
+.side .brand.cobrand { flex-direction: column; align-items: flex-start; gap: 10px; font-size: 21px; }
+.side .brand.cobrand .cobrand-sep { width: 100%; height: 1px; margin: 0; }
+.side .brand.cobrand .brand-item { max-width: 100%; }
+@media (max-width: 860px) {
+  .side .brand.cobrand { flex-direction: row; align-items: center; gap: 8px; }
+  .side .brand.cobrand .cobrand-sep { width: 1px; height: auto; align-self: stretch; }
+}
+/* Barra superior en celular: no entran los dos nombres; quedan los dos logos
+   (o las iniciales del entrenador, si no subió logo), del mismo tamaño. */
+@media (max-width: 560px) {
+  .launcher-topbar .brand.cobrand { gap: 8px; }
+  .launcher-topbar .brand.cobrand .brand-text { display: none; }
+}
+
+/* Encabezado de marca en los reportes (fondo blanco) */
+.report-brand { display: flex; justify-content: space-between; align-items: center; gap: 12px; flex-wrap: wrap; padding-bottom: 14px; border-bottom: 1px solid var(--line); }
+.report-brand .brand-row { display: flex; align-items: center; gap: 10px; font-family: 'Barlow Condensed', 'Arial Narrow', sans-serif; font-size: 24px; font-weight: 700; color: var(--ink); }
+.report-brand .brand-text > span { color: var(--pri); }
+.report-brand .cobrand-sep { background: var(--line); }

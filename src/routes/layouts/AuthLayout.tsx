@@ -7,7 +7,7 @@ export default function AuthLayout() {
     <div className="auth-shell">
       <Watermark />
       <div className="auth-card">
-        <Brand className="auth-brand" />
+        <Brand className="auth-brand" withOrg={false} />
         <Outlet />
       </div>
     </div>
