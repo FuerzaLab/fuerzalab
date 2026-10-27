@@ -50,7 +50,7 @@ export function OrgMark({ brand }: { brand: OrgBrand }) {
  * Encabezado de los reportes (y de su PDF): la marca del entrenador/estudio
  * y FuerzaLab, con el mismo peso, y la fecha del reporte.
  */
-export function ReportBrandHeader() {
+export function ReportBrandHeader({ label = "Reporte de progreso" }: { label?: string } = {}) {
   const org = useOrgBrand();
   return (
     <div className="report-brand">
@@ -68,7 +68,7 @@ export function ReportBrandHeader() {
           </span>
         </span>
       </div>
-      <span className="note">Reporte de progreso · {new Date().toLocaleDateString("es", { day: "numeric", month: "long", year: "numeric" })}</span>
+      <span className="note">{label} · {new Date().toLocaleDateString("es", { day: "numeric", month: "long", year: "numeric" })}</span>
     </div>
   );
 }

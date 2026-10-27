@@ -1,7 +1,9 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { ArrowLeft } from "lucide-react";
 import { useAuth } from "../../../contexts/AuthContext";
+import IntakeFormView from "../../../components/IntakeFormView";
+import { exportReportPdf } from "../../../lib/exportReportPdf";
 import { useToast } from "../../../contexts/ToastContext";
 import ConfirmModal from "../../../components/ui/ConfirmModal";
 import Modal from "../../../components/ui/Modal";
@@ -68,6 +70,9 @@ export default function ClientDetail() {
   const { notify } = useToast();
   const { profile } = useAuth();
   const isTrainer = profile?.role === "trainer";
+  const [showIntake, setShowIntake] = useState(false);
+  const [exportingIntake, setExportingIntake] = useState(false);
+  const intakeRef = useRef<HTMLDivElement>(null);
 
   const [client, setClient] = useState<ClientRow | null>(null);
   const [intake, setIntake] = useState<ClientProfileRow | null>(null);
@@ -190,6 +195,9 @@ export default function ClientDetail() {
           <div className="hd">
             <h3>Formulario de ingreso</h3>
             <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
+              <button className="btn ghost" style={{ padding: "6px 14px", fontSize: 13 }} onClick={() => setShowIntake(true)}>
+                Ver formulario completo
+              </button>
               {intake.reviewed_at && <Chip tone="ok">Revisado</Chip>}
               {!intake.reviewed_at && (
                 <button
@@ -323,6 +331,33 @@ export default function ClientDetail() {
             setToArchive(false);
           }}
         />
+      )}
+
+      {showIntake && intake && (
+        <Modal title="Formulario de ingreso" onClose={() => setShowIntake(false)} wide>
+          <div ref={intakeRef}>
+            <IntakeFormView data={intake} clientName={client.full_name} />
+          </div>
+          <div style={{ display: "flex", gap: 8, marginTop: 16, flexWrap: "wrap" }}>
+            <button
+              className="btn"
+              disabled={exportingIntake}
+              onClick={async () => {
+                if (!intakeRef.current) return;
+                setExportingIntake(true);
+                try {
+                  await exportReportPdf(intakeRef.current, `Formulario de ingreso - ${client.full_name}.pdf`);
+                } catch (e: any) {
+                  notify("No pudimos generar el PDF: " + e.message);
+                }
+                setExportingIntake(false);
+              }}
+            >
+              {exportingIntake ? "Generando…" : "Descargar en PDF"}
+            </button>
+            <button className="btn ghost" onClick={() => setShowIntake(false)}>Cerrar</button>
+          </div>
+        </Modal>
       )}
 
       {showDelete && (

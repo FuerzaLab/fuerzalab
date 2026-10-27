@@ -16,6 +16,7 @@ import {
 } from "../../../services/clients";
 import { paths } from "../../../routes/paths";
 import Loading from "../../../components/ui/Loading";
+import IntakeFormView from "../../../components/IntakeFormView";
 
 const STATUS_LABEL: Record<ClientStatus, string> = {
   prospect: "Prospecto",
@@ -248,6 +249,7 @@ function InviteClientModal({
   onCreated: (client: ClientRow) => void;
 }) {
   const { notify } = useToast();
+  const [showBlankForm, setShowBlankForm] = useState(false);
   const [fullName, setFullName] = useState("");
   const [email, setEmail] = useState("");
   const [error, setError] = useState("");
@@ -279,11 +281,16 @@ function InviteClientModal({
   const link = code ? `${window.location.origin}${paths.register}?codigo=${code}` : "";
 
   return (
+    <>
     <Modal title="Invitar cliente" onClose={onClose}>
       {!code ? (
         <>
           <p className="note" style={{ marginBottom: 14 }}>
-            Se crea la ficha del cliente y un código de un solo uso que vence en 14 días.
+            Se crea la ficha del cliente y un código de un solo uso que vence en 14 días. Al entrar por primera vez, tu
+            cliente completa su formulario de ingreso.{" "}
+            <button type="button" className="link-btn" onClick={() => setShowBlankForm(true)}>
+              Ver cómo es el formulario
+            </button>
           </p>
           <label className="field-label">Nombre completo</label>
           <input className="input" style={{ marginBottom: 12 }} value={fullName} onChange={(e) => setFullName(e.target.value)} autoFocus />
@@ -325,5 +332,12 @@ function InviteClientModal({
         </>
       )}
     </Modal>
+    {showBlankForm && (
+      <Modal title="Así es el formulario de ingreso" onClose={() => setShowBlankForm(false)} wide>
+        <IntakeFormView />
+        <button className="btn" style={{ marginTop: 16 }} onClick={() => setShowBlankForm(false)}>Volver a la invitación</button>
+      </Modal>
+    )}
+    </>
   );
 }
