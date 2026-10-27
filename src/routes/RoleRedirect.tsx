@@ -1,13 +1,17 @@
 import { Navigate } from "react-router-dom";
 import { useAuth } from "../contexts/AuthContext";
 import { paths } from "./paths";
+import Landing from "../pages/public/Landing";
 
-/** Punto de entrada "/": manda a cada quien al panel que le corresponde. */
+/**
+ * Punto de entrada "/": sin sesión, la página de presentación; con sesión,
+ * manda a cada quien al panel que le corresponde.
+ */
 export default function RoleRedirect() {
   const { profile, loading } = useAuth();
 
   if (loading) return null;
-  if (!profile) return <Navigate to={paths.login} replace />;
+  if (!profile) return <Landing />;
 
   switch (profile.role) {
     case "super_admin":
