@@ -205,3 +205,11 @@ select.input:hover { border-color: var(--pri); }
 .celebrate .burst { font-size: 54px; animation: fl-pop .6s ease-out both; }
 @keyframes fl-pop { 0% { transform: scale(.3); opacity: 0; } 70% { transform: scale(1.15); opacity: 1; } 100% { transform: scale(1); } }
 @media (prefers-reduced-motion: reduce) { .celebrate .burst { animation: none; } }
+
+/* Inicio del entrenador: números del resumen y primeros pasos */
+.hero-num { font-family: 'Barlow Condensed', 'Barlow', sans-serif; font-size: 38px; font-weight: 700; line-height: 1; }
+.steps-bar { height: 6px; background: var(--bg); border-radius: 99px; overflow: hidden; margin-bottom: 6px; }
+.steps-bar > div { height: 100%; background: var(--ok); border-radius: 99px; transition: width .3s ease; }
+.step-dot { width: 28px; height: 28px; border-radius: 50%; flex: none; display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 13px; background: var(--bg); color: var(--muted); }
+.step-dot.done { background: var(--ok); color: #fff; }
+.step-dot.next { background: var(--pri); color: #fff; }
