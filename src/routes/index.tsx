@@ -60,9 +60,13 @@ export default function AppRoutes() {
         <Route path={paths.resetPassword} element={<ResetPassword />} />
       </Route>
 
+      {/* "/" es pública: sin sesión muestra la página de presentación; con
+          sesión, RoleRedirect lleva a cada uno a su panel. Por eso va fuera
+          de RequireAuth (que mandaría al visitante al inicio de sesión). */}
+      <Route path="/" element={<RoleRedirect />} />
+
       {/* A partir de aquí, hace falta sesión iniciada */}
       <Route element={<RequireAuth />}>
-        <Route path="/" element={<RoleRedirect />} />
         <Route path={paths.noAccess} element={<NoAccess />} />
 
         {/* Super Admin */}
