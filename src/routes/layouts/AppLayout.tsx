@@ -29,6 +29,7 @@ import { paths } from "../paths";
 import type { Role, StaffAccess } from "../../types/auth";
 import { routeRequirement, hasLevel } from "../../lib/staffModules";
 import Brand from "../../components/ui/Brand";
+import DemoGate from "../../components/DemoGate";
 
 interface NavItem {
   to: string;
@@ -229,7 +230,9 @@ function TrainerLauncherShell({
             <Eye size={15} /> Tienes acceso de <strong>solo lectura</strong> a esta sección: puedes ver todo, pero los cambios no se van a guardar.
           </div>
         )}
-        <Outlet />
+        <DemoGate>
+          <Outlet />
+        </DemoGate>
       </main>
 
       <div className={`menu-overlay${open ? " open" : ""}`} onClick={close} aria-hidden={!open} />

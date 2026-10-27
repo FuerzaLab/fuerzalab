@@ -3,6 +3,7 @@ import { useAuth } from "../../contexts/AuthContext";
 import { useToast } from "../../contexts/ToastContext";
 import { supabase } from "../../lib/supabase";
 import PasswordInput from "../../components/ui/PasswordInput";
+import { isDemoAccount } from "../../lib/demo";
 
 export default function Settings() {
   const { profile, updatePassword, refreshProfile } = useAuth();
@@ -66,6 +67,14 @@ export default function Settings() {
         </div>
       </div>
 
+      {/* En la demo no se deja cambiar la contraseña: todos los visitantes comparten la misma cuenta. */}
+      {isDemoAccount(profile?.email) ? (
+        <div className="panel" style={{ maxWidth: 420 }}>
+          <div className="bd">
+            <p className="note" style={{ margin: 0 }}>Estás en la cuenta demo: la contraseña no se puede cambiar.</p>
+          </div>
+        </div>
+      ) : (
       <div className="panel" style={{ maxWidth: 420 }}>
         <div className="hd"><h3>Cambiar contraseña</h3></div>
         <div className="bd">
@@ -77,6 +86,7 @@ export default function Settings() {
           <button className="btn" onClick={changePassword} disabled={savingPassword}>{savingPassword ? "Guardando…" : "Cambiar contraseña"}</button>
         </div>
       </div>
+      )}
     </div>
   );
 }

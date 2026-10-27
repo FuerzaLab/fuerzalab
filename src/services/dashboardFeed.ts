@@ -60,25 +60,42 @@ export async function dismissItems(keys: string[]): Promise<void> {
 async function recordItems(): Promise<FeedItem[]> {
   const { data, error } = await supabase
     .from("personal_records")
-    .select("id, client_id, exercise_name, reps, load_kg, performed_at, with_load, metric, previous_best")
+    .select("id, client_id, workout_log_id, exercise_name, reps, load_kg, performed_at, with_load, metric, previous_best")
     .gte("performed_at", isoDaysAgo(DAYS))
     .order("performed_at", { ascending: false })
-    .limit(200);
+    .limit(300);
   if (error) return [];
-  return (data ?? []).map((r: any) => {
-    const withLoad = !!r.with_load;
+
+  // Agrupados por sesión: si en un mismo entrenamiento batió 3 récords, es
+  // una sola novedad ("3 récords nuevos: …"), no tres.
+  const bySession = new Map<string, any[]>();
+  for (const r of data ?? []) {
+    const k = (r.workout_log_id as string) ?? (r.id as string);
+    const list = bySession.get(k);
+    if (list) list.push(r);
+    else bySession.set(k, [r]);
+  }
+
+  const describe = (r: any) => {
     const metric = Number(r.metric);
     const prev = Number(r.previous_best);
+    if (!r.with_load) return `${r.exercise_name}: ${r.reps} reps (antes ${fmtKg(prev)})`;
     const pct = prev > 0 ? Math.round(((metric - prev) / prev) * 100) : null;
+    return `${r.exercise_name}: ${fmtKg(Number(r.load_kg))} kg × ${r.reps}, 1RM est. ${fmtKg(metric)} kg${pct ? ` (+${pct}%)` : ""}`;
+  };
+  const joinNames = (names: string[]) =>
+    names.length <= 1 ? names.join("") : `${names.slice(0, -1).join(", ")} y ${names[names.length - 1]}`;
+
+  return [...bySession.entries()].map(([k, list]) => {
+    const names = Array.from(new Set(list.map((r) => r.exercise_name as string)));
+    const latest = list.reduce((a, b) => (a.performed_at > b.performed_at ? a : b));
     return {
-      key: `pr:${r.id}`,
+      key: `pr:${k}`,
       kind: "record" as const,
-      clientId: r.client_id,
-      at: r.performed_at,
-      title: `Nuevo récord en ${r.exercise_name}`,
-      detail: withLoad
-        ? `${fmtKg(Number(r.load_kg))} kg × ${r.reps} — 1RM estimado ${fmtKg(metric)} kg (antes ${fmtKg(prev)} kg${pct ? `, +${pct}%` : ""})`
-        : `${r.reps} repeticiones (antes ${fmtKg(prev)})`,
+      clientId: latest.client_id,
+      at: latest.performed_at,
+      title: list.length === 1 ? `Nuevo récord en ${names[0]}` : `${list.length} récords nuevos: ${joinNames(names)}`,
+      detail: list.map(describe).join(" · "),
       tone: "ok" as const,
     };
   });

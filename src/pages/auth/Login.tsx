@@ -3,6 +3,7 @@ import { Link, useLocation, useNavigate } from "react-router-dom";
 import { useAuth } from "../../contexts/AuthContext";
 import { paths } from "../../routes/paths";
 import PasswordInput from "../../components/ui/PasswordInput";
+import { DEMO_EMAIL, DEMO_ENABLED, DEMO_PASSWORD } from "../../lib/demo";
 
 export default function Login() {
   const { signIn } = useAuth();
@@ -12,6 +13,19 @@ export default function Login() {
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
+  const [demoLoading, setDemoLoading] = useState(false);
+
+  const enterDemo = async () => {
+    setError("");
+    setDemoLoading(true);
+    const { error: err } = await signIn(DEMO_EMAIL, DEMO_PASSWORD);
+    setDemoLoading(false);
+    if (err) {
+      setError("La demo no está disponible en este momento. Intenta de nuevo en unos minutos.");
+      return;
+    }
+    navigate("/", { replace: true });
+  };
 
   const from = (location.state as { from?: Location })?.from?.pathname;
 
@@ -69,6 +83,18 @@ export default function Login() {
       <button type="submit" className="btn" style={{ width: "100%", justifyContent: "center" }} disabled={loading}>
         {loading ? "Ingresando…" : "Ingresar"}
       </button>
+
+      {DEMO_ENABLED && (
+        <div className="demo-cta">
+          <div style={{ fontWeight: 600, marginBottom: 2 }}>¿Todavía no tienes cuenta?</div>
+          <div className="note" style={{ marginBottom: 10 }}>
+            Prueba FuerzaLab como entrenador, con clientes y datos de ejemplo. Sin registrarte.
+          </div>
+          <button type="button" className="btn ghost" style={{ width: "100%", justifyContent: "center" }} onClick={enterDemo} disabled={demoLoading}>
+            {demoLoading ? "Entrando a la demo…" : "Probar la demo"}
+          </button>
+        </div>
+      )}
 
       <p className="note" style={{ marginTop: 20, textAlign: "center" }}>
         ¿Te invitaron a la plataforma?{" "}

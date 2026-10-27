@@ -213,3 +213,8 @@ select.input:hover { border-color: var(--pri); }
 .step-dot { width: 28px; height: 28px; border-radius: 50%; flex: none; display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 13px; background: var(--bg); color: var(--muted); }
 .step-dot.done { background: var(--ok); color: #fff; }
 .step-dot.next { background: var(--pri); color: #fff; }
+
+/* Demo */
+.demo-cta { margin-top: 18px; padding: 14px; border: 1.5px dashed var(--pri); border-radius: 10px; background: var(--pri-soft); }
+.demo-banner { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; margin: 16px 24px 0; padding: 10px 14px; border-radius: 9px; background: var(--pri-soft); color: var(--nav); font-size: 13.5px; max-width: 1192px; }
+@media (max-width: 860px) { .demo-banner { margin: 12px 16px 0; } }
