@@ -78,7 +78,7 @@ export default function InstallAppCard() {
               ? "Queda en tu pantalla de inicio con su ícono y se abre como una app, sin el navegador."
               : isIOS()
                 ? "Toca el botón Compartir (el cuadrado con la flecha hacia arriba) y luego \u201cAgregar a inicio\u201d. Queda con su ícono, como una app."
-                : "Abre el menú del navegador (los tres puntos) y elige \u201cInstalar app\u201d o \u201cAgregar a la pantalla principal\u201d."}
+                : "En Chrome: abre el menú (los tres puntos ⋮) y elige \u201cInstalar app\u201d o \u201cAgregar a la pantalla principal\u201d. En Samsung Internet: menú (☰) → \u201cAgregar página a\u201d → \u201cPantalla de inicio\u201d."}
           </p>
           {canPrompt && (
             <button

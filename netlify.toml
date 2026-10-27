@@ -6,3 +6,10 @@
   from = "/*"
   to = "/index.html"
   status = 200
+
+# El service worker siempre se revisa en cada visita (nunca de la caché),
+# así una publicación nueva llega a todos sin demora.
+[[headers]]
+  for = "/sw.js"
+  [headers.values]
+    Cache-Control = "no-cache"
