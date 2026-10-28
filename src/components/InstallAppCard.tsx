@@ -32,6 +32,17 @@ function isMobile(): boolean {
 }
 
 const isIOS = () => /iphone|ipad|ipod/i.test(navigator.userAgent);
+/**
+ * Samsung Internet (el navegador que viene en los Samsung) arma un
+ * instalador desactualizado para las apps web, y Google Play Protect lo
+ * bloquea con "Se bloqueó la app no segura… se diseñó para una versión
+ * anterior de Android". No es un problema de FuerzaLab: desde Chrome se
+ * instala sin ese aviso. Por eso, en Samsung Internet se recomienda Chrome.
+ */
+const isSamsungInternet = () => /SamsungBrowser/i.test(navigator.userAgent);
+/** Enlace que abre esta misma página en Chrome (Android). */
+const chromeIntentUrl = () =>
+  `intent://${location.host}${location.pathname}${location.search}#Intent;scheme=https;package=com.android.chrome;end`;
 
 export default function InstallAppCard() {
   const [visible, setVisible] = useState(false);
@@ -73,14 +84,27 @@ export default function InstallAppCard() {
         <Smartphone size={22} style={{ color: "var(--pri)", flex: "none", marginTop: 2 }} />
         <div style={{ flex: 1 }}>
           <b>Instala FuerzaLab en tu celular</b>
+          {isSamsungInternet() ? (
+            <>
+              <p className="note" style={{ margin: "4px 0 10px" }}>
+                Desde este navegador (Samsung Internet) el celular puede bloquear la instalación con un aviso de "app no
+                segura": es un problema conocido de ese navegador, no de FuerzaLab. Ábrela en <b>Chrome</b> y, desde el
+                menú (⋮), elige "Instalar app" o "Agregar a la pantalla principal".
+              </p>
+              <a className="btn" href={chromeIntentUrl()} style={{ textDecoration: "none" }}>
+                Abrir en Chrome
+              </a>
+            </>
+          ) : (
           <p className="note" style={{ margin: "4px 0 10px" }}>
             {canPrompt
               ? "Queda en tu pantalla de inicio con su ícono y se abre como una app, sin el navegador."
               : isIOS()
                 ? "Toca el botón Compartir (el cuadrado con la flecha hacia arriba) y luego \u201cAgregar a inicio\u201d. Queda con su ícono, como una app."
-                : "En Chrome: abre el menú (los tres puntos ⋮) y elige \u201cInstalar app\u201d o \u201cAgregar a la pantalla principal\u201d. En Samsung Internet: menú (☰) → \u201cAgregar página a\u201d → \u201cPantalla de inicio\u201d."}
+                : "Abre el menú del navegador (los tres puntos ⋮) y elige \u201cInstalar app\u201d o \u201cAgregar a la pantalla principal\u201d. Si usas otro navegador y no aparece la opción, ábrela en Chrome."}
           </p>
-          {canPrompt && (
+          )}
+          {canPrompt && !isSamsungInternet() && (
             <button
               className="btn"
               onClick={async () => {
