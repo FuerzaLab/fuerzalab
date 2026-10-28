@@ -213,7 +213,7 @@ export function TermsPage() {
       <p>No está permitido:</p>
       <ul>
         <li>Acceder a cuentas o datos de otras personas sin autorización, o intentar vulnerar la seguridad de la plataforma.</li>
-        <li>Cargar contenido ilegal, ofensivo o que no te pertenece.</li>
+        <li>Cargar contenido ilegal u ofensivo, o fotos, videos y textos que no te pertenecen y que no tienes permiso para usar (por ejemplo, videos de ejercicios descargados de internet). Si recibimos un reclamo fundado por derechos de autor, podemos retirar ese contenido.</li>
         <li>Usar la plataforma para enviar publicidad no solicitada o para fines distintos del acompañamiento del entrenamiento.</li>
       </ul>
 

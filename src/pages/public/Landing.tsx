@@ -61,7 +61,7 @@ const AUDIENCES = {
     tab: "Tus alumnos",
     title: "Una app que dan ganas de abrir",
     points: [
-      "La rutina de hoy, lo primero que ven: con la demostración de cada ejercicio y el temporizador de descanso.",
+      "La rutina de hoy, lo primero que ven: con lo que levantaron la última vez y el temporizador de descanso.",
       "Cuando superan una marca, la app lo celebra con ellos.",
       "Su progreso en fotos, medidas y gráficos — y un chat directo contigo.",
       "Se instala en el celular como cualquier app, sin pasar por la tienda.",
@@ -70,13 +70,37 @@ const AUDIENCES = {
 } as const;
 type Audience = keyof typeof AUDIENCES;
 
-const FEATURES: [string, string][] = [
-  ["Planificación", "Programas por mesociclos y semanas, plantillas reutilizables y progresión automática sugerida."],
-  ["Entrenamiento", "Cada serie registrada con carga, repeticiones y esfuerzo; también lo puedes cargar tú en la sesión presencial."],
-  ["Evaluaciones", "Composición corporal, circunferencias, pliegues, fuerza, potencia, resistencia, movilidad y fotos en el mismo registro."],
-  ["Bienestar", "Un cuestionario corto antes de entrenar, con semáforo para ajustar la carga del día."],
-  ["Reportes", "La evolución de cada alumno en gráficos, con 1RM estimado por ejercicio, listos para exportar en PDF."],
-  ["Negocio", "Planes, pagos, vencimientos y agenda presencial u online."],
+/**
+ * "Así acompañas a cada alumno": lo que hace FuerzaLab contado como momentos
+ * (antes, durante, después, a fin de mes) y lo que vive cada uno en ese
+ * momento — no como una lista de funciones. Todo lo que se dice acá existe
+ * en la app.
+ */
+const MOMENTS: { when: string; title: string; you: string; them: string }[] = [
+  {
+    when: "Antes de entrenar",
+    title: "Sabes cómo llega antes de que empiece",
+    them: "Abre la app y lo primero que ve es su rutina de hoy. Responde en 20 segundos cómo durmió, su energía y si le duele algo.",
+    you: "Si durmió mal o tiene una molestia, te aparece en rojo en Novedades. Ajustas la carga antes de que haga la primera serie, no después.",
+  },
+  {
+    when: "Durante la sesión",
+    title: "Cada serie queda registrada, sin papeles",
+    them: "Ve cada ejercicio con sus series, repeticiones y carga, lo que levantó la última vez y el temporizador de descanso. Carga sus series en kg o libras, según el equipo.",
+    you: "Si entrena contigo, lo cargas tú desde tu celular. Si entrena solo, igual ves qué hizo, serie por serie.",
+  },
+  {
+    when: "Cuando termina",
+    title: "Nada se pierde en un chat",
+    them: "Cuenta cómo se sintió. Si superó su mejor marca, la app se lo celebra en el momento.",
+    you: "Su comentario, su esfuerzo y sus récords te llegan juntos a Novedades. Los atiendes uno por uno, y no se te pasa ninguno.",
+  },
+  {
+    when: "A fin de mes",
+    title: "El progreso se ve, y se renueva",
+    them: "Ve su evolución en gráficos: fuerza, medidas, fotos de antes y ahora. Entiende por qué sigue contigo.",
+    you: "Le mandas un reporte en PDF con tu marca. Sus pagos y vencimientos están al día, en el mismo lugar.",
+  },
 ];
 
 /**
@@ -250,15 +274,31 @@ export default function Landing() {
 
       <section className="lp-section lp-section-alt">
         <div className="lp-wrap">
-          <h2>Todo lo que necesitas para acompañar a un alumno</h2>
-          <dl className="lp-features">
-            {FEATURES.map(([t, d]) => (
-              <div key={t}>
-                <dt>{t}</dt>
-                <dd>{d}</dd>
-              </div>
+          <h2>Así acompañas a cada alumno</h2>
+          <p className="lp-muted" style={{ marginTop: -10, marginBottom: 30, maxWidth: 640 }}>
+            Lo que cambia en tu semana, y en la de ellos.
+          </p>
+          <ol className="lp-moments">
+            {MOMENTS.map((m, i) => (
+              <li key={m.when}>
+                <div className="lp-moment-when">
+                  <span className="lp-moment-n">{i + 1}</span>
+                  {m.when}
+                </div>
+                <h3>{m.title}</h3>
+                <div className="lp-moment-pair">
+                  <div>
+                    <div className="lp-moment-who">Tu alumno</div>
+                    <p>{m.them}</p>
+                  </div>
+                  <div>
+                    <div className="lp-moment-who">Tú</div>
+                    <p>{m.you}</p>
+                  </div>
+                </div>
+              </li>
             ))}
-          </dl>
+          </ol>
         </div>
       </section>
 

@@ -26,6 +26,7 @@ import ImportExercisesModal from "./ImportExercisesModal";
 import Chip from "../../../components/ui/Chip";
 import Loading from "../../../components/ui/Loading";
 import ConfirmModal from "../../../components/ui/ConfirmModal";
+import Modal from "../../../components/ui/Modal";
 import SearchSelect from "../../../components/ui/SearchSelect";
 
 export default function ExercisesPage({ scope }: { scope: "global" | "trainer" }) {
@@ -51,6 +52,24 @@ export default function ExercisesPage({ scope }: { scope: "global" | "trainer" }
   const [newVariationNotes, setNewVariationNotes] = useState("");
   const [uploadingMedia, setUploadingMedia] = useState(false);
   const mediaInputRef = useRef<HTMLInputElement>(null);
+  // Antes de la primera subida se pide confirmar que se tienen los derechos
+  // de la foto o el video (se recuerda en este dispositivo).
+  const [askMediaRights, setAskMediaRights] = useState(false);
+  const [rightsChecked, setRightsChecked] = useState(false);
+  const RIGHTS_KEY = "fl-media-rights-ok";
+  const startMediaUpload = () => {
+    let ok = false;
+    try {
+      ok = localStorage.getItem(RIGHTS_KEY) === "1";
+    } catch {
+      /* sin almacenamiento: se pregunta cada vez */
+    }
+    if (ok) mediaInputRef.current?.click();
+    else {
+      setRightsChecked(false);
+      setAskMediaRights(true);
+    }
+  };
   const [editingExercise, setEditingExercise] = useState<ExerciseRow | null>(null);
   const [toDelete, setToDelete] = useState<ExerciseRow | null>(null);
   const [ownerNames, setOwnerNames] = useState<Record<string, string>>({});
@@ -323,9 +342,12 @@ export default function ExercisesPage({ scope }: { scope: "global" | "trainer" }
                   ) : (
                     <div>
                       <input ref={mediaInputRef} type="file" accept="image/*,video/mp4,video/webm" onChange={pickMedia} style={{ display: "none" }} />
-                      <button className="btn ghost" style={{ padding: "6px 14px", fontSize: 13 }} onClick={() => mediaInputRef.current?.click()} disabled={uploadingMedia}>
+                      <button className="btn ghost" style={{ padding: "6px 14px", fontSize: 13 }} onClick={startMediaUpload} disabled={uploadingMedia}>
                         <Film size={14} /> {uploadingMedia ? "Subiendo…" : "Subir foto o video de demostración"}
                       </button>
+                      <p className="note" style={{ fontSize: 12, margin: "6px 0 0" }}>
+                        Solo fotos o videos tuyos, o que tengas permiso para usar.
+                      </p>
                     </div>
                   )}
                 </div>
@@ -423,6 +445,41 @@ export default function ExercisesPage({ scope }: { scope: "global" | "trainer" }
             </div>
           )}
         </div>
+      )}
+
+      {askMediaRights && (
+        <Modal title="Antes de subir una foto o un video" onClose={() => setAskMediaRights(false)}>
+          <p style={{ marginTop: 0 }}>
+            La mayoría de las fotos y videos de ejercicios que hay en internet tienen dueño: canales de YouTube, gimnasios,
+            fotógrafos o apps. Subirlos sin permiso puede traer un reclamo por derechos de autor.
+          </p>
+          <p className="note">
+            Usa fotos o videos que hayas hecho tú (o tu equipo, o tus alumnos con su permiso), o material con una licencia que
+            permita usarlo, y que no muestren a otras personas sin su consentimiento.
+          </p>
+          <label style={{ display: "flex", gap: 10, alignItems: "flex-start", margin: "14px 0", fontSize: 14 }}>
+            <input type="checkbox" checked={rightsChecked} onChange={(e) => setRightsChecked(e.target.checked)} style={{ marginTop: 3 }} />
+            <span>Confirmo que lo que voy a subir es mío o tengo permiso para usarlo.</span>
+          </label>
+          <div style={{ display: "flex", gap: 8 }}>
+            <button
+              className="btn"
+              disabled={!rightsChecked}
+              onClick={() => {
+                try {
+                  localStorage.setItem(RIGHTS_KEY, "1");
+                } catch {
+                  /* nada */
+                }
+                setAskMediaRights(false);
+                mediaInputRef.current?.click();
+              }}
+            >
+              Elegir archivo
+            </button>
+            <button className="btn ghost" onClick={() => setAskMediaRights(false)}>Cancelar</button>
+          </div>
+        </Modal>
       )}
 
       {editingExercise && (
