@@ -100,6 +100,9 @@ export default function Login() {
         ¿Te invitaron a la plataforma?{" "}
         <Link to={paths.register}>Regístrate con tu código</Link>
       </p>
+      <p className="note" style={{ marginTop: 10, textAlign: "center", fontSize: 12.5 }}>
+        <Link to={paths.terms}>Términos de uso</Link> · <Link to={paths.privacy}>Política de privacidad</Link>
+      </p>
     </form>
   );
 }

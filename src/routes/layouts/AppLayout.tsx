@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { Suspense, useState } from "react";
 import { NavLink, Outlet, useLocation, useNavigate } from "react-router-dom";
 import {
   LayoutDashboard,
@@ -30,6 +30,7 @@ import type { Role, StaffAccess } from "../../types/auth";
 import { routeRequirement, hasLevel } from "../../lib/staffModules";
 import Brand from "../../components/ui/Brand";
 import DemoGate from "../../components/DemoGate";
+import PageLoading from "../../components/ui/PageLoading";
 import { useIsStudioOwner } from "../../hooks/useIsStudioOwner";
 
 interface NavItem {
@@ -174,7 +175,9 @@ export default function AppLayout() {
             {profile.full_name} · {roleLabel(profile.role)}
           </span>
         </header>
-        <Outlet />
+        <Suspense fallback={<PageLoading />}>
+          <Outlet />
+        </Suspense>
       </div>
     </div>
   );
@@ -240,7 +243,9 @@ function TrainerLauncherShell({
           </div>
         )}
         <DemoGate>
+          <Suspense fallback={<PageLoading />}>
           <Outlet />
+        </Suspense>
         </DemoGate>
       </main>
 

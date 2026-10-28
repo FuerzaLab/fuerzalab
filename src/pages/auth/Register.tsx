@@ -27,6 +27,7 @@ export default function Register() {
   const [sent, setSent] = useState(false);
   const [preview, setPreview] = useState<InvitePreview | null>(null);
   const [checkingCode, setCheckingCode] = useState(false);
+  const [acceptTerms, setAcceptTerms] = useState(false);
 
   // Verifica el código apenas el usuario termina de escribirlo (12
   // caracteres), para mostrarle de inmediato a qué organización se une.
@@ -65,6 +66,7 @@ export default function Register() {
     if (!email.trim()) return setError("Escribe tu correo electrónico.");
     if (password.length < 6) return setError("La contraseña debe tener al menos 6 caracteres.");
     if (password !== confirmPassword) return setError("Las contraseñas no coinciden.");
+    if (!acceptTerms) return setError("Para crear tu cuenta tienes que aceptar los Términos de uso y la Política de privacidad.");
 
     setError("");
     setLoading(true);
@@ -161,6 +163,16 @@ export default function Register() {
         onChange={setConfirmPassword}
         autoComplete="new-password"
       />
+
+      <label style={{ display: "flex", gap: 10, alignItems: "flex-start", margin: "14px 0 4px", fontSize: 13.5 }}>
+        <input type="checkbox" checked={acceptTerms} onChange={(e) => setAcceptTerms(e.target.checked)} style={{ marginTop: 3 }} />
+        <span>
+          Acepto los{" "}
+          <Link to={paths.terms} target="_blank" rel="noreferrer">Términos de uso</Link> y la{" "}
+          <Link to={paths.privacy} target="_blank" rel="noreferrer">Política de privacidad</Link>, incluido el uso de mis
+          datos de salud para planificar mi entrenamiento.
+        </span>
+      </label>
 
       {error && <p className="error-text" style={{ margin: "10px 0" }}>{error}</p>}
 

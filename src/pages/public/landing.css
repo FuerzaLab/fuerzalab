@@ -124,3 +124,14 @@
   .lp-attend { align-self: flex-start; }
 }
 @media (prefers-reduced-motion: reduce) { .lp-feed-check { animation: none; } }
+
+/* Páginas legales */
+.legal { max-width: 780px; padding-top: 48px; padding-bottom: 64px; }
+.legal h1 { font-size: clamp(36px, 5vw, 52px); margin-bottom: 6px; max-width: none; }
+.legal h2 { font-size: 26px; margin: 36px 0 10px; }
+.legal p, .legal li { color: #2A3744; }
+.legal ul { padding-left: 22px; display: grid; gap: 8px; }
+.legal a { color: var(--blue); }
+.legal-switch { margin: 0 0 8px; padding: 10px 14px; background: #fff; border: 1px solid var(--line); border-radius: 10px; font-size: 15px; }
+/* En las páginas legales, los enlaces de arriba se ven también en el celular */
+@media (max-width: 520px) { .lp-top-actions.legal-nav .lp-link { display: inline; font-size: 14px; } .lp-top-actions.legal-nav { gap: 12px; } }

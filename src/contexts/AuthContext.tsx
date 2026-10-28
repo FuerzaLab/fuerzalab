@@ -111,6 +111,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         data: {
           full_name: fullName,
           invite_code: inviteCode ? inviteCode.trim().toUpperCase() : "",
+          // Constancia de que aceptó los Términos y la Política de privacidad
+          // (queda en los datos de la cuenta, en Supabase → Authentication).
+          terms_accepted_at: new Date().toISOString(),
+          terms_version: "2026-10-27",
         },
       },
     });

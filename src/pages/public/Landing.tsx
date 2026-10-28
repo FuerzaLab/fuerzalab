@@ -320,6 +320,8 @@ export default function Landing() {
             {EMAIL && <a href={`mailto:${EMAIL}`}>{EMAIL}</a>}
             <Link to={paths.login}>Iniciar sesión</Link>
             <Link to={paths.register}>Tengo un código de invitación</Link>
+            <Link to={paths.privacy}>Privacidad</Link>
+            <Link to={paths.terms}>Términos</Link>
           </span>
         </div>
       </footer>

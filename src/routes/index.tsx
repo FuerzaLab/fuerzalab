@@ -1,4 +1,6 @@
+import { lazy, Suspense } from "react";
 import { Routes, Route } from "react-router-dom";
+import PageLoading from "../components/ui/PageLoading";
 
 import AuthLayout from "./layouts/AuthLayout";
 import AppLayout from "./layouts/AppLayout";
@@ -14,44 +16,51 @@ import ForgotPassword from "../pages/auth/ForgotPassword";
 import ResetPassword from "../pages/auth/ResetPassword";
 import NoAccess from "../pages/shared/NoAccess";
 import NotFound from "../pages/shared/NotFound";
-import ComingSoon from "../pages/shared/ComingSoon";
+const ComingSoon = lazy(() => import("../pages/shared/ComingSoon"));
 
-import AdminDashboard from "../pages/admin/Dashboard";
-import Organizations from "../pages/admin/Organizations";
-import AdminBillingPage from "../pages/admin/billing/BillingPage";
-import Users from "../pages/admin/Users";
-import TrainerDashboard from "../pages/trainer/Dashboard";
-import ClientDashboard from "../pages/client/Dashboard";
-import ClientsList from "../pages/trainer/clients/ClientsList";
-import ClientDetail from "../pages/trainer/clients/ClientDetail";
-import ExercisesPage from "../pages/shared/exercises/ExercisesPage";
-import ProgramsPage from "../pages/trainer/programs/ProgramsPage";
-import BuilderPage from "../pages/trainer/builder/BuilderPage";
-import TrainerPaymentsPage from "../pages/trainer/payments/PaymentsPage";
-import TrainerMessagesPage from "../pages/trainer/messages/MessagesPage";
-import ClientPayments from "../pages/client/Payments";
-import ClientMessages from "../pages/client/Messages";
-import Settings from "../pages/shared/Settings";
-import ClientRoutine from "../pages/client/Routine";
-import TrainerAssessmentsPage from "../pages/trainer/assessments/AssessmentsPage";
-import ClientAssessments from "../pages/client/Assessments";
-import TrainerWellnessPage from "../pages/trainer/wellness/WellnessPage";
-import ReportsPage from "../pages/trainer/reports/ReportsPage";
-import ClientWellness from "../pages/client/Wellness";
-import ClientReports from "../pages/client/Reports";
-import ProgressPhotosPage from "../pages/trainer/progress-photos/ProgressPhotosPage";
-import SuggestionsPage from "../pages/trainer/suggestions/SuggestionsPage";
-import TemplatesPage from "../pages/trainer/templates/TemplatesPage";
-import AgendaPage from "../pages/trainer/agenda/AgendaPage";
-import RunSessionPage from "../pages/trainer/run-session/RunSessionPage";
-import ClientProgressPhotos from "../pages/client/ProgressPhotos";
-import TeamPage from "../pages/trainer/team/TeamPage";
-import StudioPage from "../pages/trainer/studio/StudioPage";
+const AdminDashboard = lazy(() => import("../pages/admin/Dashboard"));
+const Organizations = lazy(() => import("../pages/admin/Organizations"));
+const AdminBillingPage = lazy(() => import("../pages/admin/billing/BillingPage"));
+const Users = lazy(() => import("../pages/admin/Users"));
+const TrainerDashboard = lazy(() => import("../pages/trainer/Dashboard"));
+const ClientDashboard = lazy(() => import("../pages/client/Dashboard"));
+const ClientsList = lazy(() => import("../pages/trainer/clients/ClientsList"));
+const ClientDetail = lazy(() => import("../pages/trainer/clients/ClientDetail"));
+const ExercisesPage = lazy(() => import("../pages/shared/exercises/ExercisesPage"));
+const ProgramsPage = lazy(() => import("../pages/trainer/programs/ProgramsPage"));
+const BuilderPage = lazy(() => import("../pages/trainer/builder/BuilderPage"));
+const TrainerPaymentsPage = lazy(() => import("../pages/trainer/payments/PaymentsPage"));
+const TrainerMessagesPage = lazy(() => import("../pages/trainer/messages/MessagesPage"));
+const ClientPayments = lazy(() => import("../pages/client/Payments"));
+const ClientMessages = lazy(() => import("../pages/client/Messages"));
+const Settings = lazy(() => import("../pages/shared/Settings"));
+const ClientRoutine = lazy(() => import("../pages/client/Routine"));
+const TrainerAssessmentsPage = lazy(() => import("../pages/trainer/assessments/AssessmentsPage"));
+const ClientAssessments = lazy(() => import("../pages/client/Assessments"));
+const TrainerWellnessPage = lazy(() => import("../pages/trainer/wellness/WellnessPage"));
+const ReportsPage = lazy(() => import("../pages/trainer/reports/ReportsPage"));
+const ClientWellness = lazy(() => import("../pages/client/Wellness"));
+const ClientReports = lazy(() => import("../pages/client/Reports"));
+const ProgressPhotosPage = lazy(() => import("../pages/trainer/progress-photos/ProgressPhotosPage"));
+const SuggestionsPage = lazy(() => import("../pages/trainer/suggestions/SuggestionsPage"));
+const TemplatesPage = lazy(() => import("../pages/trainer/templates/TemplatesPage"));
+const AgendaPage = lazy(() => import("../pages/trainer/agenda/AgendaPage"));
+const RunSessionPage = lazy(() => import("../pages/trainer/run-session/RunSessionPage"));
+const ClientProgressPhotos = lazy(() => import("../pages/client/ProgressPhotos"));
+const TeamPage = lazy(() => import("../pages/trainer/team/TeamPage"));
+const StudioPage = lazy(() => import("../pages/trainer/studio/StudioPage"));
 
 import { paths } from "./paths";
 
+// Las pantallas se descargan recién cuando se abren (code splitting): así la
+// primera carga, sobre todo en el celular, baja solo lo necesario. Las de
+// inicio de sesión y registro quedan incluidas desde el principio.
+const PrivacyPage = lazy(() => import("../pages/public/Legal").then((m) => ({ default: m.PrivacyPage })));
+const TermsPage = lazy(() => import("../pages/public/Legal").then((m) => ({ default: m.TermsPage })));
+
 export default function AppRoutes() {
   return (
+    <Suspense fallback={<PageLoading />}>
     <Routes>
       {/* Autenticación: públicas */}
       <Route element={<AuthLayout />}>
@@ -65,6 +74,8 @@ export default function AppRoutes() {
           sesión, RoleRedirect lleva a cada uno a su panel. Por eso va fuera
           de RequireAuth (que mandaría al visitante al inicio de sesión). */}
       <Route path="/" element={<RoleRedirect />} />
+      <Route path={paths.privacy} element={<PrivacyPage />} />
+      <Route path={paths.terms} element={<TermsPage />} />
 
       {/* A partir de aquí, hace falta sesión iniciada */}
       <Route element={<RequireAuth />}>
@@ -132,5 +143,6 @@ export default function AppRoutes() {
 
       <Route path="*" element={<NotFound />} />
     </Routes>
+    </Suspense>
   );
 }

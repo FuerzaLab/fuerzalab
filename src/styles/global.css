@@ -264,3 +264,9 @@ select.input:hover { border-color: var(--pri); }
 .intake-parq tr.yes td { background: var(--bad-soft); }
 .intake-alert { margin: 10px 0 0; padding: 10px 12px; border-left: 4px solid var(--bad); background: var(--bad-soft); border-radius: 6px; font-size: 14px; }
 .link-btn { background: none; border: 0; padding: 0; font: inherit; color: var(--pri); text-decoration: underline; cursor: pointer; }
+
+/* Mientras se descarga una pantalla */
+.page-loading { display: flex; align-items: center; justify-content: center; min-height: 50vh; }
+.page-loading img { border-radius: 11px; animation: fl-breathe 1.2s ease-in-out infinite; }
+@keyframes fl-breathe { 0%, 100% { opacity: .35; transform: scale(.94); } 50% { opacity: 1; transform: scale(1); } }
+@media (prefers-reduced-motion: reduce) { .page-loading img { animation: none; } }
