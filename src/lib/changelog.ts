@@ -22,6 +22,13 @@ export interface ChangelogEntry {
 
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    id: "2026-10-28-menu-two-levels",
+    date: "2026-10-28",
+    title: "Un menú más simple",
+    body: "Al abrir el menú ves primero lo que usas todos los días: Inicio, Entrenar con cliente, Agenda, Clientes, Mensajes y el Constructor de rutinas. Todo lo demás está en \"Más herramientas\", a un toque. Y la primera vez que entras a cada pantalla, un recuadro corto te cuenta para qué sirve.",
+    for: ["trainer"],
+  },
+  {
     id: "2026-10-28-whats-new",
     date: "2026-10-28",
     title: "Esta sección: Qué hay de nuevo",

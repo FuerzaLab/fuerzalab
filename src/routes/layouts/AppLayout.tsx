@@ -23,6 +23,7 @@ import {
   X,
   UserCog,
   Sparkles,
+  ChevronDown,
   Eye,
 } from "lucide-react";
 import { useAuth } from "../../contexts/AuthContext";
@@ -31,6 +32,7 @@ import type { Role, StaffAccess } from "../../types/auth";
 import { routeRequirement, hasLevel } from "../../lib/staffModules";
 import Brand from "../../components/ui/Brand";
 import DemoGate from "../../components/DemoGate";
+import ScreenIntro from "../../components/ScreenIntro";
 import PageLoading from "../../components/ui/PageLoading";
 import { useIsStudioOwner } from "../../hooks/useIsStudioOwner";
 import { useWhatsNew } from "../../hooks/useWhatsNew";
@@ -104,6 +106,17 @@ const GROUP_COLOR: Record<string, { bg: string; fg: string }> = {
   Negocio: { bg: "#E6E9F7", fg: "#3A4A9E" },
 };
 const WELLNESS_COLOR = { bg: "#EDE7FB", fg: "#7B4FE0" };
+
+/** "Lo de todos los días": lo primero que se ve al abrir el menú, en este orden. */
+const DAILY_ORDER: string[] = [
+  paths.trainerDashboard,
+  paths.trainerRunSession,
+  paths.trainerAgenda,
+  paths.trainerClients,
+  paths.trainerMessages,
+  paths.trainerBuilder,
+];
+const MORE_KEY = "fl-menu-more-open";
 
 /** Las secciones del entrenador que este asistente tiene habilitadas. */
 function staffNav(access: StaffAccess | null): NavItem[] {
@@ -181,6 +194,7 @@ export default function AppLayout() {
             {profile.full_name} · {roleLabel(profile.role)}
           </span>
         </header>
+        <ScreenIntro />
         <Suspense fallback={<PageLoading />}>
           <Outlet />
         </Suspense>
@@ -219,8 +233,32 @@ function TrainerLauncherShell({
   const readOnly = !!(staffAccess && req && !hasLevel(staffAccess.permissions, req.module, "write"));
   const close = () => setOpen(false);
 
+  // Menú en dos niveles: arriba "Lo de todos los días"; el resto, agrupado
+  // como siempre, en "Más herramientas", que se despliega con un toque.
+  // Así quien abre la app por primera vez ve 6 opciones, no 18.
+  const dailyItems = DAILY_ORDER.map((to) => items.find((i) => i.to === to)).filter((i): i is NavItem => !!i);
+  const moreItems = items.filter((i) => !DAILY_ORDER.includes(i.to));
+  const moreHasCurrent = moreItems.some((i) => i.to === pathname);
+  const [moreOpen, setMoreOpen] = useState<boolean>(() => {
+    try {
+      return localStorage.getItem(MORE_KEY) === "1";
+    } catch {
+      return false;
+    }
+  });
+  const showMore = moreOpen || moreHasCurrent;
+  const toggleMore = () => {
+    const next = !showMore;
+    setMoreOpen(next);
+    try {
+      localStorage.setItem(MORE_KEY, next ? "1" : "0");
+    } catch {
+      /* nada */
+    }
+  };
+
   const groups: { name: string; items: NavItem[] }[] = [];
-  for (const item of items) {
+  for (const item of moreItems) {
     const groupName = item.group ?? "";
     let g = groups.find((x) => x.name === groupName);
     if (!g) {
@@ -250,6 +288,7 @@ function TrainerLauncherShell({
             <Eye size={15} /> Tienes acceso de <strong>solo lectura</strong> a esta sección: puedes ver todo, pero los cambios no se van a guardar.
           </div>
         )}
+        <ScreenIntro />
         <DemoGate>
           <Suspense fallback={<PageLoading />}>
           <Outlet />
@@ -270,34 +309,63 @@ function TrainerLauncherShell({
           </button>
         </div>
 
-        {groups.map((g) => (
-          <div key={g.name || "default"}>
-            {g.name && <p className="menu-group-title" style={{ color: GROUP_COLOR[g.name]?.fg ?? "var(--pri)" }}>{g.name}</p>}
-            <div className="menu-grid">
-              {g.items.map(({ to, label, icon: Icon, accent }) => {
-                const color = accent === "wellness" ? WELLNESS_COLOR : GROUP_COLOR[g.name] ?? GROUP_COLOR.Hoy;
-                return (
-                  <NavLink
-                    key={to}
-                    to={to}
-                    end
-                    onClick={close}
-                    className={({ isActive }) => `menu-tile${isActive ? " active" : ""}`}
-                    style={{ background: color.bg, color: color.fg }}
-                  >
-                    <span className="ic" style={{ background: color.fg }}>
-                      <Icon size={18} />
-                    </span>
-                    <span className="lbl">
-                      {label}
-                      {to === paths.trainerWhatsNew && unseenCount > 0 && <span className="nav-dot" aria-label="Hay novedades" />}
-                    </span>
-                  </NavLink>
-                );
-              })}
-            </div>
-          </div>
-        ))}
+        {(() => {
+          const Tile = ({ item, groupName }: { item: NavItem; groupName: string }) => {
+            const { to, label, icon: Icon, accent } = item;
+            const color = accent === "wellness" ? WELLNESS_COLOR : GROUP_COLOR[groupName] ?? GROUP_COLOR.Hoy;
+            return (
+              <NavLink
+                to={to}
+                end
+                onClick={close}
+                className={({ isActive }) => `menu-tile${isActive ? " active" : ""}`}
+                style={{ background: color.bg, color: color.fg }}
+              >
+                <span className="ic" style={{ background: color.fg }}>
+                  <Icon size={18} />
+                </span>
+                <span className="lbl">
+                  {label}
+                  {to === paths.trainerWhatsNew && unseenCount > 0 && <span className="nav-dot" aria-label="Hay novedades" />}
+                </span>
+              </NavLink>
+            );
+          };
+          return (
+            <>
+              <p className="menu-group-title" style={{ color: "var(--pri)" }}>Lo de todos los días</p>
+              <div className="menu-grid">
+                {dailyItems.map((item) => (
+                  <Tile key={item.to} item={item} groupName={item.group ?? "Hoy"} />
+                ))}
+              </div>
+
+              {moreItems.length > 0 && (
+                <button type="button" className="menu-more" onClick={toggleMore} aria-expanded={showMore}>
+                  <span>
+                    Más herramientas <span className="note" style={{ fontWeight: 400 }}>({moreItems.length})</span>
+                    {!showMore && unseenCount > 0 && moreItems.some((i) => i.to === paths.trainerWhatsNew) && (
+                      <span className="nav-dot" aria-label="Hay novedades" />
+                    )}
+                  </span>
+                  <ChevronDown size={18} style={{ transform: showMore ? "rotate(180deg)" : undefined, transition: "transform .15s" }} />
+                </button>
+              )}
+
+              {showMore &&
+                groups.map((g) => (
+                  <div key={g.name || "default"}>
+                    {g.name && <p className="menu-group-title" style={{ color: GROUP_COLOR[g.name]?.fg ?? "var(--pri)" }}>{g.name}</p>}
+                    <div className="menu-grid">
+                      {g.items.map((item) => (
+                        <Tile key={item.to} item={item} groupName={g.name} />
+                      ))}
+                    </div>
+                  </div>
+                ))}
+            </>
+          );
+        })()}
 
         <button className="menu-logout" onClick={onLogout}>
           <LogOut size={16} /> Cerrar sesión

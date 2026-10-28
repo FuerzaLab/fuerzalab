@@ -290,3 +290,11 @@ select.input:hover { border-color: var(--pri); }
 .wn-banner b { color: var(--ink); }
 .wn-banner-sub { font-size: 13px; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .wn-banner-x { border: 0; background: none; color: var(--muted); cursor: pointer; padding: 4px; flex: none; }
+
+/* Menú del entrenador: botón "Más herramientas" */
+.menu-more { width: 100%; display: flex; align-items: center; justify-content: space-between; gap: 10px; margin: 18px 0 14px; padding: 12px 14px; border: 1.5px dashed var(--line); border-radius: 12px; background: #fff; font: inherit; font-weight: 700; font-size: 14.5px; color: var(--ink); cursor: pointer; }
+.menu-more:hover { border-color: var(--pri); color: var(--pri); }
+/* Explicación de la primera vez en cada pantalla */
+.screen-intro { display: flex; gap: 12px; align-items: flex-start; max-width: 1192px; margin: 16px 24px 0; padding: 12px 14px; border-radius: 12px; background: var(--pri-soft); color: var(--nav); }
+.screen-intro p { margin: 2px 0 0; font-size: 14px; color: #2A3744; }
+@media (max-width: 860px) { .screen-intro { margin: 12px 16px 0; flex-wrap: wrap; } }
