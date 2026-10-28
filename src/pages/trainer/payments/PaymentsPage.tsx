@@ -24,6 +24,7 @@ import {
 } from "../../../services/payments";
 import Loading from "../../../components/ui/Loading";
 import SearchSelect from "../../../components/ui/SearchSelect";
+import EmptyState from "../../../components/ui/EmptyState";
 
 const STATUS_LABEL: Record<PaymentStatus, string> = { pending: "Pendiente", paid: "Pagado", cancelled: "Cancelado" };
 const STATUS_TONE: Record<PaymentStatus, "warn" | "ok" | "bad"> = { pending: "warn", paid: "ok", cancelled: "bad" };
@@ -186,7 +187,14 @@ export default function PaymentsPage() {
                   </tr>
                 ))}
                 {payments.length === 0 && (
-                  <tr><td colSpan={8} className="note" style={{ padding: 16 }}>Todavía no hay pagos registrados.</td></tr>
+                  <tr>
+                    <td colSpan={8} style={{ padding: 8 }}>
+                      <EmptyState title="Todavía no hay pagos registrados">
+                        Primero crea tus planes con "Nuevo plan" (por ejemplo, mensual con 3 sesiones por semana). Después, con
+                        "Registrar pago", anotas lo que paga cada alumno: la app te avisa quién está por vencer y quién debe.
+                      </EmptyState>
+                    </td>
+                  </tr>
                 )}
               </tbody>
             </table>

@@ -21,6 +21,7 @@ import {
 } from "../../../services/progressPhotos";
 import Loading from "../../../components/ui/Loading";
 import SearchSelect from "../../../components/ui/SearchSelect";
+import EmptyState from "../../../components/ui/EmptyState";
 
 export default function ProgressPhotosPage() {
   const { profile } = useAuth();
@@ -101,7 +102,12 @@ export default function ProgressPhotosPage() {
 
       {!clientId && <p className="note">Elige un cliente para empezar.</p>}
       {clientId && loading && <Loading />}
-      {clientId && !loading && sessions.length === 0 && <p className="note">Este cliente todavía no tiene fotos de progreso.</p>}
+      {clientId && !loading && sessions.length === 0 && (
+        <EmptyState title="Todavía no hay fotos de progreso">
+          Las puede subir tu alumno desde su app, o tú en Evaluaciones → "Fotos de progreso", el mismo día que lo mides. Con dos
+          fechas, vas a poder compararlas antes y ahora.
+        </EmptyState>
+      )}
 
       {clientId && !loading && sessions.length > 0 && (
         <div style={{ display: "grid", gap: 16 }}>

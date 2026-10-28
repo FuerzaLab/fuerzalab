@@ -33,6 +33,7 @@ import {
 import Loading from "../../../components/ui/Loading";
 import { cloneProgram } from "../../../services/sessions";
 import SearchSelect from "../../../components/ui/SearchSelect";
+import EmptyState from "../../../components/ui/EmptyState";
 
 const PHASE_COLOR: Record<string, string> = {
   accumulation: "#2E8B6E",
@@ -157,7 +158,10 @@ export default function ProgramsPage() {
       </div>
 
       {clientId && programs.length === 0 && !loading && (
-        <p className="note">Este cliente todavía no tiene un programa. Crea uno con "Nuevo programa".</p>
+        <EmptyState title="Este alumno todavía no tiene un plan">
+          El plan organiza su entrenamiento por semanas y bloques. Créalo con el botón "Nuevo programa" de arriba (o aplicando
+          una plantilla), y después arma la rutina de cada día en el Constructor.
+        </EmptyState>
       )}
 
       {programs.length > 0 && (

@@ -17,6 +17,7 @@ import {
 import { paths } from "../../../routes/paths";
 import Loading from "../../../components/ui/Loading";
 import IntakeFormView from "../../../components/IntakeFormView";
+import EmptyState from "../../../components/ui/EmptyState";
 
 const STATUS_LABEL: Record<ClientStatus, string> = {
   prospect: "Prospecto",
@@ -198,8 +199,21 @@ export default function ClientsList() {
                 ))}
                 {filtered.length === 0 && (
                   <tr>
-                    <td colSpan={3} className="note" style={{ padding: 16 }}>
-                      Ningún cliente coincide con el filtro.
+                    <td colSpan={3} style={{ padding: clients.length === 0 ? 8 : 16 }} className={clients.length === 0 ? undefined : "note"}>
+                      {clients.length === 0 ? (
+                        profile.role === "trainer" ? (
+                          <EmptyState title="Todavía no tienes alumnos" action={{ label: "Invitar a mi primer alumno", onClick: () => setShowInvite(true) }}>
+                            Al invitarlo se crea su ficha y un enlace para que se registre. Cuando entre, completa su
+                            formulario de ingreso y ya puedes armarle su plan.
+                          </EmptyState>
+                        ) : (
+                          <EmptyState title="Todavía no tienes alumnos asignados">
+                            Cuando el entrenador te asigne alumnos, van a aparecer acá.
+                          </EmptyState>
+                        )
+                      ) : (
+                        "Ningún cliente coincide con el filtro."
+                      )}
                     </td>
                   </tr>
                 )}

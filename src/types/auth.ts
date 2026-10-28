@@ -13,6 +13,8 @@ export interface Profile {
   is_active: boolean;
   created_at: string;
   updated_at: string;
+  /** Secciones que el entrenador ocultó de su menú (part3w). null = no eligió todavía. */
+  menu_hidden?: string[] | null;
 }
 
 /** Módulos de permisos de staff (mismos nombres que usa la base de datos). */

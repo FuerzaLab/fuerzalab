@@ -22,6 +22,15 @@ export interface ChangelogEntry {
 
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    id: "2026-10-28-menu-sections",
+    date: "2026-10-28",
+    title: "Elige qué secciones ves en tu menú",
+    body: "En Configuración → \"Secciones que uso\" prendes o apagas las secciones de \"Más herramientas\": por ejemplo, oculta Pagos si no cobras por la app, o Equipo si trabajas solo. No se borra nada. Además, las secciones vacías ahora te explican qué hacer para empezar.",
+    for: ["trainer"],
+    notForStaff: true,
+    link: { label: "Ir a Configuración", to: paths.trainerSettings },
+  },
+  {
     id: "2026-10-28-menu-two-levels",
     date: "2026-10-28",
     title: "Un menú más simple",

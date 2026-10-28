@@ -15,6 +15,7 @@ import {
 } from "../../../services/wellness";
 import Loading from "../../../components/ui/Loading";
 import SearchSelect from "../../../components/ui/SearchSelect";
+import EmptyState from "../../../components/ui/EmptyState";
 
 export default function WellnessPage() {
   const { notify } = useToast();
@@ -84,7 +85,12 @@ export default function WellnessPage() {
 
       {clientId && loading && <Loading />}
 
-      {clientId && !loading && logs.length === 0 && <p className="note">Este cliente todavía no completó ningún registro de bienestar.</p>}
+      {clientId && !loading && logs.length === 0 && (
+        <EmptyState title="Todavía no hay registros de bienestar">
+          Tu alumno responde un cuestionario corto antes de entrenar, desde su app: sueño, energía, estrés y dolor. Cuando lo
+          complete, acá vas a ver cómo llega cada día, con un semáforo.
+        </EmptyState>
+      )}
 
       {clientId && !loading && logs.length > 0 && (
         <>

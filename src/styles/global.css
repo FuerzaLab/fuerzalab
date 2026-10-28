@@ -298,3 +298,11 @@ select.input:hover { border-color: var(--pri); }
 .screen-intro { display: flex; gap: 12px; align-items: flex-start; max-width: 1192px; margin: 16px 24px 0; padding: 12px 14px; border-radius: 12px; background: var(--pri-soft); color: var(--nav); }
 .screen-intro p { margin: 2px 0 0; font-size: 14px; color: #2A3744; }
 @media (max-width: 860px) { .screen-intro { margin: 12px 16px 0; flex-wrap: wrap; } }
+.section-toggle { display: flex; gap: 12px; align-items: center; padding: 8px 4px; border-top: 1px solid var(--line); cursor: pointer; }
+.section-toggle:first-child { border-top: 0; }
+.section-toggle input { width: 18px; height: 18px; accent-color: var(--pri); }
+/* Pantallas vacías que guían */
+.empty-state { background: #fff; border: 1.5px dashed var(--line); border-radius: 14px; padding: 26px 22px; text-align: center; max-width: 620px; margin: 10px auto; }
+.empty-title { display: block; font-size: 17px; color: var(--ink); margin-bottom: 6px; }
+.empty-state p { margin: 0 auto 14px; color: var(--muted); max-width: 48ch; font-size: 14.5px; }
+.empty-state p:last-child { margin-bottom: 0; }

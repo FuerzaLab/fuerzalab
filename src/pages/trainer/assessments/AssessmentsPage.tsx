@@ -72,6 +72,7 @@ import Loading from "../../../components/ui/Loading";
 import SearchSelect from "../../../components/ui/SearchSelect";
 import AssessmentPhotosSection from "./AssessmentPhotosSection";
 import { movePhotosDate, listPhotosOnDate } from "../../../services/progressPhotos";
+import EmptyState from "../../../components/ui/EmptyState";
 
 const CATEGORY_ORDER: AssessmentCategory[] = ["body", "circumferences", "skinfolds", "strength", "power", "endurance", "mobility", "flexibility"];
 
@@ -160,7 +161,12 @@ export default function AssessmentsPage() {
         </p>
       )}
 
-      {clientId && assessments.length === 0 && <p className="note">Este cliente todavía no tiene evaluaciones.</p>}
+      {clientId && assessments.length === 0 && (
+        <EmptyState title="Este alumno todavía no tiene evaluaciones">
+          Una evaluación guarda lo que mediste en un día: peso, circunferencias, pliegues, fuerza, movilidad o fotos. Créala
+          con "Nueva evaluación" y carga solo lo que mediste; con dos o más, vas a ver su progreso en Reportes.
+        </EmptyState>
+      )}
 
       {assessments.length > 0 && (
         <div style={{ display: "flex", flexWrap: "wrap", gap: 6, marginBottom: 18 }}>

@@ -36,6 +36,7 @@ import ScreenIntro from "../../components/ScreenIntro";
 import PageLoading from "../../components/ui/PageLoading";
 import { useIsStudioOwner } from "../../hooks/useIsStudioOwner";
 import { useWhatsNew } from "../../hooks/useWhatsNew";
+import { hiddenSections } from "../../lib/menuSections";
 
 interface NavItem {
   to: string;
@@ -141,8 +142,8 @@ export default function AppLayout() {
   const items =
     profile.role === "staff"
       ? staffNav(staffAccess)
-      : profile.role === "trainer" && !isOwner
-        ? NAV.trainer.filter((i) => i.to !== paths.trainerStudio)
+      : profile.role === "trainer"
+        ? NAV.trainer.filter((i) => (isOwner || i.to !== paths.trainerStudio) && !hiddenSections(profile).includes(i.to))
         : NAV[profile.role];
 
   const handleLogout = async () => {
@@ -224,6 +225,8 @@ function TrainerLauncherShell({
   onLogout: () => void;
 }) {
   const { unseenCount } = useWhatsNew();
+  const { profile: menuProfile } = useAuth();
+  const isTrainerMenu = menuProfile?.role === "trainer";
   const [open, setOpen] = useState(false);
   const { pathname } = useLocation();
   // Aviso de solo lectura: el staff con permiso "Solo ver" en esta sección
@@ -350,6 +353,12 @@ function TrainerLauncherShell({
                   </span>
                   <ChevronDown size={18} style={{ transform: showMore ? "rotate(180deg)" : undefined, transition: "transform .15s" }} />
                 </button>
+              )}
+
+              {showMore && isTrainerMenu && (
+                <NavLink to={paths.trainerSettings} onClick={close} className="note" style={{ display: "inline-block", fontSize: 13, margin: "-4px 0 14px 2px" }}>
+                  Elegir qué secciones aparecen acá
+                </NavLink>
               )}
 
               {showMore &&

@@ -3,6 +3,7 @@ import { useToast } from "../../../contexts/ToastContext";
 import ChatThread from "../../../components/ChatThread";
 import { listClients, type ClientRow } from "../../../services/clients";
 import { countUnreadByClient } from "../../../services/messages";
+import EmptyState from "../../../components/ui/EmptyState";
 
 export default function MessagesPage() {
   const { notify } = useToast();
@@ -59,7 +60,13 @@ export default function MessagesPage() {
               )}
             </button>
           ))}
-          {clients.length === 0 && <p className="note" style={{ padding: 14 }}>Todavía no tienes clientes.</p>}
+          {clients.length === 0 && (
+            <div style={{ padding: 10 }}>
+              <EmptyState title="Todavía no hay conversaciones">
+                Cuando invites a tus alumnos, cada uno va a poder escribirte desde su app, y tú le respondes desde acá.
+              </EmptyState>
+            </div>
+          )}
         </div>
         {clientId ? (
           <ChatThread clientId={clientId} otherLabel={clients.find((c) => c.id === clientId)?.full_name ?? ""} />

@@ -7,6 +7,7 @@ import { getActiveProgramForClient, getSessionStatuses, markSessionSkipped, type
 import { TrainSession } from "../../client/Routine";
 import Loading from "../../../components/ui/Loading";
 import SearchSelect from "../../../components/ui/SearchSelect";
+import EmptyState from "../../../components/ui/EmptyState";
 
 const STATUS_LABEL: Record<WorkoutLogRow["status"], string> = {
   pending: "Pendiente",
@@ -109,7 +110,11 @@ export default function RunSessionPage() {
 
       {!clientId && <p className="note">Elige un cliente para ver su programa activo.</p>}
       {clientId && loading && <Loading />}
-      {clientId && !loading && !program && <p className="note">Este cliente todavía no tiene un programa activo.</p>}
+      {clientId && !loading && !program && (
+        <EmptyState title="Este alumno todavía no tiene un plan activo">
+          Para entrenar con él, primero ármale su plan en Planificación y la rutina de cada día en el Constructor de rutinas.
+        </EmptyState>
+      )}
 
       {clientId && !loading && program && (
         <>

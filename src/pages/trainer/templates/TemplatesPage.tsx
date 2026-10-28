@@ -18,6 +18,7 @@ import {
   type WorkoutTemplateSessionRow,
 } from "../../../services/templates";
 import SearchSelect from "../../../components/ui/SearchSelect";
+import EmptyState from "../../../components/ui/EmptyState";
 
 export default function TemplatesPage() {
   const { profile, actingTrainerId } = useAuth();
@@ -63,7 +64,10 @@ export default function TemplatesPage() {
       {loading ? (
         <Loading />
       ) : templates.length === 0 ? (
-        <p className="note">Todavía no guardaste ninguna plantilla.</p>
+        <EmptyState title="Todavía no guardaste ninguna plantilla">
+          Cuando un programa te funcione bien, guárdalo con "Guardar como plantilla" en Planificación. Después lo aplicas a
+          cualquier alumno y lo ajustas, sin empezar de cero.
+        </EmptyState>
       ) : (
         <div style={{ display: "grid", gap: 12 }}>
           {templates.map((t) => (
@@ -89,7 +93,10 @@ export default function TemplatesPage() {
       </p>
 
       {loading ? null : looseTemplates.length === 0 ? (
-        <p className="note">Todavía no guardaste ninguna rutina suelta.</p>
+        <EmptyState title="Todavía no guardaste ninguna rutina suelta">
+          Para guardar un día de entrenamiento y reutilizarlo con otros alumnos, usa "Guardar como plantilla" en el
+          Constructor de rutinas.
+        </EmptyState>
       ) : (
         <div style={{ display: "grid", gap: 12 }}>
           {looseTemplates.map((t) => (
