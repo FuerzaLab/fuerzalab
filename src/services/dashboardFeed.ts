@@ -1,4 +1,5 @@
 import { supabase } from "../lib/supabase";
+import { formatLoad } from "../lib/units";
 import type { ClientRow } from "./clients";
 import { wellnessScore, lowFields, WELLNESS_FIELD_LABEL, type WellnessLogRow } from "./wellness";
 
@@ -60,7 +61,7 @@ export async function dismissItems(keys: string[]): Promise<void> {
 async function recordItems(): Promise<FeedItem[]> {
   const { data, error } = await supabase
     .from("personal_records")
-    .select("id, client_id, workout_log_id, exercise_name, reps, load_kg, performed_at, with_load, metric, previous_best")
+    .select("*")
     .gte("performed_at", isoDaysAgo(DAYS))
     .order("performed_at", { ascending: false })
     .limit(300);
@@ -81,7 +82,8 @@ async function recordItems(): Promise<FeedItem[]> {
     const prev = Number(r.previous_best);
     if (!r.with_load) return `${r.exercise_name}: ${r.reps} reps (antes ${fmtKg(prev)})`;
     const pct = prev > 0 ? Math.round(((metric - prev) / prev) * 100) : null;
-    return `${r.exercise_name}: ${fmtKg(Number(r.load_kg))} kg × ${r.reps}, 1RM est. ${fmtKg(metric)} kg${pct ? ` (+${pct}%)` : ""}`;
+    const u = r.load_unit === "lb" ? "lb" : "kg";
+    return `${r.exercise_name}: ${formatLoad(Number(r.load_kg), u)} × ${r.reps}, 1RM est. ${formatLoad(metric, u)}${pct ? ` (+${pct}%)` : ""}`;
   };
   const joinNames = (names: string[]) =>
     names.length <= 1 ? names.join("") : `${names.slice(0, -1).join(", ")} y ${names[names.length - 1]}`;

@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { Check, ArrowLeft, Flame } from "lucide-react";
+import { useAuth } from "../../contexts/AuthContext";
 import { useToast } from "../../contexts/ToastContext";
 import Modal from "../../components/ui/Modal";
 import Chip from "../../components/ui/Chip";
@@ -39,6 +40,8 @@ import WellnessForm from "../../components/WellnessForm";
 import { getExerciseMediaUrl, listVariationsFor, RELATION_LABEL, type ExerciseVariationRow } from "../../services/exercises";
 import Loading from "../../components/ui/Loading";
 import { listRecordsForWorkout, describeRecord, type MyRecord } from "../../services/clientHome";
+import { formatLoad, loadInputValue, parseLoadToKg, type LoadUnit } from "../../lib/units";
+import { getEffectiveGymUnits, getEquipmentNames, makeUnitResolver } from "../../services/units";
 
 const STATUS_LABEL: Record<WorkoutLogRow["status"], string> = {
   pending: "Pendiente",
@@ -297,6 +300,9 @@ export function TrainSession({ sessionId, onExit, backLabel = "Volver a mi rutin
   const [lastPerf, setLastPerf] = useState<Record<string, LastPerformance | null>>({});
   const [variations, setVariations] = useState<Record<string, ExerciseVariationRow[]>>({});
   const [setNotesByExercise, setSetNotesByExercise] = useState<Record<string, Record<number, string>>>({});
+  // kg o lb para cada ejercicio, según el gimnasio del alumno (ver lib/units.ts).
+  const [unitResolver, setUnitResolver] = useState<{ fn: (ex: WorkoutExerciseRow) => LoadUnit }>({ fn: () => "kg" });
+  const { profile: authProfile } = useAuth();
 
   useEffect(() => {
     if (!restEndsAt) {
@@ -337,6 +343,11 @@ export function TrainSession({ sessionId, onExit, backLabel = "Volver a mi rutin
       setExercises(ex);
       setSetLogs(sl);
 
+      // Unidad de cada ejercicio (kg / lb), según dónde entrena el alumno.
+      Promise.all([getEffectiveGymUnits(l.client_id, authProfile?.organization_id ?? null), getEquipmentNames()])
+        .then(([gym, eq]) => setUnitResolver({ fn: makeUnitResolver(gym, eq) }))
+        .catch(() => {});
+
       const uniqueExerciseIds = [...new Set(ex.map((e) => e.exercise_id))];
       const perfEntries = await Promise.all(
         uniqueExerciseIds.map(async (exId) => [exId, await getLastPerformance(l.client_id, exId, l.id).catch(() => null)] as const)
@@ -364,7 +375,7 @@ export function TrainSession({ sessionId, onExit, backLabel = "Volver a mi rutin
 
   const logFor = (exerciseWorkoutId: string, setNumber: number) => setLogs.find((l) => l.workout_exercise_id === exerciseWorkoutId && l.set_number === setNumber);
 
-  const saveSet = async (ex: WorkoutExerciseRow, setNumber: number, fields: { reps: number; loadKg: number | null; rir: number | null; completed: boolean }) => {
+  const saveSet = async (ex: WorkoutExerciseRow, setNumber: number, fields: { reps: number; loadKg: number | null; rir: number | null; completed: boolean; loadUnit?: LoadUnit }) => {
     if (!log) return;
     const existing = logFor(ex.id, setNumber);
     const justCompleted = fields.completed && !existing?.completed;
@@ -475,6 +486,7 @@ export function TrainSession({ sessionId, onExit, backLabel = "Volver a mi rutin
                       lastPerf={lastPerf}
                       variations={variations}
                       setNotesByExercise={setNotesByExercise}
+                      unitFor={unitResolver.fn}
                     />
                   ) : (
                     g.map((ex) => (
@@ -491,6 +503,7 @@ export function TrainSession({ sessionId, onExit, backLabel = "Volver a mi rutin
                         lastPerf={lastPerf[ex.exercise_id] ?? null}
                         variations={variations[ex.exercise_id] ?? []}
                         setNotes={setNotesByExercise[ex.id] ?? {}}
+                        unit={unitResolver.fn(ex)}
                       />
                     ))
                   )
@@ -591,7 +604,7 @@ function LastPerformanceNote({ perf }: { perf: LastPerformance | null }) {
   const sets = Object.entries(perf.bySet).sort(([a], [b]) => Number(a) - Number(b));
   return (
     <p className="note" style={{ marginBottom: 8 }}>
-      Última vez ({new Date(perf.date).toLocaleDateString("es")}): {sets.map(([n, s]) => `S${n}: ${s.loadKg ?? "—"}kg×${s.reps}`).join(" · ")}
+      Última vez ({new Date(perf.date).toLocaleDateString("es")}): {sets.map(([n, s]) => `S${n}: ${s.loadKg != null ? formatLoad(s.loadKg, s.unit) : "—"} × ${s.reps}`).join(" · ")}
     </p>
   );
 }
@@ -630,10 +643,11 @@ function SupersetTrainer({
   lastPerf,
   variations,
   setNotesByExercise,
+  unitFor,
 }: {
   exercises: WorkoutExerciseRow[];
   logFor: (workoutExerciseId: string, setNumber: number) => SetLogRow | undefined;
-  onSaveSet: (ex: WorkoutExerciseRow, setNumber: number, fields: { reps: number; loadKg: number | null; rir: number | null; completed: boolean }) => void;
+  onSaveSet: (ex: WorkoutExerciseRow, setNumber: number, fields: { reps: number; loadKg: number | null; rir: number | null; completed: boolean; loadUnit?: LoadUnit }) => void;
   restAnchor: string | null;
   restRemaining: number;
   restTotal: number;
@@ -642,6 +656,7 @@ function SupersetTrainer({
   lastPerf: Record<string, LastPerformance | null>;
   variations: Record<string, ExerciseVariationRow[]>;
   setNotesByExercise: Record<string, Record<number, string>>;
+  unitFor: (ex: WorkoutExerciseRow) => LoadUnit;
 }) {
   const label = exercises.length === 2 ? "Biserie" : exercises.length === 3 ? "Triserie" : "Serie gigante";
   const maxSets = Math.max(...exercises.map((ex) => ex.sets ?? 3));
@@ -688,8 +703,10 @@ function SupersetTrainer({
                       <div className="complete-transition" style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap", background: existing?.completed ? "var(--ok-soft)" : "var(--bg)", borderRadius: 8, padding: 8 }}>
                         <span style={{ minWidth: 26, fontWeight: 700, color: "var(--pri)" }}>{SUPERSET_LETTERS[i]}{roundNumber}</span>
                         <span style={{ flex: 1, minWidth: 120 }}>{ex.exercise_name}</span>
-                        <span className="note" style={{ fontSize: 12.5 }}>Obj: {repsTarget}{ex.load_value ? ` @ ${ex.load_value}kg` : ""}</span>
+                        <span className="note" style={{ fontSize: 12.5 }}>Obj: {repsTarget}{ex.load_value ? ` @ ${formatLoad(ex.load_value, unitFor(ex))}` : ""}</span>
                         <MiniSetInputs
+                          key={`${ex.id}-${roundNumber}-${unitFor(ex)}`}
+                          exUnit={unitFor(ex)}
                           defaultReps={ex.reps_max ?? ex.reps_min ?? 0}
                           defaultLoad={ex.load_value}
                           defaultRir={ex.rir}
@@ -711,36 +728,53 @@ function SupersetTrainer({
 }
 
 function MiniSetInputs({
+  exUnit,
   defaultReps,
   defaultLoad,
   defaultRir,
   existing,
   onSave,
 }: {
+  exUnit: LoadUnit;
   defaultReps: number;
   defaultLoad: number | null;
   defaultRir: number | null;
   existing: SetLogRow | undefined;
-  onSave: (fields: { reps: number; loadKg: number | null; rir: number | null; completed: boolean }) => void;
+  onSave: (fields: { reps: number; loadKg: number | null; rir: number | null; completed: boolean; loadUnit?: LoadUnit }) => void;
 }) {
+  const [unit, setUnit] = useState<LoadUnit>(existing?.load_unit ?? exUnit);
   const [reps, setReps] = useState(String(existing?.reps ?? defaultReps ?? ""));
-  const [load, setLoad] = useState(existing?.load_kg != null ? String(existing.load_kg) : defaultLoad != null ? String(defaultLoad) : "");
+  const [load, setLoad] = useState(loadInputValue(existing?.load_kg ?? defaultLoad, existing?.load_unit ?? exUnit));
   const [rir, setRir] = useState(existing?.rir != null ? String(existing.rir) : defaultRir != null ? String(defaultRir) : "");
   const completed = existing?.completed ?? false;
 
-  const commit = (over?: Partial<{ completed: boolean }>) => {
+  const commit = (over?: Partial<{ completed: boolean; unit: LoadUnit; load: string }>) => {
+    const u = over?.unit ?? unit;
+    const l = over?.load ?? load;
     onSave({
       reps: Number(reps) || 0,
-      loadKg: load === "" ? null : Number(load.replace(",", ".")) || 0,
+      loadKg: parseLoadToKg(l, u), // siempre se guarda en kg
       rir: rir === "" ? null : Number(rir.replace(",", ".")) || 0,
       completed: over?.completed ?? completed,
+      loadUnit: u,
     });
+  };
+
+  // Cambiar kg ↔ lb convierte lo que está escrito (mismo peso, otra unidad).
+  const toggleUnit = () => {
+    const next: LoadUnit = unit === "kg" ? "lb" : "kg";
+    const kg = parseLoadToKg(load, unit);
+    const nextLoad = kg == null ? "" : loadInputValue(kg, next);
+    setUnit(next);
+    setLoad(nextLoad);
+    if (existing) commit({ unit: next, load: nextLoad });
   };
 
   return (
     <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
       <input className="input" style={{ width: 50, padding: "5px 4px", textAlign: "center" }} value={reps} onChange={(e) => setReps(e.target.value)} onBlur={() => commit()} aria-label="Reps" />
-      <input className="input" style={{ width: 55, padding: "5px 4px", textAlign: "center" }} value={load} onChange={(e) => setLoad(e.target.value)} onBlur={() => commit()} aria-label="Carga" />
+      <input className="input" inputMode="decimal" style={{ width: 55, padding: "5px 4px", textAlign: "center" }} value={load} onChange={(e) => setLoad(e.target.value)} onBlur={() => commit()} aria-label={`Carga en ${unit}`} />
+      <button type="button" className="unit-toggle" onClick={toggleUnit} title="Cambiar entre kg y libras">{unit}</button>
       <input className="input" style={{ width: 45, padding: "5px 4px", textAlign: "center" }} value={rir} onChange={(e) => setRir(e.target.value)} onBlur={() => commit()} aria-label="RIR" />
       <button
         className="btn ghost complete-transition"
@@ -765,10 +799,11 @@ function ExerciseTrainer({
   lastPerf,
   variations,
   setNotes,
+  unit,
 }: {
   ex: WorkoutExerciseRow;
   logFor: (workoutExerciseId: string, setNumber: number) => SetLogRow | undefined;
-  onSaveSet: (ex: WorkoutExerciseRow, setNumber: number, fields: { reps: number; loadKg: number | null; rir: number | null; completed: boolean }) => void;
+  onSaveSet: (ex: WorkoutExerciseRow, setNumber: number, fields: { reps: number; loadKg: number | null; rir: number | null; completed: boolean; loadUnit?: LoadUnit }) => void;
   restAnchor: string | null;
   restRemaining: number;
   restTotal: number;
@@ -777,6 +812,7 @@ function ExerciseTrainer({
   lastPerf: LastPerformance | null;
   variations: ExerciseVariationRow[];
   setNotes: Record<number, string>;
+  unit: LoadUnit;
 }) {
   const showRestHere = restRemaining > 0 && restAnchor != null && restAnchor.startsWith(`${ex.id}:`);
   const isCardio = ex.duration_min != null || ex.distance_km != null || ex.steps_target != null;
@@ -821,7 +857,7 @@ function ExerciseTrainer({
       <div className="hd">
         <h3 style={{ fontSize: 16 }}>{ex.exercise_name}</h3>
         <span className="note">
-          Objetivo: {sets}×{repsTarget}{ex.load_value ? ` @ ${ex.load_value} kg` : ""}{ex.rir != null ? ` · RIR ${ex.rir}` : ""}
+          Objetivo: {sets}×{repsTarget}{ex.load_value ? ` @ ${formatLoad(ex.load_value, unit)}` : ""}{ex.rir != null ? ` · RIR ${ex.rir}` : ""}
           {ex.rest_s ? ` · Descanso ${ex.rest_s}s` : ""}{ex.tempo ? ` · Tempo ${ex.tempo}` : ""}
         </span>
       </div>
@@ -836,7 +872,7 @@ function ExerciseTrainer({
             <tr style={{ textAlign: "left", color: "var(--muted)", fontSize: 12.5 }}>
               <th style={{ padding: "6px 10px" }}>Serie</th>
               <th style={{ padding: "6px 10px" }}>Reps</th>
-              <th style={{ padding: "6px 10px" }}>Carga (kg)</th>
+              <th style={{ padding: "6px 10px" }}>Carga</th>
               <th style={{ padding: "6px 10px" }}>RIR</th>
               <th style={{ padding: "6px 10px" }} />
             </tr>
@@ -846,7 +882,8 @@ function ExerciseTrainer({
               const existing = logFor(ex.id, setNumber);
               return (
                 <SetRow
-                  key={setNumber}
+                  key={`${setNumber}-${unit}`}
+                  exUnit={unit}
                   setNumber={setNumber}
                   defaultReps={ex.reps_max ?? ex.reps_min ?? 0}
                   defaultLoad={ex.load_value}
@@ -887,6 +924,7 @@ function SetNoteBanner({ note }: { note: string }) {
 }
 
 function SetRow({
+  exUnit,
   setNumber,
   defaultReps,
   defaultLoad,
@@ -895,26 +933,41 @@ function SetRow({
   onSave,
   note,
 }: {
+  exUnit: LoadUnit;
   setNumber: number;
   defaultReps: number;
   defaultLoad: number | null;
   defaultRir: number | null;
   existing: SetLogRow | undefined;
-  onSave: (fields: { reps: number; loadKg: number | null; rir: number | null; completed: boolean }) => void;
+  onSave: (fields: { reps: number; loadKg: number | null; rir: number | null; completed: boolean; loadUnit?: LoadUnit }) => void;
   note?: string;
 }) {
+  const [unit, setUnit] = useState<LoadUnit>(existing?.load_unit ?? exUnit);
   const [reps, setReps] = useState(String(existing?.reps ?? defaultReps ?? ""));
-  const [load, setLoad] = useState(existing?.load_kg != null ? String(existing.load_kg) : defaultLoad != null ? String(defaultLoad) : "");
+  const [load, setLoad] = useState(loadInputValue(existing?.load_kg ?? defaultLoad, existing?.load_unit ?? exUnit));
   const [rir, setRir] = useState(existing?.rir != null ? String(existing.rir) : defaultRir != null ? String(defaultRir) : "");
   const completed = existing?.completed ?? false;
 
-  const commit = (over?: Partial<{ completed: boolean }>) => {
+  const commit = (over?: Partial<{ completed: boolean; unit: LoadUnit; load: string }>) => {
+    const u = over?.unit ?? unit;
+    const l = over?.load ?? load;
     onSave({
       reps: Number(reps) || 0,
-      loadKg: load === "" ? null : Number(load.replace(",", ".")) || 0,
+      loadKg: parseLoadToKg(l, u), // siempre se guarda en kg
       rir: rir === "" ? null : Number(rir.replace(",", ".")) || 0,
       completed: over?.completed ?? completed,
+      loadUnit: u,
     });
+  };
+
+  // Cambiar kg ↔ lb convierte lo que está escrito (mismo peso, otra unidad).
+  const toggleUnit = () => {
+    const next: LoadUnit = unit === "kg" ? "lb" : "kg";
+    const kg = parseLoadToKg(load, unit);
+    const nextLoad = kg == null ? "" : loadInputValue(kg, next);
+    setUnit(next);
+    setLoad(nextLoad);
+    if (existing) commit({ unit: next, load: nextLoad });
   };
 
   return (
@@ -932,7 +985,10 @@ function SetRow({
         <input className="input" style={{ width: 60, padding: "6px 4px", textAlign: "center" }} value={reps} onChange={(e) => setReps(e.target.value)} onBlur={() => commit()} />
       </td>
       <td style={{ padding: "6px" }}>
-        <input className="input" style={{ width: 70, padding: "6px 4px", textAlign: "center" }} value={load} onChange={(e) => setLoad(e.target.value)} onBlur={() => commit()} />
+        <div style={{ display: "flex", alignItems: "center", gap: 4 }}>
+          <input className="input" inputMode="decimal" style={{ width: 70, padding: "6px 4px", textAlign: "center" }} value={load} onChange={(e) => setLoad(e.target.value)} onBlur={() => commit()} aria-label={`Carga en ${unit}`} />
+          <button type="button" className="unit-toggle" onClick={toggleUnit} title="Cambiar entre kg y libras">{unit}</button>
+        </div>
       </td>
       <td style={{ padding: "6px" }}>
         <input className="input" style={{ width: 50, padding: "6px 4px", textAlign: "center" }} value={rir} onChange={(e) => setRir(e.target.value)} onBlur={() => commit()} />

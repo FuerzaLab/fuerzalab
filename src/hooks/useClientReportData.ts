@@ -17,6 +17,7 @@ import {
   listSetLogsForClient,
   listExerciseSetsForClient,
   dailyTopLoad,
+  unitForEntries,
   exerciseSummaries,
   weeklyCompletedSessions,
   weeklyAvgRPE,
@@ -25,6 +26,7 @@ import {
   type ExerciseSummary,
 } from "../services/reports";
 import type { AssessmentSnapshot, BodyPoint, PersonalRecord } from "../components/reports/ReportSections";
+import { fromKg } from "../lib/units";
 
 export interface ClientReportData {
   loading: boolean;
@@ -43,7 +45,9 @@ export interface ClientReportData {
   volumePerWeek: WeeklyPoint[];
   rpePerWeek: WeeklyPoint[];
   exerciseProgressOptions: [string, string][];
+  /** Valores en la unidad del ejercicio (ver exerciseUnitFor). */
   exerciseProgressFor: (exerciseId: string) => { date: string; load: number; reps: number; e1rm: number }[];
+  exerciseUnitFor: (exerciseId: string) => "kg" | "lb";
   /** Una tarjeta por ejercicio entrenado, los más entrenados primero. */
   exerciseSummaries: ExerciseSummary[];
 }
@@ -166,7 +170,13 @@ export function useClientReportData(clientId: string | null): ClientReportData {
   // Mismo orden que las tarjetas (más entrenados primero), así el ejercicio
   // que se abre por defecto en el detalle es el principal del cliente.
   const exerciseProgressOptions: [string, string][] = summaries.map((x) => [x.exerciseId, x.exerciseName]);
-  const exerciseProgressFor = (exerciseId: string) => dailyTopLoad(exerciseSets.filter((e) => e.exercise_id === exerciseId));
+  const exerciseUnitFor = (exerciseId: string) => unitForEntries(exerciseSets.filter((e) => e.exercise_id === exerciseId));
+  const exerciseProgressFor = (exerciseId: string) => {
+    const entries = exerciseSets.filter((e) => e.exercise_id === exerciseId);
+    const unit = unitForEntries(entries);
+    const rows = dailyTopLoad(entries);
+    return unit === "kg" ? rows : rows.map((r) => ({ ...r, load: fromKg(r.load, "lb"), e1rm: fromKg(r.e1rm, "lb") }));
+  };
 
   return {
     loading,
@@ -185,6 +195,7 @@ export function useClientReportData(clientId: string | null): ClientReportData {
     rpePerWeek,
     exerciseProgressOptions,
     exerciseProgressFor,
+    exerciseUnitFor,
     exerciseSummaries: summaries,
   };
 }

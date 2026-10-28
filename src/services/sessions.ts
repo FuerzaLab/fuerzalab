@@ -129,6 +129,10 @@ export interface WorkoutExerciseRow {
   hr_zone: string | null;
   media_path: string | null;
   media_type: "image" | "video" | null;
+  /** Unidad elegida a mano en el Constructor (part3v); null = la del gimnasio del alumno. */
+  load_unit?: "kg" | "lb" | null;
+  /** Equipamiento del ejercicio (para decidir kg o lb en gimnasios mixtos). */
+  exercise_equipment_ids?: string[] | null;
 }
 
 export interface TodaysSession {
@@ -272,18 +276,22 @@ export async function listSessionBlocks(sessionId: string): Promise<SessionBlock
 export async function listWorkoutExercises(sessionId: string): Promise<WorkoutExerciseRow[]> {
   const { data, error } = await supabase
     .from("workout_exercises")
-    .select(
-      "id, session_id, block_id, exercise_id, sort_order, sets, reps_min, reps_max, load_value, rir, rest_s, tempo, superset_group, duration_min, distance_km, steps_target, hr_zone, exercises(name, media_path, media_type)"
-    )
+    // "*": así trae load_unit si ya se corrió part3v_migration.sql, y no falla si todavía no.
+    .select("*, exercises(name, media_path, media_type, equipment_ids)")
     .eq("session_id", sessionId)
     .order("sort_order");
   if (error) throw error;
-  return (data ?? []).map((row: any) => ({
-    ...row,
-    exercise_name: row.exercises?.name ?? "(ejercicio eliminado)",
-    media_path: row.exercises?.media_path ?? null,
-    media_type: row.exercises?.media_type ?? null,
-  })) as WorkoutExerciseRow[];
+  return (data ?? []).map((row: any) => {
+    const { exercises, ...rest } = row;
+    return {
+      ...rest,
+      load_unit: row.load_unit ?? null,
+      exercise_name: exercises?.name ?? "(ejercicio eliminado)",
+      media_path: exercises?.media_path ?? null,
+      media_type: exercises?.media_type ?? null,
+      exercise_equipment_ids: exercises?.equipment_ids ?? [],
+    };
+  }) as WorkoutExerciseRow[];
 }
 
 export async function addWorkoutExercise(params: {

@@ -31,6 +31,7 @@ import {
 import { paths } from "../../../routes/paths";
 import Loading from "../../../components/ui/Loading";
 import { normalizeHeightCm, parseHeightCm } from "../../../services/assessments";
+import { ClientGymUnitsField } from "../../../components/GymUnitsSettings";
 
 const STATUS_LABEL: Record<ClientStatus, string> = {
   prospect: "Prospecto",
@@ -273,6 +274,7 @@ export default function ClientDetail() {
           <h3>Ficha del cliente</h3>
         </div>
         <div className="bd">
+          <ClientGymUnitsField clientId={client.id} />
           <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(200px,1fr))", gap: 14, marginBottom: 14 }}>
             <div>
               <label className="field-label">Fecha de nacimiento</label>

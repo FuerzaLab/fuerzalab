@@ -539,7 +539,7 @@ export function ExerciseProgressOverview({
               <Sparkline values={x.series.map((p) => p.value)} color={tone === COLORS.muted ? COLORS.pri : tone} />
               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", gap: 6, marginTop: 2 }}>
                 <span style={{ fontSize: 13 }}>
-                  <b>{fmtNum(x.last)}</b> {x.kind === "load" ? "kg" : "reps"}
+                  <b>{fmtNum(x.last)}</b> {x.kind === "load" ? x.unit : "reps"}
                 </span>
                 <span style={{ fontSize: 12.5, fontWeight: 700, color: tone }}>
                   {pct == null ? "" : Math.abs(pct) <= 1 ? "estable" : `${pct > 0 ? "▲" : "▼"} ${Math.abs(pct).toFixed(0)}%`}
@@ -570,11 +570,14 @@ export function ExerciseProgressChart({
   exerciseId,
   onExerciseChange,
   series,
+  unit = "kg",
 }: {
   exerciseOptions: [string, string][];
   exerciseId: string;
   onExerciseChange: (id: string) => void;
   series: { date: string; load: number; reps: number; e1rm?: number }[];
+  /** Unidad de los valores de series (kg o lb). */
+  unit?: "kg" | "lb";
 }) {
   if (exerciseOptions.length === 0) return <p className="note">Este cliente todavía no tiene entrenamientos registrados.</p>;
   const hasLoad = series.some((p) => p.load > 0);
@@ -590,13 +593,13 @@ export function ExerciseProgressChart({
           <LineChart data={series.map((p) => ({ ...p, e1rm: p.e1rm || null, dateLabel: fmtDate(p.date) }))}>
             <CartesianGrid strokeDasharray="3 3" stroke="#eee" />
             <XAxis dataKey="dateLabel" fontSize={12} height={X_H} label={xTitle("Fecha")} />
-            {hasLoad && <YAxis yAxisId="load" fontSize={12} width={Y_W} label={yTitle("Carga y 1RM (kg)")} />}
+            {hasLoad && <YAxis yAxisId="load" fontSize={12} width={Y_W} label={yTitle(`Carga y 1RM (${unit})`)} />}
             <YAxis yAxisId="reps" orientation={hasLoad ? "right" : "left"} fontSize={12} allowDecimals={false} width={Y_W} label={yTitle("Repeticiones", hasLoad ? "right" : "left")} />
             <Tooltip />
             <Legend wrapperStyle={LEGEND_STYLE} />
-            {hasLoad && <Line yAxisId="load" type="monotone" dataKey="load" name="Carga máxima (kg)" stroke={COLORS.pri} strokeWidth={2} dot />}
+            {hasLoad && <Line yAxisId="load" type="monotone" dataKey="load" name={`Carga máxima (${unit})`} stroke={COLORS.pri} strokeWidth={2} dot />}
             {hasLoad && (
-              <Line yAxisId="load" type="monotone" dataKey="e1rm" name="1RM estimado (kg)" stroke={COLORS.purple} strokeWidth={2} strokeDasharray="5 4" dot={false} connectNulls />
+              <Line yAxisId="load" type="monotone" dataKey="e1rm" name={`1RM estimado (${unit})`} stroke={COLORS.purple} strokeWidth={2} strokeDasharray="5 4" dot={false} connectNulls />
             )}
             <Line yAxisId="reps" type="monotone" dataKey="reps" name={hasLoad ? "Reps en esa serie" : "Reps máximas"} stroke={COLORS.ok} strokeWidth={2} dot />
           </LineChart>

@@ -1,4 +1,5 @@
 import { supabase } from "../lib/supabase";
+import { fromKg, type LoadUnit } from "../lib/units";
 
 export interface WorkoutLogSummary {
   id: string;
@@ -85,6 +86,8 @@ export interface ExerciseSetEntry {
   load_kg: number | null;
   reps: number;
   performed_at: string;
+  /** Unidad en que se cargó la serie (part3v). null = kg. */
+  load_unit?: "kg" | "lb" | null;
 }
 
 /** Todas las series completadas del cliente, con el nombre del ejercicio — para elegir un ejercicio y ver su progreso real entrenado a entrenado. */
@@ -129,7 +132,7 @@ export async function listExerciseSetsForClient(clientId: string, sinceDays = 18
   const since = new Date(Date.now() - sinceDays * 86400000).toISOString();
   const { data, error } = await supabase
     .from("workout_set_logs")
-    .select("exercise_id, load_kg, reps, performed_at, exercises(name)")
+    .select("*, exercises(name)")
     .eq("client_id", clientId)
     .eq("completed", true)
     .gte("performed_at", since)
@@ -141,6 +144,7 @@ export async function listExerciseSetsForClient(clientId: string, sinceDays = 18
     load_kg: row.load_kg,
     reps: row.reps,
     performed_at: row.performed_at,
+    load_unit: row.load_unit === "lb" ? "lb" : row.load_unit === "kg" ? "kg" : null,
   }));
 }
 
@@ -161,6 +165,12 @@ export function estimated1RM(load: number, reps: number): number {
  * ese ejercicio ese día, las reps de esa serie, y el mejor 1RM estimado
  * del día (que puede salir de otra serie: 80×5 da más que 85×1).
  */
+/** La unidad en que se muestra un ejercicio: la de su última serie cargada (kg si nunca se cargó en lb). */
+export function unitForEntries(entries: ExerciseSetEntry[]): LoadUnit {
+  const withLoad = entries.filter((e) => (e.load_kg ?? 0) > 0);
+  return withLoad.length && withLoad[withLoad.length - 1].load_unit === "lb" ? "lb" : "kg";
+}
+
 export function dailyTopLoad(entries: ExerciseSetEntry[]): { date: string; load: number; reps: number; e1rm: number }[] {
   const byDay = new Map<string, { load: number; reps: number; e1rm: number }>();
   for (const e of entries) {
@@ -194,6 +204,8 @@ export interface ExerciseSummary {
   last: number;
   /** Cambio % del primer al último día; null si hay un solo día o el primero es 0. */
   pctChange: number | null;
+  /** Unidad en que se muestra (la de la última serie cargada); los valores ya vienen en esa unidad. */
+  unit: "kg" | "lb";
 }
 
 /**
@@ -222,9 +234,13 @@ export function exerciseSummaries(entries: ExerciseSetEntry[]): ExerciseSummary[
     }
     const series = [...byDay.entries()].sort(([a], [b]) => a.localeCompare(b)).map(([date, value]) => ({ date, value }));
     if (series.length === 0) continue;
+    // Se muestra en la unidad en que se cargó la última serie (kg o lb); por dentro todo es kg.
+    const unit: "kg" | "lb" = hasLoad && list[list.length - 1].load_unit === "lb" ? "lb" : "kg";
+    if (unit === "lb") for (const p of series) p.value = fromKg(p.value, "lb");
     const first = series[0].value;
     const last = series[series.length - 1].value;
     out.push({
+      unit,
       exerciseId,
       exerciseName: list[0].exercise_name,
       kind: hasLoad ? "load" : "reps",

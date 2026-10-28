@@ -25,6 +25,8 @@ export interface SetLogRow {
   rir: number | null;
   completed: boolean;
   comment: string | null;
+  /** En qué unidad se cargó (part3v). null = kg. La carga siempre está en load_kg. */
+  load_unit?: "kg" | "lb" | null;
 }
 
 export async function getActiveProgramForClient(clientId: string): Promise<ProgramRow | null> {
@@ -78,7 +80,7 @@ export async function getOrCreateWorkoutLog(sessionId: string): Promise<WorkoutL
 
 export interface LastPerformance {
   date: string;
-  bySet: Record<number, { reps: number; loadKg: number | null }>;
+  bySet: Record<number, { reps: number; loadKg: number | null; unit: "kg" | "lb" }>;
 }
 
 /**
@@ -90,7 +92,7 @@ export interface LastPerformance {
 export async function getLastPerformance(clientId: string, exerciseId: string, excludeWorkoutLogId: string): Promise<LastPerformance | null> {
   const { data, error } = await supabase
     .from("workout_set_logs")
-    .select("workout_log_id, set_number, reps, load_kg, performed_at")
+    .select("*")
     .eq("client_id", clientId)
     .eq("exercise_id", exerciseId)
     .eq("completed", true)
@@ -101,10 +103,10 @@ export async function getLastPerformance(clientId: string, exerciseId: string, e
   if (!data?.length) return null;
 
   const mostRecentLogId = data[0].workout_log_id;
-  const bySet: Record<number, { reps: number; loadKg: number | null }> = {};
+  const bySet: Record<number, { reps: number; loadKg: number | null; unit: "kg" | "lb" }> = {};
   for (const row of data) {
     if (row.workout_log_id !== mostRecentLogId) continue;
-    bySet[row.set_number] = { reps: row.reps, loadKg: row.load_kg };
+    bySet[row.set_number] = { reps: row.reps, loadKg: row.load_kg, unit: (row as any).load_unit === "lb" ? "lb" : "kg" };
   }
   return { date: data[0].performed_at, bySet };
 }
@@ -112,7 +114,7 @@ export async function getLastPerformance(clientId: string, exerciseId: string, e
 export async function listSetLogs(workoutLogId: string): Promise<SetLogRow[]> {
   const { data, error } = await supabase
     .from("workout_set_logs")
-    .select("id, workout_log_id, workout_exercise_id, exercise_id, set_number, reps, load_kg, rir, completed, comment")
+    .select("*")
     .eq("workout_log_id", workoutLogId);
   if (error) throw error;
   return (data ?? []) as SetLogRow[];
@@ -130,7 +132,26 @@ export async function upsertSetLog(params: {
   rir: number | null;
   completed: boolean;
   comment?: string | null;
+  /** Unidad en que se cargó (la carga va igual en kg en loadKg). */
+  loadUnit?: "kg" | "lb";
 }): Promise<SetLogRow> {
+  try {
+    return await upsertSetLogRaw(params, true);
+  } catch (e: any) {
+    // Si todavía no se corrió part3v_migration.sql, la columna load_unit no
+    // existe: se guarda igual, en kg, sin la unidad (solo se pierde el dato
+    // de en qué unidad se cargó, la carga queda bien).
+    if (/load_unit/.test(e?.message ?? "") && params.loadUnit !== "lb") return upsertSetLogRaw(params, false);
+    if (/load_unit/.test(e?.message ?? "")) throw new Error("Para cargar en libras falta correr part3v_migration.sql en Supabase.");
+    throw e;
+  }
+}
+
+async function upsertSetLogRaw(
+  params: Parameters<typeof upsertSetLog>[0],
+  withUnit: boolean,
+): Promise<SetLogRow> {
+  const unitField = withUnit ? { load_unit: params.loadUnit === "lb" ? "lb" : params.loadUnit === "kg" ? "kg" : null } : {};
   if (params.existingId) {
     const { data, error } = await supabase
       .from("workout_set_logs")
@@ -141,9 +162,10 @@ export async function upsertSetLog(params: {
         completed: params.completed,
         comment: params.comment ?? null,
         performed_at: new Date().toISOString(),
+        ...unitField,
       })
       .eq("id", params.existingId)
-      .select("id, workout_log_id, workout_exercise_id, exercise_id, set_number, reps, load_kg, rir, completed, comment")
+      .select("*")
       .single();
     if (error) throw error;
     return data as SetLogRow;
@@ -160,8 +182,9 @@ export async function upsertSetLog(params: {
       rir: params.rir,
       completed: params.completed,
       comment: params.comment ?? null,
+      ...unitField,
     })
-    .select("id, workout_log_id, workout_exercise_id, exercise_id, set_number, reps, load_kg, rir, completed, comment")
+    .select("*")
     .single();
   if (error) throw error;
   return data as SetLogRow;

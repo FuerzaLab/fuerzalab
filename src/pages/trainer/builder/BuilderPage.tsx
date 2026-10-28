@@ -49,6 +49,9 @@ import {
   type StrengthType,
 } from "../../../services/sessions";
 import SearchSelect from "../../../components/ui/SearchSelect";
+import { loadInputValue, parseLoadToKg, type LoadUnit } from "../../../lib/units";
+import { getDefaultGymUnits, getEffectiveGymUnits, getEquipmentNames, makeUnitResolver } from "../../../services/units";
+import { supabase } from "../../../lib/supabase";
 
 export default function BuilderPage() {
   const { notify } = useToast();
@@ -398,6 +401,22 @@ function SessionEditor({
   const { notify, flashSaved } = useToast();
   const { profile, actingTrainerId } = useAuth();
   const [session, setSession] = useState<SessionRow>(initialSession);
+  // kg o lb para cada ejercicio, según el gimnasio del alumno de este programa (ver lib/units.ts).
+  const [unitResolver, setUnitResolver] = useState<{ fn: (ex: WorkoutExerciseRow) => LoadUnit }>({ fn: () => "kg" });
+  useEffect(() => {
+    let alive = true;
+    (async () => {
+      const { data } = await supabase.from("programs").select("client_id").eq("id", initialSession.program_id).maybeSingle();
+      const orgId = profile?.organization_id ?? null;
+      const gym = data?.client_id ? await getEffectiveGymUnits(data.client_id as string, orgId) : orgId ? await getDefaultGymUnits(orgId) : "kg";
+      const eq = await getEquipmentNames();
+      if (alive) setUnitResolver({ fn: makeUnitResolver(gym, eq) });
+    })().catch(() => {});
+    return () => {
+      alive = false;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [initialSession.program_id]);
   const [setNotes, setSetNotes] = useState<Record<string, Record<number, string>>>({});
   const [notesExpandedId, setNotesExpandedId] = useState<string | null>(null);
   const [noteDrafts, setNoteDrafts] = useState<Record<number, string>>({});
@@ -693,7 +712,7 @@ function SessionEditor({
                       <>
                         <th style={{ padding: "8px 10px" }}>Series</th>
                         <th style={{ padding: "8px 10px" }}>Reps</th>
-                        <th style={{ padding: "8px 10px" }}>Carga (kg)</th>
+                        <th style={{ padding: "8px 10px" }} title="Toca kg / lb para cambiar la unidad de ese ejercicio">Carga</th>
                         <th style={{ padding: "8px 10px" }}>RIR</th>
                         <th style={{ padding: "8px 10px" }}>Descanso (s)</th>
                         <th style={{ padding: "8px 10px" }}>Tempo</th>
@@ -750,7 +769,14 @@ function SessionEditor({
                               <NumCell value={it.reps_max} onChange={(v) => patchItem(it.id, "reps_max", v)} small />
                             </div>
                           </td>
-                          <td style={{ padding: "6px" }}><NumCell value={it.load_value} onChange={(v) => patchItem(it.id, "load_value", v)} /></td>
+                          <td style={{ padding: "6px" }}>
+                            <LoadCell
+                              kg={it.load_value}
+                              unit={unitResolver.fn(it)}
+                              onChangeKg={(v) => patchItem(it.id, "load_value", v)}
+                              onChangeUnit={(u) => patchItem(it.id, "load_unit", u)}
+                            />
+                          </td>
                           <td style={{ padding: "6px" }}><NumCell value={it.rir} onChange={(v) => patchItem(it.id, "rir", v)} /></td>
                           <td style={{ padding: "6px" }}><NumCell value={it.rest_s} onChange={(v) => patchItem(it.id, "rest_s", v)} /></td>
                           <td style={{ padding: "6px" }}>
@@ -1125,6 +1151,42 @@ function AutoregulationModal({
       )}
       <button className="btn" onClick={confirm} disabled={saving}>{saving ? "Copiando…" : `Confirmar y crear semana ${targetWeekLabel}`}</button>
     </Modal>
+  );
+}
+
+/**
+ * Carga prescripta: se escribe en la unidad del ejercicio (kg o lb) y se
+ * guarda siempre en kg. El botón cambia la unidad de ese ejercicio en esta
+ * rutina (el peso no cambia: 45,4 kg se muestra como 100 lb).
+ */
+function LoadCell({
+  kg,
+  unit,
+  onChangeKg,
+  onChangeUnit,
+}: {
+  kg: number | null;
+  unit: LoadUnit;
+  onChangeKg: (kg: number | null) => void;
+  onChangeUnit: (u: LoadUnit) => void;
+}) {
+  const [text, setText] = useState(loadInputValue(kg, unit));
+  useEffect(() => setText(loadInputValue(kg, unit)), [kg, unit]);
+  return (
+    <div style={{ display: "flex", alignItems: "center", gap: 4 }}>
+      <input
+        className="input"
+        inputMode="decimal"
+        style={{ width: 64, padding: "6px 4px", textAlign: "center" }}
+        value={text}
+        aria-label={`Carga en ${unit}`}
+        onChange={(e) => setText(e.target.value)}
+        onBlur={() => onChangeKg(parseLoadToKg(text, unit))}
+      />
+      <button type="button" className="unit-toggle" title="Cambiar entre kg y libras" onClick={() => onChangeUnit(unit === "kg" ? "lb" : "kg")}>
+        {unit}
+      </button>
+    </div>
   );
 }
 

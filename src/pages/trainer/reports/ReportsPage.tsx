@@ -187,6 +187,7 @@ export default function ReportsPage() {
                   exerciseId={progressExId}
                   onExerciseChange={setProgressExId}
                   series={progressExId ? data.exerciseProgressFor(progressExId) : []}
+                  unit={progressExId ? data.exerciseUnitFor(progressExId) : "kg"}
                 />
               </div>
             </div>

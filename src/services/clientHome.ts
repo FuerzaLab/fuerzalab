@@ -1,4 +1,5 @@
 import { supabase } from "../lib/supabase";
+import { formatLoad } from "../lib/units";
 
 /** Lo que el alumno ve en su Inicio, además de lo que ya existía. */
 
@@ -44,9 +45,11 @@ export interface MyRecord {
   with_load: boolean;
   metric: number;
   previous_best: number;
+  load_unit?: "kg" | "lb" | null;
 }
 
-const RECORD_COLS = "id, exercise_name, reps, load_kg, performed_at, with_load, metric, previous_best";
+// "*": incluye load_unit si ya se corrió part3v_migration.sql.
+const RECORD_COLS = "*";
 
 /** Récords de los últimos días (vista personal_records, de part3r_migration.sql). */
 export async function listMyRecentRecords(clientId: string, days = 30, limit = 5): Promise<MyRecord[]> {
@@ -74,7 +77,8 @@ const fmt = (n: number) => (Number.isInteger(n) ? String(n) : n.toFixed(1));
 export function describeRecord(r: MyRecord): string {
   const diff = Number(r.metric) - Number(r.previous_best);
   if (r.with_load) {
-    return `${fmt(Number(r.load_kg))} kg × ${r.reps} — tu 1RM estimado subió ${fmt(Math.round(diff * 10) / 10)} kg`;
+    const u = r.load_unit === "lb" ? "lb" : "kg";
+    return `${formatLoad(Number(r.load_kg), u)} × ${r.reps} — tu 1RM estimado subió ${formatLoad(diff, u)}`;
   }
   return `${r.reps} repeticiones — ${fmt(diff)} más que tu mejor marca`;
 }

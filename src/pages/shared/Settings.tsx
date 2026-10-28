@@ -5,6 +5,7 @@ import { supabase } from "../../lib/supabase";
 import PasswordInput from "../../components/ui/PasswordInput";
 import { isDemoAccount } from "../../lib/demo";
 import BrandSettingsPanel from "../../components/BrandSettingsPanel";
+import { DefaultGymUnitsPanel } from "../../components/GymUnitsSettings";
 
 export default function Settings() {
   const { profile, updatePassword, refreshProfile } = useAuth();
@@ -56,6 +57,7 @@ export default function Settings() {
       <h1 style={{ marginBottom: 20 }}>Configuración</h1>
 
       <BrandSettingsPanel />
+      <DefaultGymUnitsPanel />
 
       <div className="panel" style={{ marginBottom: 18, maxWidth: 420 }}>
         <div className="hd"><h3>Tus datos</h3></div>
