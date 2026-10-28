@@ -306,3 +306,38 @@ select.input:hover { border-color: var(--pri); }
 .empty-title { display: block; font-size: 17px; color: var(--ink); margin-bottom: 6px; }
 .empty-state p { margin: 0 auto 14px; color: var(--muted); max-width: 48ch; font-size: 14.5px; }
 .empty-state p:last-child { margin-bottom: 0; }
+
+/* ===== Celular: Constructor de rutinas y Evaluaciones ===== */
+@media (max-width: 760px) {
+  /* La tabla de ejercicios del Constructor se vuelve una ficha por ejercicio */
+  .rtable thead { display: none; }
+  .rtable, .rtable tbody { display: block; width: 100%; }
+  .rtable tr.rt-row { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px 10px; padding: 14px 14px 10px; }
+  .rtable tr.rt-row > td { padding: 0 !important; min-width: 0 !important; display: flex; flex-direction: column; gap: 4px; }
+  .rtable td[data-label]::before { content: attr(data-label); font-size: 11.5px; font-weight: 600; color: var(--muted); }
+  .rtable tr.rt-row > td.rt-select { grid-column: 1; grid-row: 1; flex-direction: row; align-items: center; }
+  .rtable tr.rt-row > td.rt-group { grid-column: 2 / -1; grid-row: 1; flex-direction: row; justify-content: flex-end; align-items: center; }
+  .rtable tr.rt-row > td.rt-name { grid-column: 1 / -1; font-size: 16px; }
+  .rtable tr.rt-row > td.rt-wide { grid-column: span 2; }
+  .rtable tr.rt-row > td.rt-actions { grid-column: 1 / -1; flex-direction: row; justify-content: flex-end; gap: 6px; border-top: 1px dashed var(--line); padding-top: 6px !important; margin-top: 2px; }
+  .rtable tr.rt-row > td.rt-actions button { padding: 8px !important; }
+  .rtable tr.rt-row > td.rt-actions svg { width: 19px; height: 19px; }
+  .rtable tr:not(.rt-row) { display: block; }
+  .rtable td.rt-full { display: block; }
+  .rtable tr.rt-row input.input, .rtable tr.rt-row select.input { width: 100% !important; min-width: 0; }
+  .rtable td input[type="checkbox"] { width: 20px; height: 20px; }
+
+  /* Evaluaciones: botones de editar y quitar más fáciles de tocar, y campos a lo ancho */
+  .assess-table td { padding: 9px 4px !important; }
+  .assess-table button { padding: 8px !important; }
+  .assess-table svg { width: 18px; height: 18px; }
+  .assess-add > div { flex: 1 1 140px; }
+  .assess-add > div .input { max-width: none !important; width: 100%; }
+  .assess-add > .btn { flex: 1 1 100%; justify-content: center; }
+
+  /* Encabezados de panel con botones: que bajen de línea en vez de salirse */
+  .panel .hd { flex-wrap: wrap; gap: 8px; }
+}
+/* Biseries y series gigantes: un solo botón por ronda */
+.round-done { width: 100%; justify-content: center; margin-top: 10px; background: #fff; color: var(--pri); border: 1.5px solid var(--pri); font-weight: 700; }
+.round-done.done { background: var(--ok-soft); color: #1F6B53; border-color: var(--ok); }

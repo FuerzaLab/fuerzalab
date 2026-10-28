@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { Check, ArrowLeft, Flame } from "lucide-react";
 import { useAuth } from "../../contexts/AuthContext";
 import { useToast } from "../../contexts/ToastContext";
@@ -375,7 +375,7 @@ export function TrainSession({ sessionId, onExit, backLabel = "Volver a mi rutin
 
   const logFor = (exerciseWorkoutId: string, setNumber: number) => setLogs.find((l) => l.workout_exercise_id === exerciseWorkoutId && l.set_number === setNumber);
 
-  const saveSet = async (ex: WorkoutExerciseRow, setNumber: number, fields: { reps: number; loadKg: number | null; rir: number | null; completed: boolean; loadUnit?: LoadUnit }) => {
+  const saveSet = async (ex: WorkoutExerciseRow, setNumber: number, fields: { reps: number; loadKg: number | null; rir: number | null; completed: boolean; loadUnit?: LoadUnit }, opts?: { skipRest?: boolean }) => {
     if (!log) return;
     const existing = logFor(ex.id, setNumber);
     const justCompleted = fields.completed && !existing?.completed;
@@ -389,7 +389,7 @@ export function TrainSession({ sessionId, onExit, backLabel = "Volver a mi rutin
         ...fields,
       });
       setSetLogs((sls) => (existing ? sls.map((s) => (s.id === saved.id ? saved : s)) : [...sls, saved]));
-      if (justCompleted && ex.rest_s) startRest(ex.rest_s, `${ex.id}:${setNumber}`);
+      if (justCompleted && ex.rest_s && !opts?.skipRest) startRest(ex.rest_s, `${ex.id}:${setNumber}`);
     } catch (e: any) {
       notify(e.message);
     }
@@ -487,6 +487,7 @@ export function TrainSession({ sessionId, onExit, backLabel = "Volver a mi rutin
                       variations={variations}
                       setNotesByExercise={setNotesByExercise}
                       unitFor={unitResolver.fn}
+                      onStartRest={startRest}
                     />
                   ) : (
                     g.map((ex) => (
@@ -644,10 +645,11 @@ function SupersetTrainer({
   variations,
   setNotesByExercise,
   unitFor,
+  onStartRest,
 }: {
   exercises: WorkoutExerciseRow[];
   logFor: (workoutExerciseId: string, setNumber: number) => SetLogRow | undefined;
-  onSaveSet: (ex: WorkoutExerciseRow, setNumber: number, fields: { reps: number; loadKg: number | null; rir: number | null; completed: boolean; loadUnit?: LoadUnit }) => void;
+  onSaveSet: (ex: WorkoutExerciseRow, setNumber: number, fields: { reps: number; loadKg: number | null; rir: number | null; completed: boolean; loadUnit?: LoadUnit }, opts?: { skipRest?: boolean }) => Promise<void> | void;
   restAnchor: string | null;
   restRemaining: number;
   restTotal: number;
@@ -657,7 +659,11 @@ function SupersetTrainer({
   variations: Record<string, ExerciseVariationRow[]>;
   setNotesByExercise: Record<string, Record<number, string>>;
   unitFor: (ex: WorkoutExerciseRow) => LoadUnit;
+  onStartRest: (seconds: number, anchor: string) => void;
 }) {
+  // Lo que está escrito en cada ejercicio de cada ronda (reps, carga, RIR),
+  // para guardarlo todo junto al tocar "Ronda realizada".
+  const getters = useRef<Record<string, () => Omit<{ reps: number; loadKg: number | null; rir: number | null; completed: boolean; loadUnit?: LoadUnit }, "completed">>>({});
   const label = exercises.length === 2 ? "Biserie" : exercises.length === 3 ? "Triserie" : "Serie gigante";
   const maxSets = Math.max(...exercises.map((ex) => ex.sets ?? 3));
   const rounds = Array.from({ length: maxSets }, (_, i) => i + 1);
@@ -684,7 +690,8 @@ function SupersetTrainer({
           </div>
         ))}
         <p className="note" style={{ marginBottom: 14 }}>
-          Haz una serie de cada ejercicio, en orden, sin descansar entre ellos — el descanso va después de completar la ronda entera.
+          Haz una serie de cada ejercicio, en orden, sin descansar entre ellos. Al terminar los {exercises.length}, toca "Ronda
+          realizada": el descanso empieza recién ahí.
         </p>
         {rounds.map((roundNumber) => {
           const showRestHere = restRemaining > 0 && exercises.some((ex) => restAnchor === `${ex.id}:${roundNumber}`);
@@ -706,6 +713,10 @@ function SupersetTrainer({
                         <span className="note" style={{ fontSize: 12.5 }}>Obj: {repsTarget}{ex.load_value ? ` @ ${formatLoad(ex.load_value, unitFor(ex))}` : ""}</span>
                         <MiniSetInputs
                           key={`${ex.id}-${roundNumber}-${unitFor(ex)}`}
+                          inRound
+                          register={(fn) => {
+                            getters.current[`${ex.id}:${roundNumber}`] = fn;
+                          }}
                           exUnit={unitFor(ex)}
                           defaultReps={ex.reps_max ?? ex.reps_min ?? 0}
                           defaultLoad={ex.load_value}
@@ -718,6 +729,34 @@ function SupersetTrainer({
                   );
                 })}
               </div>
+              {(() => {
+                const inRound = exercises.filter((ex) => roundNumber <= (ex.sets ?? 3));
+                const roundDone = inRound.length > 0 && inRound.every((ex) => logFor(ex.id, roundNumber)?.completed);
+                const toggleRound = async () => {
+                  const completed = !roundDone;
+                  // Se guardan los ejercicios de la ronda juntos y el descanso arranca una sola vez.
+                  for (const ex of inRound) {
+                    const values = getters.current[`${ex.id}:${roundNumber}`]?.();
+                    if (!values) continue;
+                    await onSaveSet(ex, roundNumber, { ...values, completed }, { skipRest: true });
+                  }
+                  if (completed) {
+                    const rest = Math.max(0, ...inRound.map((ex) => ex.rest_s ?? 0));
+                    const last = inRound[inRound.length - 1];
+                    if (rest > 0 && last) onStartRest(rest, `${last.id}:${roundNumber}`);
+                  }
+                };
+                return (
+                  <button
+                    type="button"
+                    className={`btn round-done complete-transition${roundDone ? " done" : ""}`}
+                    onClick={toggleRound}
+                  >
+                    <Check size={16} className={roundDone ? "check-pop" : undefined} />
+                    {roundDone ? `Ronda ${roundNumber} realizada` : `Marcar ronda ${roundNumber} como realizada`}
+                  </button>
+                );
+              })()}
               {showRestHere && <RestTimer remaining={restRemaining} total={restTotal} onAddTime={onAddRestTime} onSkip={onSkipRest} />}
             </div>
           );
@@ -728,6 +767,8 @@ function SupersetTrainer({
 }
 
 function MiniSetInputs({
+  inRound,
+  register,
   exUnit,
   defaultReps,
   defaultLoad,
@@ -741,12 +782,23 @@ function MiniSetInputs({
   defaultRir: number | null;
   existing: SetLogRow | undefined;
   onSave: (fields: { reps: number; loadKg: number | null; rir: number | null; completed: boolean; loadUnit?: LoadUnit }) => void;
+  /** Dentro de una biserie / serie gigante: sin botón ✓ propio (lo marca "Ronda realizada"). */
+  inRound?: boolean;
+  register?: (getValues: () => Omit<{ reps: number; loadKg: number | null; rir: number | null; completed: boolean; loadUnit?: LoadUnit }, "completed">) => void;
 }) {
   const [unit, setUnit] = useState<LoadUnit>(existing?.load_unit ?? exUnit);
   const [reps, setReps] = useState(String(existing?.reps ?? defaultReps ?? ""));
   const [load, setLoad] = useState(loadInputValue(existing?.load_kg ?? defaultLoad, existing?.load_unit ?? exUnit));
   const [rir, setRir] = useState(existing?.rir != null ? String(existing.rir) : defaultRir != null ? String(defaultRir) : "");
   const completed = existing?.completed ?? false;
+
+  // La ronda lee lo escrito acá al tocar "Ronda realizada".
+  register?.(() => ({ reps: Number(reps) || 0, loadKg: parseLoadToKg(load, unit), rir: rir === "" ? null : Number(rir.replace(",", ".")) || 0, loadUnit: unit }));
+  // En una ronda, la serie se guarda al tocar "Ronda realizada"; antes, solo
+  // se guarda al salir de un campo si ya estaba guardada (para corregirla).
+  const blurCommit = () => {
+    if (!inRound || existing) commit();
+  };
 
   const commit = (over?: Partial<{ completed: boolean; unit: LoadUnit; load: string }>) => {
     const u = over?.unit ?? unit;
@@ -772,17 +824,19 @@ function MiniSetInputs({
 
   return (
     <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
-      <input className="input" style={{ width: 50, padding: "5px 4px", textAlign: "center" }} value={reps} onChange={(e) => setReps(e.target.value)} onBlur={() => commit()} aria-label="Reps" />
-      <input className="input" inputMode="decimal" style={{ width: 55, padding: "5px 4px", textAlign: "center" }} value={load} onChange={(e) => setLoad(e.target.value)} onBlur={() => commit()} aria-label={`Carga en ${unit}`} />
+      <input className="input" style={{ width: 50, padding: "5px 4px", textAlign: "center" }} value={reps} onChange={(e) => setReps(e.target.value)} onBlur={blurCommit} aria-label="Reps" />
+      <input className="input" inputMode="decimal" style={{ width: 55, padding: "5px 4px", textAlign: "center" }} value={load} onChange={(e) => setLoad(e.target.value)} onBlur={blurCommit} aria-label={`Carga en ${unit}`} />
       <button type="button" className="unit-toggle" onClick={toggleUnit} title="Cambiar entre kg y libras">{unit}</button>
-      <input className="input" style={{ width: 45, padding: "5px 4px", textAlign: "center" }} value={rir} onChange={(e) => setRir(e.target.value)} onBlur={() => commit()} aria-label="RIR" />
-      <button
-        className="btn ghost complete-transition"
-        style={{ padding: "4px 8px", fontSize: 12.5, background: completed ? "var(--ok-soft)" : undefined }}
-        onClick={() => commit({ completed: !completed })}
-      >
-        <Check size={13} className={completed ? "check-pop" : undefined} />
-      </button>
+      <input className="input" style={{ width: 45, padding: "5px 4px", textAlign: "center" }} value={rir} onChange={(e) => setRir(e.target.value)} onBlur={blurCommit} aria-label="RIR" />
+      {!inRound && (
+        <button
+          className="btn ghost complete-transition"
+          style={{ padding: "4px 8px", fontSize: 12.5, background: completed ? "var(--ok-soft)" : undefined }}
+          onClick={() => commit({ completed: !completed })}
+        >
+          <Check size={13} className={completed ? "check-pop" : undefined} />
+        </button>
+      )}
     </div>
   );
 }

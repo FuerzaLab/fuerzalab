@@ -22,6 +22,21 @@ export interface ChangelogEntry {
 
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    id: "2026-10-28-superset-round",
+    date: "2026-10-28",
+    title: "Biseries y series gigantes: un solo botón por ronda",
+    body: "Haces un ejercicio tras otro y, al terminar la ronda, tocas \"Marcar ronda como realizada\": se marcan todos juntos y el descanso empieza recién ahí, una sola vez.",
+    for: ["trainer", "client"],
+  },
+  {
+    id: "2026-10-28-mobile-builder",
+    date: "2026-10-28",
+    title: "Arma rutinas y carga evaluaciones desde el celular",
+    body: "En el celular, el Constructor de rutinas muestra cada ejercicio como una ficha con sus campos grandes, sin tener que deslizar la pantalla de costado. En Evaluaciones, los botones son más fáciles de tocar y se abre el teclado numérico al cargar medidas.",
+    for: ["trainer"],
+    link: { label: "Ir al Constructor", to: paths.trainerBuilder },
+  },
+  {
     id: "2026-10-28-menu-sections",
     date: "2026-10-28",
     title: "Elige qué secciones ves en tu menú",

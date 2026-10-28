@@ -694,7 +694,7 @@ function SessionEditor({
           <div className="panel" key={kind} style={{ marginBottom: 14 }}>
             <div className="hd"><h3>{BLOCK_LABEL[kind]}</h3></div>
             <div style={{ overflowX: "auto" }}>
-              <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 14 }}>
+              <table className="rtable builder-table" style={{ width: "100%", borderCollapse: "collapse", fontSize: 14 }}>
                 <thead>
                   <tr style={{ textAlign: "left", color: "var(--muted)", fontSize: 12.5 }}>
                     <th style={{ padding: "8px 10px" }} />
@@ -724,11 +724,11 @@ function SessionEditor({
                 <tbody>
                   {rows.map((it, i) => (
                     <Fragment key={it.id}>
-                    <tr style={{ borderTop: "1px solid var(--line)" }}>
-                      <td style={{ padding: "8px 10px" }}>
-                        <input type="checkbox" checked={selected.includes(it.id)} onChange={() => toggleSelect(it.id)} />
+                    <tr className="rt-row" style={{ borderTop: "1px solid var(--line)" }}>
+                      <td className="rt-select" style={{ padding: "8px 10px" }}>
+                        <input type="checkbox" aria-label="Elegir para agrupar" checked={selected.includes(it.id)} onChange={() => toggleSelect(it.id)} />
                       </td>
-                      <td style={{ padding: "8px 10px" }}>
+                      <td className="rt-group" style={{ padding: "8px 10px" }}>
                         {labels[it.id] ? (
                           <span style={{ display: "inline-flex", alignItems: "center", gap: 3 }}>
                             <span className="chip pri">{labels[it.id]}</span>
@@ -747,29 +747,29 @@ function SessionEditor({
                           <span className="note">—</span>
                         )}
                       </td>
-                      <td style={{ padding: "8px 10px", minWidth: 160 }}><b>{it.exercise_name}</b></td>
+                      <td className="rt-name" style={{ padding: "8px 10px", minWidth: 160 }}><b>{it.exercise_name}</b></td>
                       {isCardio ? (
                         <>
-                          <td style={{ padding: "6px" }}><NumCell value={it.duration_min} onChange={(v) => patchItem(it.id, "duration_min", v)} /></td>
-                          <td style={{ padding: "6px" }}><NumCell value={it.distance_km} onChange={(v) => patchItem(it.id, "distance_km", v)} /></td>
-                          <td style={{ padding: "6px" }}><NumCell value={it.steps_target} onChange={(v) => patchItem(it.id, "steps_target", v)} /></td>
-                          <td style={{ padding: "6px", minWidth: 160 }}>
+                          <td data-label="Duración (min)" style={{ padding: "6px" }}><NumCell value={it.duration_min} onChange={(v) => patchItem(it.id, "duration_min", v)} /></td>
+                          <td data-label="Distancia (km)" style={{ padding: "6px" }}><NumCell value={it.distance_km} onChange={(v) => patchItem(it.id, "distance_km", v)} /></td>
+                          <td data-label="Pasos diarios" style={{ padding: "6px" }}><NumCell value={it.steps_target} onChange={(v) => patchItem(it.id, "steps_target", v)} /></td>
+                          <td data-label="Zona de FC" className="rt-wide" style={{ padding: "6px", minWidth: 160 }}>
                             <select className="input" style={{ padding: "6px 8px" }} value={it.hr_zone ?? ""} onChange={(e) => patchItem(it.id, "hr_zone", e.target.value)}>
                               {HR_ZONES.map((z) => <option key={z}>{z}</option>)}
                             </select>
                           </td>
-                          <td style={{ padding: "6px" }}><NumCell value={it.rest_s} onChange={(v) => patchItem(it.id, "rest_s", v)} /></td>
+                          <td data-label="Descanso (s)" style={{ padding: "6px" }}><NumCell value={it.rest_s} onChange={(v) => patchItem(it.id, "rest_s", v)} /></td>
                         </>
                       ) : (
                         <>
-                          <td style={{ padding: "6px" }}><NumCell value={it.sets} onChange={(v) => patchItem(it.id, "sets", v)} /></td>
-                          <td style={{ padding: "6px", minWidth: 90 }}>
+                          <td data-label="Series" style={{ padding: "6px" }}><NumCell value={it.sets} onChange={(v) => patchItem(it.id, "sets", v)} /></td>
+                          <td data-label="Reps (mín–máx)" style={{ padding: "6px", minWidth: 90 }}>
                             <div style={{ display: "flex", gap: 3 }}>
                               <NumCell value={it.reps_min} onChange={(v) => patchItem(it.id, "reps_min", v)} small />
                               <NumCell value={it.reps_max} onChange={(v) => patchItem(it.id, "reps_max", v)} small />
                             </div>
                           </td>
-                          <td style={{ padding: "6px" }}>
+                          <td data-label="Carga" style={{ padding: "6px" }}>
                             <LoadCell
                               kg={it.load_value}
                               unit={unitResolver.fn(it)}
@@ -777,14 +777,14 @@ function SessionEditor({
                               onChangeUnit={(u) => patchItem(it.id, "load_unit", u)}
                             />
                           </td>
-                          <td style={{ padding: "6px" }}><NumCell value={it.rir} onChange={(v) => patchItem(it.id, "rir", v)} /></td>
-                          <td style={{ padding: "6px" }}><NumCell value={it.rest_s} onChange={(v) => patchItem(it.id, "rest_s", v)} /></td>
-                          <td style={{ padding: "6px" }}>
+                          <td data-label="RIR" style={{ padding: "6px" }}><NumCell value={it.rir} onChange={(v) => patchItem(it.id, "rir", v)} /></td>
+                          <td data-label="Descanso (s)" style={{ padding: "6px" }}><NumCell value={it.rest_s} onChange={(v) => patchItem(it.id, "rest_s", v)} /></td>
+                          <td data-label="Tempo" style={{ padding: "6px" }}>
                             <input className="input" style={{ width: 80, padding: "6px 8px", textAlign: "center" }} value={it.tempo ?? ""} onChange={(e) => patchItem(it.id, "tempo", e.target.value)} />
                           </td>
                         </>
                       )}
-                      <td style={{ padding: "8px 10px" }}>
+                      <td className="rt-actions" style={{ padding: "8px 10px" }}>
                         <button
                           aria-label={`Subir ${it.exercise_name}`}
                           onClick={() => moveItem(it.id, -1)}
@@ -816,7 +816,7 @@ function SessionEditor({
                     </tr>
                     {notesExpandedId === it.id && !isCardio && (
                       <tr>
-                        <td colSpan={10} style={{ padding: "10px 14px", background: "var(--bg)" }}>
+                        <td colSpan={10} className="rt-full" style={{ padding: "10px 14px", background: "var(--bg)" }}>
                           <p className="note" style={{ marginBottom: 8 }}>
                             Notas por serie — se muestran destacadas al cliente mientras entrena esa serie en particular. Deja vacío lo que no necesite nota.
                           </p>
@@ -857,7 +857,7 @@ function SessionEditor({
       <div className="panel">
         <div className="hd">
           <h3>Añadir ejercicio</h3>
-          <div style={{ display: "flex", gap: 8 }}>
+          <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
             <button className="btn ghost" onClick={() => setShowImport(true)}>
               <FileUp size={15} /> Importar rutina
             </button>

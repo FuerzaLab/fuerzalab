@@ -584,10 +584,10 @@ function BodySection({
       <div className="hd"><h3>Datos corporales</h3></div>
       <div className="bd">
         <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(140px,1fr))", gap: 12, marginBottom: 14 }}>
-          <div><label className="field-label">Peso (kg)</label><input className="input" value={weight} onChange={(e) => setWeight(e.target.value)} /></div>
+          <div><label className="field-label">Peso (kg)</label><input className="input" inputMode="decimal" value={weight} onChange={(e) => setWeight(e.target.value)} /></div>
           <div><label className="field-label">Estatura (cm)</label><input className="input" inputMode="decimal" placeholder="Ej. 165" value={height} onChange={(e) => setHeight(e.target.value)} onBlur={() => { const cm = parseHeightCm(height); if (cm != null && String(cm) !== height) setHeight(String(cm)); }} /></div>
-          <div><label className="field-label">% grasa corporal</label><input className="input" value={bodyFat} onChange={(e) => setBodyFat(e.target.value)} /></div>
-          <div><label className="field-label">Masa muscular (kg)</label><input className="input" value={muscleMass} onChange={(e) => setMuscleMass(e.target.value)} /></div>
+          <div><label className="field-label">% grasa corporal</label><input className="input" inputMode="decimal" value={bodyFat} onChange={(e) => setBodyFat(e.target.value)} /></div>
+          <div><label className="field-label">Masa muscular (kg)</label><input className="input" inputMode="decimal" value={muscleMass} onChange={(e) => setMuscleMass(e.target.value)} /></div>
         </div>
 
         <div style={{ background: "var(--bg)", borderRadius: 8, padding: 14, marginBottom: 14 }}>
@@ -682,7 +682,7 @@ function CircumferencesSection({ assessmentId, rows, setRows }: { assessmentId: 
       <div className="hd"><h3>Circunferencias</h3></div>
       <div className="bd">
         {rows.length > 0 && (
-          <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 14, marginBottom: 14 }}>
+          <table className="assess-table" style={{ width: "100%", borderCollapse: "collapse", fontSize: 14, marginBottom: 14 }}>
             <tbody>
               {rows.map((c) => (
                 <tr key={c.id} style={{ borderBottom: "1px solid var(--line)" }}>
@@ -690,7 +690,7 @@ function CircumferencesSection({ assessmentId, rows, setRows }: { assessmentId: 
                   <td style={{ padding: "6px 4px" }}>{c.side !== "none" ? (c.side === "left" ? "Izquierda" : "Derecha") : ""}</td>
                   <td style={{ padding: "6px 4px" }}>
                     {editingId === c.id ? (
-                      <input className="input" style={{ maxWidth: 90, padding: "4px 8px" }} value={editValue} onChange={(e) => setEditValue(e.target.value)} autoFocus />
+                      <input className="input" inputMode="decimal" style={{ maxWidth: 90, padding: "4px 8px" }} value={editValue} onChange={(e) => setEditValue(e.target.value)} autoFocus />
                     ) : (
                       `${c.value_cm} cm`
                     )}
@@ -721,7 +721,7 @@ function CircumferencesSection({ assessmentId, rows, setRows }: { assessmentId: 
             </tbody>
           </table>
         )}
-        <div style={{ display: "flex", flexWrap: "wrap", gap: 10, alignItems: "flex-end" }}>
+        <div className="assess-add" style={{ display: "flex", flexWrap: "wrap", gap: 10, alignItems: "flex-end" }}>
           <div>
             <label className="field-label">Zona</label>
             <select className="input" value={site} onChange={(e) => setSite(e.target.value as CircumferenceSite)}>
@@ -739,7 +739,7 @@ function CircumferencesSection({ assessmentId, rows, setRows }: { assessmentId: 
               <option value="right">Derecha</option>
             </select>
           </div>
-          <div><label className="field-label">Valor (cm)</label><input className="input" style={{ maxWidth: 100 }} value={value} onChange={(e) => setValue(e.target.value)} /></div>
+          <div><label className="field-label">Valor (cm)</label><input className="input" inputMode="decimal" style={{ maxWidth: 100 }} value={value} onChange={(e) => setValue(e.target.value)} /></div>
           <button className="btn ghost" onClick={add}><Plus size={14} /> Añadir</button>
         </div>
       </div>
@@ -797,7 +797,7 @@ function SkinfoldsSection({ assessmentId, rows, setRows }: { assessmentId: strin
           )}
         </div>
         {rows.length > 0 && (
-          <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 14, marginBottom: 14 }}>
+          <table className="assess-table" style={{ width: "100%", borderCollapse: "collapse", fontSize: 14, marginBottom: 14 }}>
             <tbody>
               {rows.map((s) => (
                 <tr key={s.id} style={{ borderBottom: "1px solid var(--line)" }}>
@@ -805,7 +805,7 @@ function SkinfoldsSection({ assessmentId, rows, setRows }: { assessmentId: strin
                   <td style={{ padding: "6px 4px" }}>{s.side ? (s.side === "left" ? "Izquierda" : "Derecha") : ""}</td>
                   <td style={{ padding: "6px 4px" }}>
                     {editingId === s.id ? (
-                      <input className="input" style={{ maxWidth: 90, padding: "4px 8px" }} value={editValue} onChange={(e) => setEditValue(e.target.value)} autoFocus />
+                      <input className="input" inputMode="decimal" style={{ maxWidth: 90, padding: "4px 8px" }} value={editValue} onChange={(e) => setEditValue(e.target.value)} autoFocus />
                     ) : (
                       `${s.value_mm} mm`
                     )}
@@ -836,7 +836,7 @@ function SkinfoldsSection({ assessmentId, rows, setRows }: { assessmentId: strin
             </tbody>
           </table>
         )}
-        <div style={{ display: "flex", flexWrap: "wrap", gap: 10, alignItems: "flex-end" }}>
+        <div className="assess-add" style={{ display: "flex", flexWrap: "wrap", gap: 10, alignItems: "flex-end" }}>
           <div>
             <label className="field-label">Zona</label>
             <select className="input" value={site} onChange={(e) => setSite(e.target.value)}>
@@ -851,7 +851,7 @@ function SkinfoldsSection({ assessmentId, rows, setRows }: { assessmentId: strin
               <option value="right">Derecha</option>
             </select>
           </div>
-          <div><label className="field-label">Valor (mm)</label><input className="input" style={{ maxWidth: 100 }} value={value} onChange={(e) => setValue(e.target.value)} /></div>
+          <div><label className="field-label">Valor (mm)</label><input className="input" inputMode="decimal" style={{ maxWidth: 100 }} value={value} onChange={(e) => setValue(e.target.value)} /></div>
           <div><label className="field-label">Protocolo (opcional)</label><input className="input" placeholder="Ej. Jackson-Pollock 3" value={protocol} onChange={(e) => setProtocol(e.target.value)} /></div>
           <button className="btn ghost" onClick={add}><Plus size={14} /> Añadir</button>
         </div>
@@ -898,7 +898,7 @@ function StrengthSection({ assessmentId, rows, setRows, exercises }: { assessmen
       <div className="bd">
         <p className="note" style={{ marginBottom: 14 }}>Si hiciste un 1RM directo, pon 1 repetición. Si no, estimamos el 1RM con la fórmula de Epley.</p>
         {rows.length > 0 && (
-          <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 14, marginBottom: 14 }}>
+          <table className="assess-table" style={{ width: "100%", borderCollapse: "collapse", fontSize: 14, marginBottom: 14 }}>
             <thead>
               <tr style={{ textAlign: "left", color: "var(--muted)", fontSize: 12.5 }}>
                 <th style={{ padding: "4px" }}>Ejercicio</th><th style={{ padding: "4px" }}>Carga</th><th style={{ padding: "4px" }}>Reps</th><th style={{ padding: "4px" }}>1RM estimado</th><th />
@@ -910,14 +910,14 @@ function StrengthSection({ assessmentId, rows, setRows, exercises }: { assessmen
                   <td style={{ padding: "6px 4px" }}>{s.exercise_name}</td>
                   <td style={{ padding: "6px 4px" }}>
                     {editingId === s.id ? (
-                      <input className="input" style={{ maxWidth: 80, padding: "4px 8px" }} value={editLoad} onChange={(e) => setEditLoad(e.target.value)} autoFocus />
+                      <input className="input" inputMode="decimal" style={{ maxWidth: 80, padding: "4px 8px" }} value={editLoad} onChange={(e) => setEditLoad(e.target.value)} autoFocus />
                     ) : (
                       `${s.load_kg} kg`
                     )}
                   </td>
                   <td style={{ padding: "6px 4px" }}>
                     {editingId === s.id ? (
-                      <input className="input" style={{ maxWidth: 60, padding: "4px 8px" }} value={editReps} onChange={(e) => setEditReps(e.target.value)} />
+                      <input className="input" inputMode="decimal" style={{ maxWidth: 60, padding: "4px 8px" }} value={editReps} onChange={(e) => setEditReps(e.target.value)} />
                     ) : (
                       s.reps
                     )}
@@ -949,7 +949,7 @@ function StrengthSection({ assessmentId, rows, setRows, exercises }: { assessmen
             </tbody>
           </table>
         )}
-        <div style={{ display: "flex", flexWrap: "wrap", gap: 10, alignItems: "flex-end" }}>
+        <div className="assess-add" style={{ display: "flex", flexWrap: "wrap", gap: 10, alignItems: "flex-end" }}>
           <div style={{ minWidth: 200 }}>
             <label className="field-label">Ejercicio</label>
             <SearchSelect className="input" value={exerciseId} onChange={(e) => setExerciseId(e.target.value)}>
@@ -957,8 +957,8 @@ function StrengthSection({ assessmentId, rows, setRows, exercises }: { assessmen
               {exercises.map((e) => <option key={e.id} value={e.id}>{e.name}</option>)}
             </SearchSelect>
           </div>
-          <div><label className="field-label">Carga (kg)</label><input className="input" style={{ maxWidth: 100 }} value={load} onChange={(e) => setLoad(e.target.value)} /></div>
-          <div><label className="field-label">Repeticiones</label><input className="input" style={{ maxWidth: 90 }} value={reps} onChange={(e) => setReps(e.target.value)} /></div>
+          <div><label className="field-label">Carga (kg)</label><input className="input" inputMode="decimal" style={{ maxWidth: 100 }} value={load} onChange={(e) => setLoad(e.target.value)} /></div>
+          <div><label className="field-label">Repeticiones</label><input className="input" inputMode="decimal" style={{ maxWidth: 90 }} value={reps} onChange={(e) => setReps(e.target.value)} /></div>
           <button className="btn ghost" onClick={add}><Plus size={14} /> Añadir</button>
         </div>
       </div>
@@ -1002,14 +1002,14 @@ function PowerSection({ assessmentId, rows, setRows }: { assessmentId: string; r
       <div className="hd"><h3>Pruebas de potencia</h3></div>
       <div className="bd">
         {rows.length > 0 && (
-          <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 14, marginBottom: 14 }}>
+          <table className="assess-table" style={{ width: "100%", borderCollapse: "collapse", fontSize: 14, marginBottom: 14 }}>
             <tbody>
               {rows.map((p) => (
                 <tr key={p.id} style={{ borderBottom: "1px solid var(--line)" }}>
                   <td style={{ padding: "6px 4px" }}>{POWER_TEST_LABEL[p.test_type]}</td>
                   <td style={{ padding: "6px 4px" }}>
                     {editingId === p.id ? (
-                      <input className="input" style={{ maxWidth: 90, padding: "4px 8px" }} value={editValue} onChange={(e) => setEditValue(e.target.value)} autoFocus />
+                      <input className="input" inputMode="decimal" style={{ maxWidth: 90, padding: "4px 8px" }} value={editValue} onChange={(e) => setEditValue(e.target.value)} autoFocus />
                     ) : (
                       <b>{p.value} {p.unit}</b>
                     )}
@@ -1040,16 +1040,16 @@ function PowerSection({ assessmentId, rows, setRows }: { assessmentId: string; r
             </tbody>
           </table>
         )}
-        <div style={{ display: "flex", flexWrap: "wrap", gap: 10, alignItems: "flex-end" }}>
+        <div className="assess-add" style={{ display: "flex", flexWrap: "wrap", gap: 10, alignItems: "flex-end" }}>
           <div>
             <label className="field-label">Tipo de prueba</label>
             <select className="input" value={testType} onChange={(e) => setTestType(e.target.value as PowerTestType)}>
               {Object.entries(POWER_TEST_LABEL).map(([k, l]) => <option key={k} value={k}>{l}</option>)}
             </select>
           </div>
-          <div><label className="field-label">Resultado</label><input className="input" style={{ maxWidth: 100 }} value={value} onChange={(e) => setValue(e.target.value)} /></div>
+          <div><label className="field-label">Resultado</label><input className="input" inputMode="decimal" style={{ maxWidth: 100 }} value={value} onChange={(e) => setValue(e.target.value)} /></div>
           <div><label className="field-label">Unidad</label><input className="input" style={{ maxWidth: 80 }} value={unit} onChange={(e) => setUnit(e.target.value)} placeholder="cm, W, m…" /></div>
-          <div><label className="field-label">Peso del implemento (kg, opcional)</label><input className="input" style={{ maxWidth: 120 }} value={implementWeight} onChange={(e) => setImplementWeight(e.target.value)} /></div>
+          <div><label className="field-label">Peso del implemento (kg, opcional)</label><input className="input" inputMode="decimal" style={{ maxWidth: 120 }} value={implementWeight} onChange={(e) => setImplementWeight(e.target.value)} /></div>
           <button className="btn ghost" onClick={add}><Plus size={14} /> Añadir</button>
         </div>
       </div>
@@ -1109,7 +1109,7 @@ function EnduranceSection({ assessmentId, rows, setRows }: { assessmentId: strin
       <div className="hd"><h3>Pruebas de resistencia</h3></div>
       <div className="bd">
         {rows.length > 0 && (
-          <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 14, marginBottom: 14 }}>
+          <table className="assess-table" style={{ width: "100%", borderCollapse: "collapse", fontSize: 14, marginBottom: 14 }}>
             <tbody>
               {rows.map((t) => (
                 <tr key={t.id} style={{ borderBottom: "1px solid var(--line)" }}>
@@ -1118,14 +1118,14 @@ function EnduranceSection({ assessmentId, rows, setRows }: { assessmentId: strin
                     <>
                       <td style={{ padding: "6px 4px" }}>
                         <div style={{ display: "flex", gap: 4 }}>
-                          <input className="input" style={{ maxWidth: 70, padding: "4px 6px" }} value={editDistance} onChange={(e) => setEditDistance(e.target.value)} placeholder="m" autoFocus />
-                          <input className="input" style={{ maxWidth: 70, padding: "4px 6px" }} value={editTime} onChange={(e) => setEditTime(e.target.value)} placeholder="s" />
+                          <input className="input" inputMode="decimal" style={{ maxWidth: 70, padding: "4px 6px" }} value={editDistance} onChange={(e) => setEditDistance(e.target.value)} placeholder="m" autoFocus />
+                          <input className="input" inputMode="decimal" style={{ maxWidth: 70, padding: "4px 6px" }} value={editTime} onChange={(e) => setEditTime(e.target.value)} placeholder="s" />
                         </div>
                       </td>
                       <td style={{ padding: "6px 4px" }}>
                         <div style={{ display: "flex", gap: 4 }}>
-                          <input className="input" style={{ maxWidth: 70, padding: "4px 6px" }} value={editHrAvg} onChange={(e) => setEditHrAvg(e.target.value)} placeholder="FC prom." />
-                          <input className="input" style={{ maxWidth: 70, padding: "4px 6px" }} value={editHrMax} onChange={(e) => setEditHrMax(e.target.value)} placeholder="FC máx" />
+                          <input className="input" inputMode="decimal" style={{ maxWidth: 70, padding: "4px 6px" }} value={editHrAvg} onChange={(e) => setEditHrAvg(e.target.value)} placeholder="FC prom." />
+                          <input className="input" inputMode="decimal" style={{ maxWidth: 70, padding: "4px 6px" }} value={editHrMax} onChange={(e) => setEditHrMax(e.target.value)} placeholder="FC máx" />
                         </div>
                       </td>
                     </>
@@ -1171,12 +1171,12 @@ function EnduranceSection({ assessmentId, rows, setRows }: { assessmentId: strin
             </tbody>
           </table>
         )}
-        <div style={{ display: "flex", flexWrap: "wrap", gap: 10, alignItems: "flex-end" }}>
+        <div className="assess-add" style={{ display: "flex", flexWrap: "wrap", gap: 10, alignItems: "flex-end" }}>
           <div><label className="field-label">Nombre de la prueba</label><input className="input" placeholder="Ej. Test de Cooper" value={testType} onChange={(e) => setTestType(e.target.value)} /></div>
-          <div><label className="field-label">Distancia (m)</label><input className="input" style={{ maxWidth: 100 }} value={distance} onChange={(e) => setDistance(e.target.value)} /></div>
-          <div><label className="field-label">Tiempo (s)</label><input className="input" style={{ maxWidth: 100 }} value={time} onChange={(e) => setTime(e.target.value)} /></div>
-          <div><label className="field-label">FC promedio</label><input className="input" style={{ maxWidth: 90 }} value={hrAvg} onChange={(e) => setHrAvg(e.target.value)} /></div>
-          <div><label className="field-label">FC máxima</label><input className="input" style={{ maxWidth: 90 }} value={hrMax} onChange={(e) => setHrMax(e.target.value)} /></div>
+          <div><label className="field-label">Distancia (m)</label><input className="input" inputMode="decimal" style={{ maxWidth: 100 }} value={distance} onChange={(e) => setDistance(e.target.value)} /></div>
+          <div><label className="field-label">Tiempo (s)</label><input className="input" inputMode="decimal" style={{ maxWidth: 100 }} value={time} onChange={(e) => setTime(e.target.value)} /></div>
+          <div><label className="field-label">FC promedio</label><input className="input" inputMode="decimal" style={{ maxWidth: 90 }} value={hrAvg} onChange={(e) => setHrAvg(e.target.value)} /></div>
+          <div><label className="field-label">FC máxima</label><input className="input" inputMode="decimal" style={{ maxWidth: 90 }} value={hrMax} onChange={(e) => setHrMax(e.target.value)} /></div>
           <button className="btn ghost" onClick={add}><Plus size={14} /> Añadir</button>
         </div>
       </div>
@@ -1222,7 +1222,7 @@ function MobilitySection({ assessmentId, rows, setRows }: { assessmentId: string
       <div className="hd"><h3>Movilidad</h3></div>
       <div className="bd">
         {rows.length > 0 && (
-          <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 14, marginBottom: 14 }}>
+          <table className="assess-table" style={{ width: "100%", borderCollapse: "collapse", fontSize: 14, marginBottom: 14 }}>
             <tbody>
               {rows.map((m) => (
                 <tr key={m.id} style={{ borderBottom: "1px solid var(--line)" }}>
@@ -1230,7 +1230,7 @@ function MobilitySection({ assessmentId, rows, setRows }: { assessmentId: string
                   <td style={{ padding: "6px 4px" }}>{m.side ? (m.side === "both" ? "Ambos lados" : m.side === "left" ? "Izquierda" : "Derecha") : ""}</td>
                   <td style={{ padding: "6px 4px" }}>
                     {editingId === m.id ? (
-                      <input className="input" style={{ maxWidth: 80, padding: "4px 8px" }} value={editValue} onChange={(e) => setEditValue(e.target.value)} autoFocus />
+                      <input className="input" inputMode="decimal" style={{ maxWidth: 80, padding: "4px 8px" }} value={editValue} onChange={(e) => setEditValue(e.target.value)} autoFocus />
                     ) : (
                       <b>{m.value} {m.unit === "degrees" ? "°" : m.unit}</b>
                     )}
@@ -1261,7 +1261,7 @@ function MobilitySection({ assessmentId, rows, setRows }: { assessmentId: string
             </tbody>
           </table>
         )}
-        <div style={{ display: "flex", flexWrap: "wrap", gap: 10, alignItems: "flex-end" }}>
+        <div className="assess-add" style={{ display: "flex", flexWrap: "wrap", gap: 10, alignItems: "flex-end" }}>
           <div>
             <label className="field-label">Articulación</label>
             <select className="input" value={joint} onChange={(e) => setJoint(e.target.value)}>
@@ -1278,7 +1278,7 @@ function MobilitySection({ assessmentId, rows, setRows }: { assessmentId: string
               <option value="both">Ambos lados</option>
             </select>
           </div>
-          <div><label className="field-label">Valor</label><input className="input" style={{ maxWidth: 90 }} value={value} onChange={(e) => setValue(e.target.value)} /></div>
+          <div><label className="field-label">Valor</label><input className="input" inputMode="decimal" style={{ maxWidth: 90 }} value={value} onChange={(e) => setValue(e.target.value)} /></div>
           <div>
             <label className="field-label">Unidad</label>
             <select className="input" value={unit} onChange={(e) => setUnit(e.target.value as MobilityTestRow["unit"])}>
@@ -1332,7 +1332,7 @@ function FlexibilitySection({ assessmentId, rows, setRows }: { assessmentId: str
       <div className="hd"><h3>Flexibilidad</h3></div>
       <div className="bd">
         {rows.length > 0 && (
-          <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 14, marginBottom: 14 }}>
+          <table className="assess-table" style={{ width: "100%", borderCollapse: "collapse", fontSize: 14, marginBottom: 14 }}>
             <tbody>
               {rows.map((f) => (
                 <tr key={f.id} style={{ borderBottom: "1px solid var(--line)" }}>
@@ -1340,7 +1340,7 @@ function FlexibilitySection({ assessmentId, rows, setRows }: { assessmentId: str
                   <td style={{ padding: "6px 4px" }}>{f.side ? (f.side === "both" ? "Ambos lados" : f.side === "left" ? "Izquierda" : "Derecha") : ""}</td>
                   <td style={{ padding: "6px 4px" }}>
                     {editingId === f.id ? (
-                      <input className="input" style={{ maxWidth: 80, padding: "4px 8px" }} value={editValue} onChange={(e) => setEditValue(e.target.value)} autoFocus />
+                      <input className="input" inputMode="decimal" style={{ maxWidth: 80, padding: "4px 8px" }} value={editValue} onChange={(e) => setEditValue(e.target.value)} autoFocus />
                     ) : (
                       <b>{f.value} {f.unit === "degrees" ? "°" : f.unit}</b>
                     )}
@@ -1371,7 +1371,7 @@ function FlexibilitySection({ assessmentId, rows, setRows }: { assessmentId: str
             </tbody>
           </table>
         )}
-        <div style={{ display: "flex", flexWrap: "wrap", gap: 10, alignItems: "flex-end" }}>
+        <div className="assess-add" style={{ display: "flex", flexWrap: "wrap", gap: 10, alignItems: "flex-end" }}>
           <div><label className="field-label">Nombre de la prueba</label><input className="input" placeholder="Ej. Sit and reach" value={testName} onChange={(e) => setTestName(e.target.value)} /></div>
           <div><label className="field-label">Grupo muscular (opcional)</label><input className="input" value={muscleGroup} onChange={(e) => setMuscleGroup(e.target.value)} /></div>
           <div>
@@ -1383,7 +1383,7 @@ function FlexibilitySection({ assessmentId, rows, setRows }: { assessmentId: str
               <option value="both">Ambos lados</option>
             </select>
           </div>
-          <div><label className="field-label">Valor</label><input className="input" style={{ maxWidth: 90 }} value={value} onChange={(e) => setValue(e.target.value)} /></div>
+          <div><label className="field-label">Valor</label><input className="input" inputMode="decimal" style={{ maxWidth: 90 }} value={value} onChange={(e) => setValue(e.target.value)} /></div>
           <div>
             <label className="field-label">Unidad</label>
             <select className="input" value={unit} onChange={(e) => setUnit(e.target.value as FlexibilityTestRow["unit"])}>
