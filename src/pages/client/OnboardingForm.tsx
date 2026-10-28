@@ -9,6 +9,7 @@ import {
   PAR_Q_QUESTIONS,
   type ParQAnswers,
 } from "../../services/clients";
+import { parseHeightCm } from "../../services/assessments";
 
 export default function OnboardingForm({ clientId, onDone }: { clientId: string; onDone: () => void }) {
   const { profile, signOut } = useAuth();
@@ -66,7 +67,7 @@ export default function OnboardingForm({ clientId, onDone }: { clientId: string;
       await submitOnboarding(clientId, {
         birth_date: birthDate || null,
         sex: (sex || null) as any,
-        height_cm: heightCm ? Number(heightCm) : null,
+        height_cm: heightCm ? parseHeightCm(heightCm) : null, // "1.65" → 165
         weight_kg: weightKg ? Number(weightKg) : null,
         main_goal: mainGoal,
         secondary_goals: secondaryGoals,
@@ -118,7 +119,7 @@ export default function OnboardingForm({ clientId, onDone }: { clientId: string;
           </div>
           <div>
             <label className="field-label">Estatura (cm)</label>
-            <input className="input" inputMode="decimal" value={heightCm} onChange={(e) => setHeightCm(e.target.value)} />
+            <input className="input" inputMode="decimal" placeholder="Ej. 165" value={heightCm} onChange={(e) => setHeightCm(e.target.value)} onBlur={() => { const cm = parseHeightCm(heightCm); if (cm != null && String(cm) !== heightCm) setHeightCm(String(cm)); }} />
           </div>
           <div>
             <label className="field-label">Peso (kg)</label>

@@ -1,6 +1,7 @@
 import type { ReactNode } from "react";
 import { MAIN_GOALS, PAR_Q_QUESTIONS, type ClientProfileRow } from "../services/clients";
 import { ReportBrandHeader } from "./ui/Brand";
+import { normalizeHeightCm } from "../services/assessments";
 
 /**
  * El formulario de ingreso completo, en solo lectura y en el mismo orden en
@@ -81,7 +82,7 @@ export default function IntakeFormView({ data, clientName }: { data?: ClientProf
         <div className="intake-grid">
           <Field label="Fecha de nacimiento" blank={blank} value={d?.birth_date ? `${fmtDate(d.birth_date)} (${age(d.birth_date)} años)` : null} />
           <Field label="Sexo" blank={blank} options={["Femenino", "Masculino", "Otro"]} value={d?.sex ? SEX[d.sex] : null} />
-          <Field label="Estatura" blank={blank} value={d?.height_cm ? `${d.height_cm} cm` : null} />
+          <Field label="Estatura" blank={blank} value={d?.height_cm ? `${normalizeHeightCm(d.height_cm)} cm` : null} />
           <Field label="Peso" blank={blank} value={d?.weight_kg ? `${d.weight_kg} kg` : null} />
         </div>
       </Section>

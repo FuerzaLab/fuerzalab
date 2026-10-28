@@ -22,6 +22,7 @@ import {
   type StrengthTestRow,
   type SkinfoldRow,
   type CircumferenceSite,
+  normalizeHeightCm,
 } from "../../services/assessments";
 import Loading from "../../components/ui/Loading";
 
@@ -122,7 +123,7 @@ export default function ClientAssessments() {
                   {body ? (
                     <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(140px,1fr))", gap: 10 }}>
                       <div><span className="note">Peso</span><div>{body.weight_kg} kg</div></div>
-                      {body.height_cm != null && <div><span className="note">Estatura</span><div>{body.height_cm} cm</div></div>}
+                      {body.height_cm != null && <div><span className="note">Estatura</span><div>{normalizeHeightCm(body.height_cm)} cm</div></div>}
                       {body.body_fat_pct != null && <div><span className="note">% grasa corporal</span><div>{body.body_fat_pct}%</div></div>}
                       {body.muscle_mass_kg != null && <div><span className="note">Masa muscular</span><div>{body.muscle_mass_kg} kg</div></div>}
                     </div>

@@ -30,6 +30,7 @@ import {
 } from "../../../services/clients";
 import { paths } from "../../../routes/paths";
 import Loading from "../../../components/ui/Loading";
+import { normalizeHeightCm, parseHeightCm } from "../../../services/assessments";
 
 const STATUS_LABEL: Record<ClientStatus, string> = {
   prospect: "Prospecto",
@@ -288,7 +289,7 @@ export default function ClientDetail() {
             </div>
             <div>
               <label className="field-label">Estatura (cm)</label>
-              <input className="input" inputMode="decimal" value={form.height_cm} onChange={(e) => patch("height_cm", e.target.value)} />
+              <input className="input" inputMode="decimal" placeholder="Ej. 165" value={form.height_cm} onChange={(e) => patch("height_cm", e.target.value)} />
             </div>
             <div>
               <label className="field-label">Nivel de experiencia</label>
@@ -375,7 +376,7 @@ function profileToForm(p: ClientProfileRow): FormState {
   return {
     birth_date: p.birth_date ?? "",
     sex: p.sex ?? "",
-    height_cm: p.height_cm != null ? String(p.height_cm) : "",
+    height_cm: p.height_cm != null ? String(normalizeHeightCm(p.height_cm)) : "", // si se cargó en metros, se muestra en cm
     training_level: p.training_level ?? "",
     sports_history: p.sports_history ?? "",
     injuries: p.injuries ?? "",
@@ -387,7 +388,7 @@ function formToProfile(f: FormState) {
   return {
     birth_date: f.birth_date || null,
     sex: (f.sex || null) as ClientProfileRow["sex"],
-    height_cm: f.height_cm ? Number(f.height_cm) : null,
+    height_cm: f.height_cm ? parseHeightCm(f.height_cm) : null,
     training_level: (f.training_level || null) as ClientProfileRow["training_level"],
     sports_history: f.sports_history || null,
     injuries: f.injuries || null,

@@ -507,6 +507,39 @@ function findSkinfold(skinfolds: SkinfoldRow[], site: string): number | null {
   return row ? row.value_mm : null;
 }
 
+/**
+ * La estatura se guarda en centímetros, pero es común que alguien escriba
+ * "1.65" (metros). Cualquier valor entre 0 y 3 se interpreta como metros y
+ * se pasa a centímetros (1.65 → 165). Nadie mide menos de 3 cm.
+ */
+export function normalizeHeightCm(value: number | null | undefined): number | null {
+  if (value == null || !Number.isFinite(value) || value <= 0) return null;
+  return value < 3 ? Math.round(value * 1000) / 10 : value;
+}
+
+/** Lee un texto de estatura ("1,65", "165", "1.65") y devuelve centímetros. */
+export function parseHeightCm(text: string): number | null {
+  const n = Number(text.trim().replace(",", "."));
+  return text.trim() ? normalizeHeightCm(n) : null;
+}
+
+/** Por qué no se pudo estimar el % de grasa, en palabras concretas (o null si sí se puede). */
+export function bodyFatMissing(params: {
+  sex: "male" | "female" | "other" | null;
+  heightCm: number | null;
+  circumferences: CircumferenceRow[];
+}): string[] {
+  const out: string[] = [];
+  const { sex, circumferences } = params;
+  const heightCm = normalizeHeightCm(params.heightCm);
+  if (sex !== "male" && sex !== "female") out.push(sex === "other" ? "el sexo del cliente figura como «Otro», y las fórmulas validadas son para hombre o mujer" : "el sexo del cliente (se carga en su ficha)");
+  if (!heightCm) out.push("la estatura");
+  if (findCirc(circumferences, "neck") == null) out.push("la circunferencia de cuello");
+  if (findCirc(circumferences, "waist") == null) out.push("la circunferencia de cintura");
+  if (sex === "female" && findCirc(circumferences, "hip") == null) out.push("la circunferencia de cadera");
+  return out;
+}
+
 function ageFromBirthDate(birthDate: string): number {
   const b = new Date(birthDate);
   const now = new Date();
@@ -529,7 +562,8 @@ export function estimateBodyFat(params: {
   circumferences: CircumferenceRow[];
   skinfolds: SkinfoldRow[];
 }): BodyFatEstimate | null {
-  const { sex, birthDate, heightCm, circumferences, skinfolds } = params;
+  const { sex, birthDate, circumferences, skinfolds } = params;
+  const heightCm = normalizeHeightCm(params.heightCm); // por si la estatura vino en metros
   if (sex !== "male" && sex !== "female") return null; // sin fórmula validada para "other"
 
   // Jackson-Pollock, 3 pliegues

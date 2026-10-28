@@ -64,6 +64,9 @@ import {
   type MobilityTestRow,
   type FlexibilityTestRow,
   type BodyFatEstimate,
+  normalizeHeightCm,
+  parseHeightCm,
+  bodyFatMissing,
 } from "../../../services/assessments";
 import Loading from "../../../components/ui/Loading";
 import SearchSelect from "../../../components/ui/SearchSelect";
@@ -488,7 +491,11 @@ function BodySection({
   const { notify } = useToast();
   const [weight, setWeight] = useState(body?.weight_kg != null ? String(body.weight_kg) : "");
   const [height, setHeight] = useState(
-    body?.height_cm != null ? String(body.height_cm) : clientProfile?.height_cm != null ? String(clientProfile.height_cm) : ""
+    body?.height_cm != null
+      ? String(normalizeHeightCm(body.height_cm))
+      : clientProfile?.height_cm != null
+        ? String(normalizeHeightCm(clientProfile.height_cm))
+        : ""
   );
   const [bodyFat, setBodyFat] = useState(body?.body_fat_pct != null ? String(body.body_fat_pct) : "");
   const [muscleMass, setMuscleMass] = useState(body?.muscle_mass_kg != null ? String(body.muscle_mass_kg) : "");
@@ -512,7 +519,7 @@ function BodySection({
     const result = estimateBodyFat({
       sex: clientProfile?.sex ?? null,
       birthDate: clientProfile?.birth_date ?? null,
-      heightCm: height ? Number(height.replace(",", ".")) : clientProfile?.height_cm ?? null,
+      heightCm: height ? parseHeightCm(height) : normalizeHeightCm(clientProfile?.height_cm),
       circumferences: mergedCircs,
       skinfolds: mergedSkinfolds,
     });
@@ -528,8 +535,16 @@ function BodySection({
     }
 
     if (!result) {
+      // Decir exactamente qué falta (o que los números no cierran), en vez de un mensaje genérico.
+      const missing = bodyFatMissing({
+        sex: clientProfile?.sex ?? null,
+        heightCm: height ? parseHeightCm(height) : normalizeHeightCm(clientProfile?.height_cm),
+        circumferences: mergedCircs,
+      });
       setEstimateError(
-        "Faltan datos para estimarlo. Para pliegues: fecha de nacimiento del cliente y los 3 pliegues correspondientes a su sexo (Pectoral, Abdominal y Muslo en hombres; Tríceps, Suprailíaco y Muslo en mujeres). Para circunferencias: sexo, estatura, cuello y cintura (y cadera en mujeres)."
+        missing.length > 0
+          ? `Para estimarlo con circunferencias falta: ${missing.join(", ")}. (Con pliegues: fecha de nacimiento y los 3 pliegues de su sexo — Pectoral, Abdominal y Muslo en hombres; Tríceps, Suprailíaco y Muslo en mujeres.)`
+          : "Los datos están, pero dan un resultado fuera de lo posible. Revisa que la estatura esté en centímetros (ej. 165) y que el cuello, la cintura y la cadera estén bien cargados."
       );
       setEstimate(null);
       return;
@@ -546,7 +561,7 @@ function BodySection({
     try {
       const saved = await upsertBodyMeasurement(assessmentId, body?.id, {
         weight_kg: Number(weight.replace(",", ".")),
-        height_cm: height ? Number(height.replace(",", ".")) : null,
+        height_cm: height ? parseHeightCm(height) : null,
         body_fat_pct: bodyFat ? Number(bodyFat.replace(",", ".")) : null,
         muscle_mass_kg: muscleMass ? Number(muscleMass.replace(",", ".")) : null,
       });
@@ -564,28 +579,57 @@ function BodySection({
       <div className="bd">
         <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(140px,1fr))", gap: 12, marginBottom: 14 }}>
           <div><label className="field-label">Peso (kg)</label><input className="input" value={weight} onChange={(e) => setWeight(e.target.value)} /></div>
-          <div><label className="field-label">Estatura (cm)</label><input className="input" value={height} onChange={(e) => setHeight(e.target.value)} /></div>
+          <div><label className="field-label">Estatura (cm)</label><input className="input" inputMode="decimal" placeholder="Ej. 165" value={height} onChange={(e) => setHeight(e.target.value)} onBlur={() => { const cm = parseHeightCm(height); if (cm != null && String(cm) !== height) setHeight(String(cm)); }} /></div>
           <div><label className="field-label">% grasa corporal</label><input className="input" value={bodyFat} onChange={(e) => setBodyFat(e.target.value)} /></div>
           <div><label className="field-label">Masa muscular (kg)</label><input className="input" value={muscleMass} onChange={(e) => setMuscleMass(e.target.value)} /></div>
         </div>
 
         <div style={{ background: "var(--bg)", borderRadius: 8, padding: 14, marginBottom: 14 }}>
           <p className="note" style={{ marginBottom: 10 }}>
-            Si ya cargaste circunferencias o pliegues en esta evaluación, podemos estimar el % de grasa corporal. No
-            calculamos la masa muscular: no hay un método simple y confiable para eso a partir de solo estas medidas.
+            Con las circunferencias o los pliegues de esta evaluación calculamos el % de grasa corporal y, con el peso, la
+            masa libre de grasa (todo lo que no es grasa: músculo, huesos, órganos y agua). La masa muscular sola no se
+            puede calcular con precisión a partir de estas medidas: cárgala a mano si la mediste con un equipo
+            (bioimpedancia u otro).
           </p>
-          <button type="button" className="btn ghost" onClick={runEstimate}>Estimar % de grasa corporal</button>
+          <button type="button" className="btn ghost" onClick={runEstimate}>Calcular % de grasa y masa libre de grasa</button>
           {estimateError && <p className="error-text" style={{ marginTop: 10 }}>{estimateError}</p>}
-          {estimate && (
-            <div style={{ marginTop: 10, display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
-              <span>
-                Estimado: <b>{estimate.value}%</b> <span className="note">({estimate.method})</span>
-              </span>
-              <button type="button" className="btn ghost" style={{ padding: "5px 10px", fontSize: 13 }} onClick={() => setBodyFat(String(estimate.value))}>
-                Usar este valor
-              </button>
-            </div>
-          )}
+          {estimate && (() => {
+            const w = weight ? Number(weight.replace(",", ".")) : NaN;
+            const hasWeight = Number.isFinite(w) && w > 0;
+            const fatKg = hasWeight ? Math.round(w * (estimate.value / 100) * 10) / 10 : null;
+            const leanKg = hasWeight ? Math.round((w - (fatKg ?? 0)) * 10) / 10 : null;
+            return (
+              <div style={{ marginTop: 12, display: "grid", gap: 8 }}>
+                <div style={{ display: "flex", gap: 22, flexWrap: "wrap" }}>
+                  <div>
+                    <div className="note" style={{ fontSize: 12.5 }}>% de grasa corporal</div>
+                    <b style={{ fontSize: 20 }}>{estimate.value}%</b>
+                  </div>
+                  {hasWeight && (
+                    <>
+                      <div>
+                        <div className="note" style={{ fontSize: 12.5 }}>Masa grasa</div>
+                        <b style={{ fontSize: 20 }}>{fatKg} kg</b>
+                      </div>
+                      <div>
+                        <div className="note" style={{ fontSize: 12.5 }}>Masa libre de grasa</div>
+                        <b style={{ fontSize: 20 }}>{leanKg} kg</b>
+                      </div>
+                    </>
+                  )}
+                </div>
+                <span className="note" style={{ fontSize: 12.5 }}>
+                  {estimate.method}
+                  {hasWeight ? ` · masa libre de grasa = peso × (1 − % de grasa)` : " · carga el peso para calcular también la masa libre de grasa"}
+                </span>
+                <div>
+                  <button type="button" className="btn ghost" style={{ padding: "5px 10px", fontSize: 13 }} onClick={() => setBodyFat(String(estimate.value))}>
+                    Usar este % de grasa
+                  </button>
+                </div>
+              </div>
+            );
+          })()}
           {borrowedNote && <p className="note" style={{ marginTop: 6 }}>{borrowedNote}</p>}
         </div>
 
