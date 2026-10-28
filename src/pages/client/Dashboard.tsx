@@ -23,6 +23,7 @@ import Watermark from "../../components/ui/Watermark";
 import InstallAppCard from "../../components/InstallAppCard";
 import { getMyTrainerName, getMonthlySessionCounts, listMyRecentRecords, describeRecord, type MyRecord } from "../../services/clientHome";
 import { useOrgBrand } from "../../hooks/useOrgBrand";
+import WhatsNewBanner from "../../components/WhatsNewBanner";
 
 const SESSION_STATUS_LABEL: Record<TodaysSession["status"], string> = {
   pending: "Todavía no la empezaste",
@@ -121,6 +122,8 @@ export default function ClientDashboard() {
       <Watermark />
       <h1 style={{ marginBottom: 6 }}>Hola, {profile?.full_name?.split(" ")[0]}</h1>
       <p className="note" style={{ marginBottom: 20 }}>Esto es lo que te toca hoy.</p>
+
+      <WhatsNewBanner />
 
       {showWelcome && (
         <div className="welcome-card">

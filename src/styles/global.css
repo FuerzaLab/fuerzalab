@@ -286,3 +286,7 @@ select.input:hover { border-color: var(--pri); }
 .wn-dot { position: absolute; top: 5px; right: 5px; width: 10px; height: 10px; border-radius: 50%; background: var(--bad); border: 2px solid var(--nav); }
 .menu-trigger { position: relative; }
 .nav-dot { display: inline-block; width: 8px; height: 8px; border-radius: 50%; background: var(--bad); margin-left: 6px; vertical-align: middle; }
+.wn-banner { display: flex; align-items: center; gap: 12px; background: #fff; border: 1.5px solid var(--pri); border-radius: 12px; padding: 12px 14px; margin-bottom: 16px; color: var(--pri); }
+.wn-banner b { color: var(--ink); }
+.wn-banner-sub { font-size: 13px; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.wn-banner-x { border: 0; background: none; color: var(--muted); cursor: pointer; padding: 4px; flex: none; }

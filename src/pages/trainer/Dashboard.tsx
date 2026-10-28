@@ -13,6 +13,7 @@ import Watermark from "../../components/ui/Watermark";
 import ConfirmModal from "../../components/ui/ConfirmModal";
 import InstallAppCard from "../../components/InstallAppCard";
 import { getOnboardingStatus, type OnboardingStatus } from "../../services/trainerHome";
+import WhatsNewBanner from "../../components/WhatsNewBanner";
 
 const SESSION_STATUS_LABEL: Record<TodaysSession["status"], string> = {
   pending: "Todavía no la empezó",
@@ -57,6 +58,8 @@ export default function TrainerDashboard() {
       <p className="note" style={{ marginBottom: 20 }}>
         {profile?.role === "staff" ? "Esto es lo que está pasando con los clientes." : "Esto es lo que está pasando con tus clientes."}
       </p>
+
+      <WhatsNewBanner />
 
       {loading ? (
         <Loading />
@@ -265,11 +268,13 @@ function TodayHero({
   const total = sessions?.length ?? 0;
   const done = sessions?.filter((s) => s.status === "completed").length ?? 0;
   const now = sessions?.filter((s) => s.status === "in_progress").length ?? 0;
-  const dayName = new Date().toLocaleDateString("es", { weekday: "long", day: "numeric", month: "long" });
+  // Solo la primera letra en mayúscula ("Miércoles, 28 de octubre"), como se escribe en español.
+  const rawDay = new Date().toLocaleDateString("es", { weekday: "long", day: "numeric", month: "long" });
+  const dayName = rawDay.charAt(0).toUpperCase() + rawDay.slice(1);
 
   return (
     <div className="today-hero" style={{ marginBottom: 20 }}>
-      <div className="note" style={{ textTransform: "capitalize" }}>{dayName}</div>
+      <div className="note">{dayName}</div>
       <div style={{ display: "flex", gap: 22, flexWrap: "wrap", margin: "10px 0 14px" }}>
         <div>
           <div className="hero-num">{total}</div>
