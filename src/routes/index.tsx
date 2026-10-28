@@ -56,6 +56,7 @@ import { paths } from "./paths";
 // primera carga, sobre todo en el celular, baja solo lo necesario. Las de
 // inicio de sesión y registro quedan incluidas desde el principio.
 const PrivacyPage = lazy(() => import("../pages/public/Legal").then((m) => ({ default: m.PrivacyPage })));
+const WhatsNew = lazy(() => import("../pages/shared/WhatsNew"));
 const TermsPage = lazy(() => import("../pages/public/Legal").then((m) => ({ default: m.TermsPage })));
 
 export default function AppRoutes() {
@@ -118,6 +119,7 @@ export default function AppRoutes() {
             <Route path={paths.trainerSettings} element={<Settings />} />
             <Route path={paths.trainerTeam} element={<TeamPage />} />
             <Route path={paths.trainerStudio} element={<StudioPage />} />
+            <Route path={paths.trainerWhatsNew} element={<WhatsNew />} />
           </Route>
           </Route>
         </Route>
@@ -136,6 +138,7 @@ export default function AppRoutes() {
             <Route path={paths.clientProfile} element={<Settings />} />
             <Route path={paths.clientWellness} element={<ClientWellness />} />
             <Route path={paths.clientReports} element={<ClientReports />} />
+            <Route path={paths.clientWhatsNew} element={<WhatsNew />} />
           </Route>
           </Route>
         </Route>

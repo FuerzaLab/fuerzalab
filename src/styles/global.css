@@ -274,3 +274,15 @@ select.input:hover { border-color: var(--pri); }
 /* Botón kg / lb al lado de la carga de una serie */
 .unit-toggle { border: 1.5px solid var(--line); background: #fff; border-radius: 7px; padding: 4px 7px; font: inherit; font-size: 12.5px; font-weight: 700; color: var(--pri); cursor: pointer; min-width: 34px; }
 .unit-toggle:hover { border-color: var(--pri); background: var(--pri-soft); }
+
+/* Qué hay de nuevo */
+.wn-item { display: grid; grid-template-columns: 92px 1fr; gap: 16px; padding: 16px 0; border-top: 1px solid var(--line); }
+.wn-date { font-family: 'Barlow Condensed', sans-serif; font-weight: 700; color: var(--muted); font-size: 15px; }
+.wn-title { font-weight: 700; font-size: 16px; margin-bottom: 3px; }
+.wn-new { display: inline-block; background: var(--pri); color: #fff; font-size: 11px; font-weight: 700; border-radius: 99px; padding: 2px 8px; margin-left: 4px; vertical-align: 2px; }
+.wn-go { margin-top: 8px; padding: 5px 12px; font-size: 13px; }
+@media (max-width: 600px) { .wn-item { grid-template-columns: 1fr; gap: 2px; } }
+/* Puntito de aviso (hay novedades sin ver) */
+.wn-dot { position: absolute; top: 5px; right: 5px; width: 10px; height: 10px; border-radius: 50%; background: var(--bad); border: 2px solid var(--nav); }
+.menu-trigger { position: relative; }
+.nav-dot { display: inline-block; width: 8px; height: 8px; border-radius: 50%; background: var(--bad); margin-left: 6px; vertical-align: middle; }

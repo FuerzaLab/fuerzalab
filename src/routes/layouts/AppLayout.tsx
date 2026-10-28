@@ -22,6 +22,7 @@ import {
   Menu,
   X,
   UserCog,
+  Sparkles,
   Eye,
 } from "lucide-react";
 import { useAuth } from "../../contexts/AuthContext";
@@ -32,6 +33,7 @@ import Brand from "../../components/ui/Brand";
 import DemoGate from "../../components/DemoGate";
 import PageLoading from "../../components/ui/PageLoading";
 import { useIsStudioOwner } from "../../hooks/useIsStudioOwner";
+import { useWhatsNew } from "../../hooks/useWhatsNew";
 
 interface NavItem {
   to: string;
@@ -73,6 +75,7 @@ const NAV: Record<Role, NavItem[]> = {
     { to: paths.trainerStudio, label: "Tu estudio", icon: Building2, group: "Negocio" },
     { to: paths.trainerTeam, label: "Equipo", icon: UserCog, group: "Negocio" },
     { to: paths.trainerSettings, label: "Configuración", icon: Settings, group: "Negocio" },
+    { to: paths.trainerWhatsNew, label: "Qué hay de nuevo", icon: Sparkles, group: "Negocio" },
   ],
   // El menú del staff se arma a partir del del entrenador, filtrado según
   // los permisos que le dio (ver staffNav más abajo).
@@ -86,6 +89,7 @@ const NAV: Record<Role, NavItem[]> = {
     { to: paths.clientReports, label: "Mis reportes", icon: FileText },
     { to: paths.clientPayments, label: "Pagos", icon: CreditCard },
     { to: paths.clientMessages, label: "Mensajes", icon: MessageSquare },
+    { to: paths.clientWhatsNew, label: "Qué hay de nuevo", icon: Sparkles },
   ],
 };
 
@@ -116,6 +120,7 @@ export default function AppLayout() {
   const { profile, signOut, staffAccess } = useAuth();
   const navigate = useNavigate();
   const isOwner = useIsStudioOwner();
+  const { unseenCount } = useWhatsNew();
 
   if (!profile) return null;
 
@@ -160,6 +165,7 @@ export default function AppLayout() {
               className={({ isActive }) => `nav-link${accent === "wellness" ? " nav-link-wellness" : ""}${isActive ? " active" : ""}`}
             >
               <Icon size={18} /> {label}
+              {(to === paths.clientWhatsNew || to === paths.trainerWhatsNew) && unseenCount > 0 && <span className="nav-dot" aria-label="Hay novedades" />}
             </NavLink>
           </div>
         ))}
@@ -203,6 +209,7 @@ function TrainerLauncherShell({
   staffAccess: StaffAccess | null;
   onLogout: () => void;
 }) {
+  const { unseenCount } = useWhatsNew();
   const [open, setOpen] = useState(false);
   const { pathname } = useLocation();
   // Aviso de solo lectura: el staff con permiso "Solo ver" en esta sección
@@ -229,6 +236,7 @@ function TrainerLauncherShell({
         <Brand />
         <button className="menu-trigger" aria-expanded={open} onClick={() => setOpen((o) => !o)}>
           <Menu size={17} /> Menú
+          {unseenCount > 0 && <span className="wn-dot" aria-label="Hay novedades en Qué hay de nuevo" />}
         </button>
       </header>
 
@@ -280,7 +288,10 @@ function TrainerLauncherShell({
                     <span className="ic" style={{ background: color.fg }}>
                       <Icon size={18} />
                     </span>
-                    <span className="lbl">{label}</span>
+                    <span className="lbl">
+                      {label}
+                      {to === paths.trainerWhatsNew && unseenCount > 0 && <span className="nav-dot" aria-label="Hay novedades" />}
+                    </span>
                   </NavLink>
                 );
               })}
