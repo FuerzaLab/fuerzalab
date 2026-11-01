@@ -341,3 +341,5 @@ select.input:hover { border-color: var(--pri); }
 /* Biseries y series gigantes: un solo botón por ronda */
 .round-done { width: 100%; justify-content: center; margin-top: 10px; background: #fff; color: var(--pri); border: 1.5px solid var(--pri); font-weight: 700; }
 .round-done.done { background: var(--ok-soft); color: #1F6B53; border-color: var(--ok); }
+
+.auth-tagline { margin: -6px 0 18px; font-family: 'Barlow Condensed', sans-serif; font-weight: 700; font-size: 17px; letter-spacing: .02em; color: var(--pri); }

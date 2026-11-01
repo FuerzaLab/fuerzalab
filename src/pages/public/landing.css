@@ -151,3 +151,14 @@
   .lp-moment-when { grid-row: auto; }
 }
 @media (max-width: 600px) { .lp-moment-pair { grid-template-columns: 1fr; gap: 14px; } }
+
+/* "No te ejercites. Entrena." */
+.lp-manifesto { background: var(--navy); color: #fff; padding: 72px 0; }
+.lp-manifesto h2 { color: #fff; font-size: clamp(40px, 6vw, 68px); line-height: 1; margin: 0 0 34px; }
+.lp-contrast { display: grid; gap: 0; max-width: 900px; }
+.lp-contrast-row { display: grid; grid-template-columns: 1fr 1fr; gap: 28px; padding: 16px 0; border-top: 1px solid rgba(255,255,255,.16); }
+.lp-contrast-row p { margin: 0; font-size: 17.5px; }
+.lp-ex { color: #8D97AE; text-decoration: line-through; text-decoration-color: rgba(141,151,174,.55); }
+.lp-tr { color: #fff; font-weight: 600; }
+.lp-manifesto-close { margin: 28px 0 0; color: var(--sky); font-size: 18px; max-width: 60ch; }
+@media (max-width: 700px) { .lp-contrast-row { grid-template-columns: 1fr; gap: 4px; } .lp-manifesto { padding: 52px 0; } }

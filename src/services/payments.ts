@@ -27,6 +27,8 @@ export interface PaymentRow {
   notes: string | null;
   created_at: string;
   plan_name: string | null;
+  /** Período del plan (para crear el próximo pago al marcar este como pagado). */
+  plan_period?: "monthly" | "quarterly" | "custom" | null;
 }
 
 /** Vincula al cliente con un plan (una suscripción) para que el pago quede asociado a él. */
@@ -112,7 +114,7 @@ export async function listPayments(clientId?: string): Promise<PaymentRow[]> {
   let q = supabase
     .from("payments")
     .select(
-      "id, client_id, client_plan_id, amount, currency, due_date, paid_at, method, status, receipt_path, notes, created_at, client_plans(payment_plans(name))"
+      "id, client_id, client_plan_id, amount, currency, due_date, paid_at, method, status, receipt_path, notes, created_at, client_plans(payment_plans(name, billing_period))"
     )
     .order("due_date", { ascending: false });
   if (clientId) q = q.eq("client_id", clientId);
@@ -121,6 +123,7 @@ export async function listPayments(clientId?: string): Promise<PaymentRow[]> {
   return (data ?? []).map((row: any) => ({
     ...row,
     plan_name: row.client_plans?.payment_plans?.name ?? null,
+    plan_period: row.client_plans?.payment_plans?.billing_period ?? null,
   })) as PaymentRow[];
 }
 
@@ -202,4 +205,53 @@ export async function getReceiptUrl(path: string): Promise<string> {
   const { data, error } = await supabase.storage.from("client-files").createSignedUrl(path, 60 * 10);
   if (error) throw error;
   return data.signedUrl;
+}
+
+/** Estado "real" de un pago pendiente según su vencimiento (hoy en la hora local). */
+export function dueInfo(p: Pick<PaymentRow, "status" | "due_date">): { kind: "overdue" | "soon" | "later" | "none"; days: number } {
+  if (p.status !== "pending") return { kind: "none", days: 0 };
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  const due = new Date(p.due_date + "T00:00:00");
+  const days = Math.round((due.getTime() - today.getTime()) / 86400000);
+  if (days < 0) return { kind: "overdue", days: -days };
+  if (days <= 5) return { kind: "soon", days };
+  return { kind: "later", days };
+}
+
+/**
+ * Al marcar como pagado un pago de un plan mensual o trimestral, crea el
+ * pendiente del próximo período (si todavía no hay uno pendiente de ese
+ * plan), para que el aviso de vencimiento vuelva a funcionar sin cargar nada.
+ * Devuelve la fecha de vencimiento creada, o null si no correspondía.
+ */
+export async function createNextPeriodPayment(paid: PaymentRow): Promise<string | null> {
+  if (!paid.client_plan_id || (paid.plan_period !== "monthly" && paid.plan_period !== "quarterly")) return null;
+  const { data: pend } = await supabase
+    .from("payments")
+    .select("id")
+    .eq("client_plan_id", paid.client_plan_id)
+    .eq("status", "pending")
+    .limit(1);
+  if (pend && pend.length > 0) return null;
+  const due = addMonthsClamped(paid.due_date, paid.plan_period === "monthly" ? 1 : 3);
+  const { error } = await supabase.from("payments").insert({
+    client_id: paid.client_id,
+    client_plan_id: paid.client_plan_id,
+    amount: paid.amount,
+    currency: paid.currency,
+    due_date: due,
+    status: "pending",
+  });
+  if (error) throw error;
+  return due;
+}
+
+/** Suma meses a una fecha AAAA-MM-DD sin saltar de mes (31/01 + 1 mes = 28/02 o 29/02). */
+export function addMonthsClamped(isoDate: string, months: number): string {
+  const [y, m, d] = isoDate.split("-").map(Number);
+  const target = new Date(Date.UTC(y, m - 1 + months, 1));
+  const lastDay = new Date(Date.UTC(target.getUTCFullYear(), target.getUTCMonth() + 1, 0)).getUTCDate();
+  target.setUTCDate(Math.min(d, lastDay));
+  return target.toISOString().slice(0, 10);
 }

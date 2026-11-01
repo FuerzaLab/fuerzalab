@@ -22,6 +22,14 @@ export interface ChangelogEntry {
 
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    id: "2026-10-29-payment-alerts",
+    date: "2026-10-29",
+    title: "Avisos de pagos vencidos y por vencer",
+    body: "En Pagos, cada pago pendiente dice si está vencido o cuántos días le faltan, con el botón \"Marcar pagado\" a la vista. En tus Novedades te avisa de los vencidos y de los que vencen en los próximos 3 días. Y al marcar como pagado un plan mensual o trimestral, se crea solo el pago del próximo período.",
+    for: ["trainer"],
+    link: { label: "Ir a Pagos", to: paths.trainerPayments },
+  },
+  {
     id: "2026-10-28-superset-round",
     date: "2026-10-28",
     title: "Biseries y series gigantes: un solo botón por ronda",

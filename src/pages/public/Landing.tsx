@@ -37,6 +37,13 @@ const SAMPLE_FEED = [
   { id: 4, tone: "pri", kind: "Medidas", who: "Camila", when: "ayer", text: "Cargó nuevas medidas", detail: "Peso 54,6 kg (−3,4 kg) · 2 circunferencias" },
 ] as const;
 
+/** "No te ejercites. Entrena.": tres contrastes del texto de Training Rodas. */
+const CONTRAST: [string, string][] = [
+  ["Ejercitarse es ir al gimnasio y hacer algunos ejercicios al azar.", "Entrenar es seguir un programa basado en una meta."],
+  ["Ejercitarse es sudar y gastar calorías.", "Entrenar es mejorar y hacerte más fuerte, física y mentalmente."],
+  ["Ejercitarse es una actividad ocasional.", "Entrenar es lo primero que marcas en tu agenda."],
+];
+
 const AUDIENCES = {
   trainer: {
     tab: "Entrenadores",
@@ -241,6 +248,21 @@ export default function Landing() {
             )}
             {shownFeed.length > 0 && <p className="lp-feed-hint">Prueba marcarlas como atendidas.</p>}
           </div>
+        </div>
+      </section>
+
+      <section className="lp-manifesto">
+        <div className="lp-wrap">
+          <h2>No te ejercites. Entrena.</h2>
+          <div className="lp-contrast">
+            {CONTRAST.map(([ex, tr]) => (
+              <div key={tr} className="lp-contrast-row">
+                <p className="lp-ex">{ex}</p>
+                <p className="lp-tr">{tr}</p>
+              </div>
+            ))}
+          </div>
+          <p className="lp-manifesto-close">FuerzaLab es para entrenar: un programa con una meta, cada serie registrada y el progreso a la vista.</p>
         </div>
       </section>
 

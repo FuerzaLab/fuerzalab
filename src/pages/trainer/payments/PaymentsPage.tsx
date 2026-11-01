@@ -15,6 +15,8 @@ import {
   createPayment,
   updatePayment,
   markPaymentPaid,
+  createNextPeriodPayment,
+  dueInfo,
   getReceiptUrl,
   subscribeClientToPlan,
   type PaymentPlanRow,
@@ -44,13 +46,26 @@ export default function PaymentsPage() {
   const [editingPlan, setEditingPlan] = useState<PaymentPlanRow | null>(null);
   const [editingPayment, setEditingPayment] = useState<PaymentRow | null>(null);
 
+  const markPaid = async (p: PaymentRow) => {
+    try {
+      await markPaymentPaid(p.id);
+      const next = await createNextPeriodPayment(p).catch(() => null);
+      notify(next ? `Marcado como pagado. Se creó el próximo pago, que vence el ${new Date(next + "T12:00:00").toLocaleDateString("es")}.` : "Marcado como pagado.");
+      await load();
+    } catch (e: any) {
+      notify(e.message);
+    }
+  };
+
   const load = async () => {
     setLoading(true);
     try {
       const [cs, ps, pays] = await Promise.all([listClients(), listPaymentPlans(), listPayments()]);
       setClients(cs);
       setPlans(ps);
-      setPayments(pays);
+      // Primero lo vencido (lo más atrasado arriba), después lo que vence pronto, después el resto.
+      const rank = (x: PaymentRow) => ({ overdue: 0, soon: 1, later: 2, none: 3 })[dueInfo(x).kind];
+      setPayments([...pays].sort((a, b) => rank(a) - rank(b) || (rank(a) < 2 ? a.due_date.localeCompare(b.due_date) : b.due_date.localeCompare(a.due_date))));
     } catch (e: any) {
       notify(e.message);
     }
@@ -64,6 +79,8 @@ export default function PaymentsPage() {
 
   const clientName = (id: string) => clients.find((c) => c.id === id)?.full_name ?? "(cliente)";
   const totalPending = payments.filter((p) => p.status === "pending").reduce((t, p) => t + p.amount, 0);
+  const overdueList = payments.filter((p) => dueInfo(p).kind === "overdue");
+  const totalOverdue = overdueList.reduce((t, p) => t + p.amount, 0);
   const totalPaidThisMonth = payments
     .filter((p) => p.status === "paid" && p.paid_at && new Date(p.paid_at).getMonth() === new Date().getMonth())
     .reduce((t, p) => t + p.amount, 0);
@@ -87,6 +104,10 @@ export default function PaymentsPage() {
         <div className="panel"><div className="bd">
           <div style={{ fontFamily: "'Barlow Condensed',sans-serif", fontSize: 32, fontWeight: 700 }}>{totalPending.toLocaleString("es")}</div>
           <div className="note">Pendiente de cobro</div>
+        </div></div>
+        <div className="panel"><div className="bd">
+          <div style={{ fontFamily: "'Barlow Condensed',sans-serif", fontSize: 32, fontWeight: 700, color: totalOverdue > 0 ? "var(--bad)" : undefined }}>{totalOverdue.toLocaleString("es")}</div>
+          <div className="note">Vencido{overdueList.length ? ` (${overdueList.length} ${overdueList.length === 1 ? "pago" : "pagos"})` : ""}</div>
         </div></div>
         <div className="panel"><div className="bd">
           <div style={{ fontFamily: "'Barlow Condensed',sans-serif", fontSize: 32, fontWeight: 700 }}>{totalPaidThisMonth.toLocaleString("es")}</div>
@@ -150,7 +171,21 @@ export default function PaymentsPage() {
                     <td style={{ padding: "11px 16px" }}>{p.currency} {p.amount.toLocaleString("es")}</td>
                     <td style={{ padding: "11px 16px" }}>{new Date(p.due_date).toLocaleDateString("es")}</td>
                     <td style={{ padding: "11px 16px" }}>{p.paid_at ? new Date(p.paid_at).toLocaleDateString("es") : <span className="note">—</span>}</td>
-                    <td style={{ padding: "11px 16px" }}><Chip tone={STATUS_TONE[p.status]}>{STATUS_LABEL[p.status]}</Chip></td>
+                    <td style={{ padding: "11px 16px" }}>
+                      {(() => {
+                        const d = dueInfo(p);
+                        if (d.kind === "overdue") return <Chip tone="bad">Vencido hace {d.days} {d.days === 1 ? "día" : "días"}</Chip>;
+                        if (d.kind === "soon") return <Chip tone="warn">{d.days === 0 ? "Vence hoy" : `Vence en ${d.days} ${d.days === 1 ? "día" : "días"}`}</Chip>;
+                        return <Chip tone={STATUS_TONE[p.status]}>{STATUS_LABEL[p.status]}</Chip>;
+                      })()}
+                      {p.status === "pending" && (
+                        <div style={{ marginTop: 6 }}>
+                          <button className="btn" style={{ padding: "5px 10px", fontSize: 13 }} onClick={() => markPaid(p)}>
+                            <Check size={13} /> Marcar pagado
+                          </button>
+                        </div>
+                      )}
+                    </td>
                     <td style={{ padding: "11px 16px" }}>
                       {p.receipt_path ? (
                         <button
@@ -166,19 +201,6 @@ export default function PaymentsPage() {
                     </td>
                     <td style={{ padding: "11px 16px" }}>
                       <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
-                        {p.status === "pending" && (
-                          <button
-                            className="btn ghost"
-                            style={{ padding: "5px 10px", fontSize: 13 }}
-                            onClick={async () => {
-                              await markPaymentPaid(p.id);
-                              setPayments((ps) => ps.map((x) => (x.id === p.id ? { ...x, status: "paid", paid_at: new Date().toISOString() } : x)));
-                              notify("Marcado como pagado");
-                            }}
-                          >
-                            <Check size={13} /> Marcar pagado
-                          </button>
-                        )}
                         <button className="btn ghost" style={{ padding: "5px 10px", fontSize: 13 }} onClick={() => setEditingPayment(p)}>
                           <Pencil size={13} /> Editar
                         </button>
@@ -191,7 +213,7 @@ export default function PaymentsPage() {
                     <td colSpan={8} style={{ padding: 8 }}>
                       <EmptyState title="Todavía no hay pagos registrados">
                         Primero crea tus planes con "Nuevo plan" (por ejemplo, mensual con 3 sesiones por semana). Después, con
-                        "Registrar pago", anotas lo que paga cada alumno: la app te avisa quién está por vencer y quién debe.
+                        "Registrar pago", anotas lo que debe o pagó cada alumno. Los pagos pendientes te avisan en Inicio cuando están por vencer o vencidos.
                       </EmptyState>
                     </td>
                   </tr>
@@ -222,10 +244,10 @@ export default function PaymentsPage() {
           clients={clients}
           plans={plans}
           onClose={() => setShowNewPayment(false)}
-          onCreated={(payment) => {
-            setPayments((ps) => [payment, ...ps]);
+          onCreated={() => {
             setShowNewPayment(false);
             notify("Pago registrado.");
+            load(); // recarga (por si se creó también el pago del próximo período)
           }}
         />
       )}
@@ -438,20 +460,25 @@ function NewPaymentModal({
       if (planId) {
         clientPlanId = await subscribeClientToPlan({ organizationId, trainerId, clientId, planId, dueDate });
       }
-      onCreated(
-        await createPayment({
-          organizationId,
-          trainerId,
-          clientId,
-          amount: Number(amount),
-          currency,
-          dueDate,
-          status,
-          method: (method || null) as PaymentMethod | null,
-          notes,
-          clientPlanId,
-        })
-      );
+      const created = await createPayment({
+        organizationId,
+        trainerId,
+        clientId,
+        amount: Number(amount),
+        currency,
+        dueDate,
+        status,
+        method: (method || null) as PaymentMethod | null,
+        notes,
+        clientPlanId,
+      });
+      // Si ya lo registró como pagado y el plan es mensual o trimestral, se
+      // deja creado el pendiente del próximo período (para el aviso de vencimiento).
+      if (created.status === "paid" && planId) {
+        const plan = plans.find((pl) => pl.id === planId);
+        await createNextPeriodPayment({ ...created, plan_period: plan?.billing_period ?? null }).catch(() => null);
+      }
+      onCreated(created);
     } catch (e: any) {
       setError(e.message ?? "No pudimos registrar el pago.");
     }

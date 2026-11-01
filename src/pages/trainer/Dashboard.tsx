@@ -110,7 +110,7 @@ export default function TrainerDashboard() {
 
 // --- Novedades ------------------------------------------------------------
 
-const KIND_ORDER: FeedKind[] = ["record", "measure", "note", "wellness", "skip", "photos"];
+const KIND_ORDER: FeedKind[] = ["payment", "record", "measure", "note", "wellness", "skip", "photos"];
 
 function relDay(iso: string): string {
   const d = new Date(iso);
@@ -141,7 +141,7 @@ function FeedPanel({ clients, onCount }: { clients: ClientRow[]; onCount: (n: nu
       setItems([]);
       return;
     }
-    loadFeed(clients, { logs: can("logs"), assessments: can("assessments"), health: can("health"), files: can("files") })
+    loadFeed(clients, { logs: can("logs"), assessments: can("assessments"), health: can("health"), files: can("files"), payments: can("payments") })
       .then(setItems)
       .catch((e: any) => {
         notify(e.message);
@@ -155,6 +155,7 @@ function FeedPanel({ clients, onCount }: { clients: ClientRow[]; onCount: (n: nu
   const linkFor = (i: FeedItem): string => {
     if (i.kind === "wellness" && can("health")) return paths.trainerWellness;
     if (i.kind === "photos" && can("files")) return paths.trainerProgressPhotos;
+    if (i.kind === "payment" && can("payments")) return paths.trainerPayments;
     if ((i.kind === "record" || i.kind === "measure") && can("analytics")) return paths.trainerReports;
     return paths.trainerClientDetail(i.clientId);
   };

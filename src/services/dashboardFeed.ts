@@ -13,7 +13,7 @@ import { wellnessScore, lowFields, WELLNESS_FIELD_LABEL, type WellnessLogRow } f
  * lo que se guarda al marcarla como atendida.
  */
 
-export type FeedKind = "record" | "measure" | "note" | "skip" | "wellness" | "photos";
+export type FeedKind = "record" | "measure" | "note" | "skip" | "wellness" | "photos" | "payment";
 
 export interface FeedItem {
   key: string;
@@ -33,6 +33,7 @@ export const FEED_KIND_LABEL: Record<FeedKind, string> = {
   skip: "Rutina saltada",
   wellness: "Bienestar",
   photos: "Fotos",
+  payment: "Pago",
 };
 
 const DAYS = 30;
@@ -300,6 +301,42 @@ async function photoItems(clients: ClientRow[]): Promise<FeedItem[]> {
   }));
 }
 
+// --- Pagos vencidos o por vencer -----------------------------------------
+
+async function paymentItems(): Promise<FeedItem[]> {
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  const limit = new Date(today.getTime() + 3 * 86400000).toISOString().slice(0, 10);
+  const { data, error } = await supabase
+    .from("payments")
+    .select("id, client_id, amount, currency, due_date")
+    .eq("status", "pending")
+    .lte("due_date", limit)
+    .order("due_date");
+  if (error) return [];
+  return (data ?? []).map((p: any) => {
+    const due = new Date(p.due_date + "T00:00:00");
+    const days = Math.round((due.getTime() - today.getTime()) / 86400000);
+    const overdue = days < 0;
+    const amount = `${p.currency} ${Number(p.amount).toLocaleString("es")}`;
+    return {
+      // La clave cambia cuando el pago pasa de "por vencer" a "vencido": así,
+      // aunque hayas atendido el aviso previo, el de vencido vuelve a aparecer.
+      key: `pay:${p.id}:${overdue ? "overdue" : "soon"}`,
+      kind: "payment" as const,
+      clientId: p.client_id,
+      at: overdue ? new Date().toISOString() : due.toISOString(),
+      title: overdue
+        ? `Pago vencido hace ${-days} ${-days === 1 ? "día" : "días"}`
+        : days === 0
+          ? "Pago que vence hoy"
+          : `Pago que vence en ${days} ${days === 1 ? "día" : "días"}`,
+      detail: `${amount} · vencimiento ${due.toLocaleDateString("es")}`,
+      tone: overdue ? ("bad" as const) : ("warn" as const),
+    };
+  });
+}
+
 /**
  * Todas las novedades pendientes (sin las ya atendidas), más nuevas primero.
  * `allow` dice qué tipos puede ver este usuario (para un asistente, según
@@ -307,7 +344,7 @@ async function photoItems(clients: ClientRow[]): Promise<FeedItem[]> {
  */
 export async function loadFeed(
   clients: ClientRow[],
-  allow: Record<"logs" | "assessments" | "health" | "files", boolean>,
+  allow: Record<"logs" | "assessments" | "health" | "files" | "payments", boolean>,
 ): Promise<FeedItem[]> {
   const known = new Set(clients.map((c) => c.id));
   const safe = (p: Promise<FeedItem[]>) => p.catch((): FeedItem[] => []);
@@ -318,6 +355,7 @@ export async function loadFeed(
     allow.assessments ? safe(measureItems()) : Promise.resolve([] as FeedItem[]),
     allow.health ? safe(wellnessItems()) : Promise.resolve([] as FeedItem[]),
     allow.files ? safe(photoItems(clients)) : Promise.resolve([] as FeedItem[]),
+    allow.payments ? safe(paymentItems()) : Promise.resolve([] as FeedItem[]),
   ]);
   return groups
     .flat()

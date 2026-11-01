@@ -8,6 +8,7 @@ export default function AuthLayout() {
       <Watermark />
       <div className="auth-card">
         <Brand className="auth-brand" withOrg={false} />
+        <p className="auth-tagline">No te ejercites. Entrena.</p>
         <Outlet />
       </div>
     </div>
