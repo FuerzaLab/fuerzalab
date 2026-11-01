@@ -14,6 +14,8 @@ import {
   removeVariation,
   RELATION_LABEL,
   deleteExercise,
+  setExerciseVideoUrl,
+  setExerciseVideoStatus,
   getProfileNames,
   type ExerciseRow,
   type CatalogItem,
@@ -28,6 +30,9 @@ import Loading from "../../../components/ui/Loading";
 import ConfirmModal from "../../../components/ui/ConfirmModal";
 import Modal from "../../../components/ui/Modal";
 import SearchSelect from "../../../components/ui/SearchSelect";
+import VideoEmbed from "../../../components/VideoEmbed";
+import { parseVideoUrl, checkVideoAvailable } from "../../../lib/videoEmbed";
+import { useSearchParams } from "react-router-dom";
 
 export default function ExercisesPage({ scope }: { scope: "global" | "trainer" }) {
   const { profile, actingTrainerId, can } = useAuth();
@@ -41,6 +46,10 @@ export default function ExercisesPage({ scope }: { scope: "global" | "trainer" }
 
   const [query, setQuery] = useState("");
   const [bodyFilter, setBodyFilter] = useState<"all" | "Superior" | "Inferior" | "Full body">("all");
+  // "?videos=rotos" (desde Novedades): muestra solo los ejercicios con video no disponible.
+  const [searchParams] = useSearchParams();
+  const [onlyBroken, setOnlyBroken] = useState(searchParams.get("videos") === "rotos");
+  const [checking, setChecking] = useState<{ done: number; total: number } | null>(null);
   const [selected, setSelected] = useState<ExerciseRow | null>(null);
   const [showNew, setShowNew] = useState(false);
   const [showImport, setShowImport] = useState(false);
@@ -161,9 +170,10 @@ export default function ExercisesPage({ scope }: { scope: "global" | "trainer" }
       const matchesQuery = e.name.toLowerCase().includes(query.toLowerCase());
       const region = bodyRegionOf(muscleById[e.primary_muscle_id ?? ""]?.key ?? null);
       const matchesBody = bodyFilter === "all" || region === bodyFilter;
-      return matchesQuery && matchesBody;
+      const matchesVideo = !onlyBroken || e.video_status === "broken";
+      return matchesQuery && matchesBody && matchesVideo;
     });
-  }, [exercises, query, bodyFilter, muscleById]);
+  }, [exercises, query, bodyFilter, muscleById, onlyBroken]);
 
   if (!profile) return null;
 
@@ -179,6 +189,36 @@ export default function ExercisesPage({ scope }: { scope: "global" | "trainer" }
   // En la vista del Super Admin, de quién es cada ejercicio que no es global.
   const originLabel = (e: ExerciseRow) =>
     e.scope === "global" ? "Global" : `De ${ownerNames[e.owner_id ?? ""] ?? "un entrenador"}`;
+
+  const brokenCount = exercises.filter((e) => e.video_status === "broken").length;
+
+  /** "Revisar videos": comprueba los enlaces de YouTube/Vimeo de los ejercicios que puedes editar. */
+  const checkVideos = async () => {
+    const list = exercises.filter((e) => e.video_url && canEdit(e));
+    if (list.length === 0) {
+      notify("Ninguno de tus ejercicios tiene un video de YouTube o Vimeo todavía.");
+      return;
+    }
+    setChecking({ done: 0, total: list.length });
+    let broken = 0;
+    const updates: Record<string, { status: "broken" | null; reason: string | null }> = {};
+    for (let i = 0; i < list.length; i += 4) {
+      await Promise.all(
+        list.slice(i, i + 4).map(async (e) => {
+          const parsed = parseVideoUrl(e.video_url);
+          const r = parsed ? await checkVideoAvailable(parsed) : { ok: false, reason: "El enlace no es de YouTube ni de Vimeo" };
+          const reason = r.ok ? null : r.reason ?? "El video no está disponible";
+          if (reason) broken++;
+          updates[e.id] = { status: reason ? "broken" : null, reason };
+          await setExerciseVideoStatus(e.id, reason).catch(() => {});
+        }),
+      );
+      setChecking({ done: Math.min(i + 4, list.length), total: list.length });
+    }
+    setExercises((xs) => xs.map((x) => (updates[x.id] ? { ...x, video_status: updates[x.id].status, video_broken_reason: updates[x.id].reason } : x)));
+    setChecking(null);
+    notify(broken ? `Revisé ${list.length} videos: ${broken} no ${broken === 1 ? "está disponible" : "están disponibles"}.` : `Revisé ${list.length} videos: todos funcionan.`);
+  };
 
   const confirmDelete = async () => {
     const ex = toDelete;
@@ -246,6 +286,18 @@ export default function ExercisesPage({ scope }: { scope: "global" | "trainer" }
               {b === "all" ? "Todos" : b}
             </button>
           ))}
+          {(brokenCount > 0 || onlyBroken) && (
+            <button
+              className="btn ghost"
+              onClick={() => setOnlyBroken((v) => !v)}
+              style={{ padding: "6px 12px", fontSize: 13, color: onlyBroken ? "#fff" : "var(--bad)", background: onlyBroken ? "var(--bad)" : "transparent", borderColor: "var(--bad)" }}
+            >
+              Video no disponible ({brokenCount})
+            </button>
+          )}
+          <button className="btn ghost" style={{ padding: "6px 12px", fontSize: 13 }} onClick={checkVideos} disabled={!!checking}>
+            {checking ? `Revisando ${checking.done}/${checking.total}…` : "Revisar videos"}
+          </button>
         </div>
       </div>
 
@@ -277,6 +329,9 @@ export default function ExercisesPage({ scope }: { scope: "global" | "trainer" }
                     >
                       <td style={{ padding: "10px 14px" }}>
                         <b>{e.name}</b>
+                        {e.video_status === "broken" && (
+                          <div style={{ marginTop: 3 }}><Chip tone="bad">Video no disponible</Chip></div>
+                        )}
                         {scope === "global" && e.scope !== "global" && (
                           <div className="note" style={{ fontSize: 12 }}>{originLabel(e)}</div>
                         )}
@@ -351,6 +406,16 @@ export default function ExercisesPage({ scope }: { scope: "global" | "trainer" }
                     </div>
                   )}
                 </div>
+                <VideoLinkEditor
+                  key={selected.id}
+                  exercise={selected}
+                  editable={canEdit(selected)}
+                  onSaved={(url) => {
+                    const upd = { ...selected, video_url: url, video_status: null, video_broken_reason: null };
+                    setExercises((xs) => xs.map((x) => (x.id === selected.id ? upd : x)));
+                    setSelected(upd);
+                  }}
+                />
                 <div style={{ display: "flex", flexWrap: "wrap", gap: 6, marginBottom: 12 }}>
                   {selected.goals.map((g) => (
                     <Chip key={g} tone="pri">{g}</Chip>
@@ -555,4 +620,70 @@ function difficultyLabel(d: ExerciseRow["difficulty"]): string {
   if (d === "intermediate") return "Intermedio";
   if (d === "advanced") return "Avanzado";
   return "—";
+}
+
+/**
+ * Enlace de YouTube o Vimeo del ejercicio: se reproduce dentro de la app.
+ * Si alguien detectó que el video ya no funciona, lo avisa arriba en rojo.
+ */
+function VideoLinkEditor({ exercise, editable, onSaved }: { exercise: ExerciseRow; editable: boolean; onSaved: (url: string | null) => void }) {
+  const { notify } = useToast();
+  const [text, setText] = useState(exercise.video_url ?? "");
+  const [saving, setSaving] = useState(false);
+  if (!editable && !exercise.video_url) return null;
+
+  const save = async (url: string | null) => {
+    if (url && !parseVideoUrl(url)) {
+      notify("Ese enlace no es de YouTube ni de Vimeo. Copia el enlace del video desde el botón Compartir.");
+      return;
+    }
+    setSaving(true);
+    try {
+      await setExerciseVideoUrl(exercise.id, url);
+      onSaved(url);
+      if (!url) setText("");
+      notify(url ? "Video guardado." : "Video quitado.");
+    } catch (e: any) {
+      notify(e.message);
+    }
+    setSaving(false);
+  };
+
+  return (
+    <div style={{ marginBottom: 14 }}>
+      {exercise.video_status === "broken" && (
+        <div className="video-broken" style={{ marginTop: 0, marginBottom: 8 }}>
+          <b>El video de este ejercicio ya no está disponible.</b>
+          <span>{exercise.video_broken_reason ?? "Alguien intentó verlo y no cargó."} Pega un enlace nuevo para reemplazarlo.</span>
+        </div>
+      )}
+      {editable && (
+        <>
+          <label className="field-label">Video de YouTube o Vimeo</label>
+          <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
+            <input
+              className="input"
+              style={{ flex: "1 1 220px" }}
+              placeholder="https://youtu.be/…"
+              value={text}
+              onChange={(e) => setText(e.target.value)}
+            />
+            <button className="btn" style={{ padding: "6px 14px", fontSize: 13 }} disabled={saving || !text.trim() || text.trim() === (exercise.video_url ?? "")} onClick={() => save(text.trim())}>
+              Guardar
+            </button>
+            {exercise.video_url && (
+              <button className="btn ghost" style={{ padding: "6px 12px", fontSize: 13 }} disabled={saving} onClick={() => save(null)}>
+                Quitar
+              </button>
+            )}
+          </div>
+          <p className="note" style={{ fontSize: 12, margin: "6px 0 0" }}>
+            Se ve dentro de FuerzaLab, sin salir de la app. Consejo: sube tus propios videos a YouTube como "No listado" — es
+            gratis, nadie los encuentra buscando y no gastas espacio de la app.
+          </p>
+        </>
+      )}
+      {exercise.video_url && exercise.video_status !== "broken" && <VideoEmbed url={exercise.video_url} exerciseId={exercise.id} />}
+    </div>
+  );
 }

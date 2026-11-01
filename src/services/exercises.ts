@@ -21,6 +21,10 @@ export interface ExerciseRow {
   created_at: string;
   media_path: string | null;
   media_type: "image" | "video" | null;
+  /** Video de YouTube o Vimeo (part3x_migration.sql). */
+  video_url?: string | null;
+  video_status?: "broken" | null;
+  video_broken_reason?: string | null;
 }
 
 export interface CatalogItem {
@@ -199,9 +203,8 @@ export async function listCatalog(kind: string): Promise<CatalogItem[]> {
 export async function listExercises(): Promise<ExerciseRow[]> {
   const { data, error } = await supabase
     .from("exercises")
-    .select(
-      "id, organization_id, owner_id, scope, name, description, primary_muscle_id, movement_pattern_id, equipment_ids, difficulty, goals, instructions, technical_cues, common_mistakes, is_active, created_at, media_path, media_type"
-    )
+    // "*": incluye el video de YouTube/Vimeo si ya se corrió part3x_migration.sql.
+    .select("*")
     .eq("is_active", true)
     .order("name");
   if (error) throw error;
@@ -281,4 +284,29 @@ export async function getProfileNames(ids: string[]): Promise<Record<string, str
   const out: Record<string, string> = {};
   for (const r of data ?? []) out[r.id as string] = r.full_name as string;
   return out;
+}
+
+/** Guarda (o quita, con null) el enlace de YouTube o Vimeo de un ejercicio. */
+export async function setExerciseVideoUrl(exerciseId: string, url: string | null): Promise<void> {
+  const { data, error } = await supabase.from("exercises").update({ video_url: url }).eq("id", exerciseId).select("id");
+  if (error) {
+    if (/video_url/.test(error.message)) throw new Error("Falta correr part3x_migration.sql en Supabase.");
+    throw error;
+  }
+  if (!data || data.length === 0) throw new Error("No tienes permiso para cambiar este ejercicio.");
+}
+
+/** Resultado de "Revisar videos": marca o desmarca el aviso de video no disponible. */
+export async function setExerciseVideoStatus(exerciseId: string, broken: string | null): Promise<void> {
+  const { error } = await supabase
+    .from("exercises")
+    .update({ video_status: broken ? "broken" : null, video_broken_reason: broken, video_checked_at: new Date().toISOString() })
+    .eq("id", exerciseId);
+  if (error) throw error;
+}
+
+/** Cualquiera que vea el ejercicio (un alumno, por ejemplo) avisa que el video no funciona. */
+export async function reportExerciseVideoBroken(exerciseId: string, reason: string): Promise<void> {
+  const { error } = await supabase.rpc("report_exercise_video_broken", { p_exercise: exerciseId, p_reason: reason });
+  if (error) throw error;
 }

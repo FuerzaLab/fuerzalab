@@ -13,7 +13,7 @@ import { wellnessScore, lowFields, WELLNESS_FIELD_LABEL, type WellnessLogRow } f
  * lo que se guarda al marcarla como atendida.
  */
 
-export type FeedKind = "record" | "measure" | "note" | "skip" | "wellness" | "photos" | "payment";
+export type FeedKind = "record" | "measure" | "note" | "skip" | "wellness" | "photos" | "payment" | "video";
 
 export interface FeedItem {
   key: string;
@@ -24,6 +24,8 @@ export interface FeedItem {
   title: string;
   detail?: string;
   tone: "ok" | "warn" | "bad" | "pri" | "";
+  /** Qué se muestra en negrita en lugar del nombre del cliente (ej. el ejercicio, en los avisos de video). */
+  who?: string;
 }
 
 export const FEED_KIND_LABEL: Record<FeedKind, string> = {
@@ -34,6 +36,7 @@ export const FEED_KIND_LABEL: Record<FeedKind, string> = {
   wellness: "Bienestar",
   photos: "Fotos",
   payment: "Pago",
+  video: "Video",
 };
 
 const DAYS = 30;
@@ -337,6 +340,29 @@ async function paymentItems(): Promise<FeedItem[]> {
   });
 }
 
+// --- Videos de ejercicios que dejaron de funcionar -----------------------
+
+async function videoItems(trainerId: string): Promise<FeedItem[]> {
+  const { data, error } = await supabase
+    .from("exercises")
+    .select("*")
+    .eq("video_status", "broken")
+    .eq("scope", "trainer")
+    .eq("owner_id", trainerId);
+  if (error) return []; // sin part3x_migration.sql, no hay videos que revisar
+  return (data ?? []).map((e: any) => ({
+    // La clave incluye la fecha de la detección: si se arregla y vuelve a fallar, avisa de nuevo.
+    key: `video:${e.id}:${e.video_checked_at ?? ""}`,
+    kind: "video" as const,
+    clientId: "",
+    who: e.name as string,
+    at: (e.video_checked_at as string) ?? new Date().toISOString(),
+    title: "El video de este ejercicio ya no está disponible",
+    detail: `${e.video_broken_reason ?? "Alguien intentó verlo y no cargó"}. Pega un enlace nuevo en Ejercicios.`,
+    tone: "bad" as const,
+  }));
+}
+
 /**
  * Todas las novedades pendientes (sin las ya atendidas), más nuevas primero.
  * `allow` dice qué tipos puede ver este usuario (para un asistente, según
@@ -344,7 +370,7 @@ async function paymentItems(): Promise<FeedItem[]> {
  */
 export async function loadFeed(
   clients: ClientRow[],
-  allow: Record<"logs" | "assessments" | "health" | "files" | "payments", boolean>,
+  allow: Record<"logs" | "assessments" | "health" | "files" | "payments", boolean> & { videosFor?: string | null },
 ): Promise<FeedItem[]> {
   const known = new Set(clients.map((c) => c.id));
   const safe = (p: Promise<FeedItem[]>) => p.catch((): FeedItem[] => []);
@@ -356,9 +382,10 @@ export async function loadFeed(
     allow.health ? safe(wellnessItems()) : Promise.resolve([] as FeedItem[]),
     allow.files ? safe(photoItems(clients)) : Promise.resolve([] as FeedItem[]),
     allow.payments ? safe(paymentItems()) : Promise.resolve([] as FeedItem[]),
+    allow.videosFor ? safe(videoItems(allow.videosFor)) : Promise.resolve([] as FeedItem[]),
   ]);
   return groups
     .flat()
-    .filter((i) => known.has(i.clientId) && !dismissed.has(i.key))
+    .filter((i) => (i.kind === "video" || known.has(i.clientId)) && !dismissed.has(i.key))
     .sort((a, b) => b.at.localeCompare(a.at));
 }

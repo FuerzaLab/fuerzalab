@@ -133,6 +133,8 @@ export interface WorkoutExerciseRow {
   load_unit?: "kg" | "lb" | null;
   /** Equipamiento del ejercicio (para decidir kg o lb en gimnasios mixtos). */
   exercise_equipment_ids?: string[] | null;
+  /** Video de YouTube o Vimeo del ejercicio (part3x). */
+  exercise_video_url?: string | null;
 }
 
 export interface TodaysSession {
@@ -277,7 +279,8 @@ export async function listWorkoutExercises(sessionId: string): Promise<WorkoutEx
   const { data, error } = await supabase
     .from("workout_exercises")
     // "*": así trae load_unit si ya se corrió part3v_migration.sql, y no falla si todavía no.
-    .select("*, exercises(name, media_path, media_type, equipment_ids)")
+    // exercises(*): trae también el video de YouTube/Vimeo si ya existe esa columna (part3x).
+    .select("*, exercises(*)")
     .eq("session_id", sessionId)
     .order("sort_order");
   if (error) throw error;
@@ -290,6 +293,7 @@ export async function listWorkoutExercises(sessionId: string): Promise<WorkoutEx
       media_path: exercises?.media_path ?? null,
       media_type: exercises?.media_type ?? null,
       exercise_equipment_ids: exercises?.equipment_ids ?? [],
+      exercise_video_url: exercises?.video_url ?? null,
     };
   }) as WorkoutExerciseRow[];
 }

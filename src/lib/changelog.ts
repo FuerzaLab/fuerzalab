@@ -22,6 +22,22 @@ export interface ChangelogEntry {
 
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    id: "2026-11-01-video-links",
+    date: "2026-11-01",
+    title: "Videos de YouTube o Vimeo en tus ejercicios",
+    body: "Pega el enlace de un video en cualquier ejercicio de tu biblioteca: tus alumnos lo ven dentro de FuerzaLab, sin salir de la app. Si un video deja de estar disponible, te avisamos en Novedades para que pongas otro, y con \"Revisar videos\" compruebas todos de una vez.",
+    for: ["trainer"],
+    link: { label: "Ir a Ejercicios", to: paths.trainerExercises },
+  },
+  {
+    id: "2026-11-01-video-links-client",
+    date: "2026-11-01",
+    title: "Mira cómo se hace cada ejercicio",
+    body: "En tu rutina, toca \"Ver cómo se hace\" para ver el video del ejercicio sin salir de la app.",
+    for: ["client"],
+    link: { label: "Ir a mi rutina", to: paths.clientRoutine },
+  },
+  {
     id: "2026-10-29-template-exercises",
     date: "2026-10-29",
     title: "Mira los ejercicios de tus plantillas",

@@ -42,6 +42,7 @@ import Loading from "../../components/ui/Loading";
 import { listRecordsForWorkout, describeRecord, type MyRecord } from "../../services/clientHome";
 import { formatLoad, loadInputValue, parseLoadToKg, type LoadUnit } from "../../lib/units";
 import { getEffectiveGymUnits, getEquipmentNames, makeUnitResolver } from "../../services/units";
+import VideoEmbed from "../../components/VideoEmbed";
 
 const STATUS_LABEL: Record<WorkoutLogRow["status"], string> = {
   pending: "Pendiente",
@@ -545,14 +546,27 @@ function RestTimer({ remaining, total, onAddTime, onSkip }: { remaining: number;
   );
 }
 
-function ExerciseMedia({ mediaPath, mediaType, label }: { mediaPath: string | null; mediaType: "image" | "video" | null; label?: string }) {
+function ExerciseMedia({
+  mediaPath,
+  mediaType,
+  label,
+  videoUrl,
+  exerciseId,
+}: {
+  mediaPath: string | null;
+  mediaType: "image" | "video" | null;
+  label?: string;
+  /** Video de YouTube o Vimeo: tiene prioridad sobre la foto o video subido. */
+  videoUrl?: string | null;
+  exerciseId?: string;
+}) {
   const [open, setOpen] = useState(false);
   const [url, setUrl] = useState("");
 
-  if (!mediaPath) return null;
+  if (!mediaPath && !videoUrl) return null;
 
   const toggle = async () => {
-    if (!open && !url) {
+    if (!open && !videoUrl && !url && mediaPath) {
       try {
         setUrl(await getExerciseMediaUrl(mediaPath));
       } catch {
@@ -563,15 +577,16 @@ function ExerciseMedia({ mediaPath, mediaType, label }: { mediaPath: string | nu
   };
 
   return (
-    <div style={{ marginBottom: 8 }}>
+    <div style={{ marginBottom: 8, width: open ? "100%" : undefined }}>
       <button type="button" className="btn ghost" style={{ padding: "4px 10px", fontSize: 12.5 }} onClick={toggle}>
-        {open ? `Ocultar${label ? ` — ${label}` : ""}` : `Ver demostración${label ? ` — ${label}` : ""}`}
+        {open ? `Ocultar${label ? ` — ${label}` : ""}` : `▶ Ver cómo se hace${label ? ` — ${label}` : ""}`}
       </button>
-      {open && url && (
+      {open && videoUrl && <VideoEmbed url={videoUrl} exerciseId={exerciseId} />}
+      {open && !videoUrl && url && (
         mediaType === "video" ? (
-          <video src={url} controls style={{ width: "100%", maxHeight: 220, borderRadius: 8, background: "#000", marginTop: 8 }} />
+          <video src={url} controls playsInline style={{ width: "100%", maxHeight: 260, borderRadius: 8, background: "#000", marginTop: 8 }} />
         ) : (
-          <img src={url} alt="" style={{ width: "100%", maxHeight: 220, objectFit: "contain", borderRadius: 8, marginTop: 8 }} />
+          <img src={url} alt="" style={{ width: "100%", maxHeight: 260, objectFit: "contain", borderRadius: 8, marginTop: 8 }} />
         )
       )}
     </div>
@@ -676,10 +691,10 @@ function SupersetTrainer({
         </h3>
       </div>
       <div className="bd">
-        {exercises.some((ex) => ex.media_path) && (
+        {exercises.some((ex) => ex.media_path || ex.exercise_video_url) && (
           <div style={{ display: "flex", flexWrap: "wrap", gap: 6, marginBottom: 10 }}>
             {exercises.map((ex, i) => (
-              <ExerciseMedia key={ex.id} mediaPath={ex.media_path} mediaType={ex.media_type} label={`${SUPERSET_LETTERS[i]} — ${ex.exercise_name}`} />
+              <ExerciseMedia key={ex.id} mediaPath={ex.media_path} mediaType={ex.media_type} videoUrl={ex.exercise_video_url} exerciseId={ex.exercise_id} label={`${SUPERSET_LETTERS[i]} — ${ex.exercise_name}`} />
             ))}
           </div>
         )}
@@ -894,7 +909,7 @@ function ExerciseTrainer({
           </button>
         </div>
         <div className="bd" style={{ paddingTop: 0 }}>
-          <ExerciseMedia mediaPath={ex.media_path} mediaType={ex.media_type} />
+          <ExerciseMedia mediaPath={ex.media_path} mediaType={ex.media_type} videoUrl={ex.exercise_video_url} exerciseId={ex.exercise_id} />
           <LastPerformanceNote perf={lastPerf} />
           <VariationsNote items={variations} />
         </div>
@@ -916,7 +931,7 @@ function ExerciseTrainer({
         </span>
       </div>
       <div className="bd" style={{ paddingBottom: 0 }}>
-        <ExerciseMedia mediaPath={ex.media_path} mediaType={ex.media_type} />
+        <ExerciseMedia mediaPath={ex.media_path} mediaType={ex.media_type} videoUrl={ex.exercise_video_url} exerciseId={ex.exercise_id} />
         <LastPerformanceNote perf={lastPerf} />
         <VariationsNote items={variations} />
       </div>

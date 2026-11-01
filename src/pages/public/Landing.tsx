@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { useAuth } from "../../contexts/AuthContext";
 import { supabase } from "../../lib/supabase";
@@ -135,6 +135,48 @@ function DemoVideo() {
     >
       <source src={vertical ? "/video/fuerzalab-demo-vertical.mp4" : "/video/fuerzalab-demo.mp4"} type="video/mp4" />
     </video>
+  );
+}
+
+/** Puntos de "Lo que ven tus alumnos" (todo existe en la app del alumno). */
+const STUDENT_POINTS: [string, string][] = [
+  ["La rutina de hoy, lo primero que ve", "Abre la app y sabe qué le toca, sin buscar en el chat."],
+  ["Carga sus series en segundos", "Con lo que levantó la última vez a la vista y el descanso que se cuenta solo."],
+  ["Cuando supera su marca, la app lo celebra", "Y lo sigue motivando a volver la próxima sesión."],
+  ["Ve su progreso de verdad", "Su fuerza en gráficos, los resultados de cada evaluación —peso, % de grasa, medidas— y sus fotos de antes y ahora."],
+  ["Con tu marca, instalada como una app", "Tu logo y tu nombre junto a FuerzaLab, sin pasar por ninguna tienda."],
+];
+
+/**
+ * Animación del celular del alumno (21 s, sin sonido, en bucle). Se descarga
+ * y empieza recién cuando el visitante llega a esa parte de la página, para
+ * no gastar tráfico si no baja hasta ahí.
+ */
+function StudentPhone() {
+  const ref = useRef<HTMLVideoElement>(null);
+  useEffect(() => {
+    const v = ref.current;
+    if (!v) return;
+    const reduce = window.matchMedia?.("(prefers-reduced-motion: reduce)").matches;
+    if (!("IntersectionObserver" in window) || reduce) return;
+    const io = new IntersectionObserver(
+      (entries) => {
+        for (const e of entries) {
+          if (e.isIntersecting) {
+            if (!v.src) v.src = "/video/alumno-bucle.mp4";
+            v.play().catch(() => {});
+          } else v.pause();
+        }
+      },
+      { threshold: 0.35 },
+    );
+    io.observe(v);
+    return () => io.disconnect();
+  }, []);
+  return (
+    <div className="lp-phone">
+      <video ref={ref} muted loop playsInline preload="none" poster="/video/alumno-poster.jpg" aria-label="Así se ve la app de un alumno: su rutina, sus series, sus récords y su progreso" />
+    </div>
   );
 }
 
@@ -321,6 +363,27 @@ export default function Landing() {
               </li>
             ))}
           </ol>
+        </div>
+      </section>
+
+      <section className="lp-section">
+        <div className="lp-wrap lp-student">
+          <StudentPhone />
+          <div>
+            <h2>Lo que ven tus alumnos</h2>
+            <p className="lp-lead" style={{ marginBottom: 26 }}>Una app que dan ganas de abrir, con tu marca, en su celular.</p>
+            <ol className="lp-student-points">
+              {STUDENT_POINTS.map(([title, text], i) => (
+                <li key={title}>
+                  <span className="lp-moment-n">{i + 1}</span>
+                  <span>
+                    <b>{title}</b>
+                    {text}
+                  </span>
+                </li>
+              ))}
+            </ol>
+          </div>
         </div>
       </section>
 

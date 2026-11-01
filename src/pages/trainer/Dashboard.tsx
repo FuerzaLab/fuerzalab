@@ -110,7 +110,7 @@ export default function TrainerDashboard() {
 
 // --- Novedades ------------------------------------------------------------
 
-const KIND_ORDER: FeedKind[] = ["payment", "record", "measure", "note", "wellness", "skip", "photos"];
+const KIND_ORDER: FeedKind[] = ["payment", "record", "measure", "note", "wellness", "skip", "photos", "video"];
 
 function relDay(iso: string): string {
   const d = new Date(iso);
@@ -129,7 +129,7 @@ function relDay(iso: string): string {
  * nuevas). Cada una se marca como "Atendida" y deja de aparecer.
  */
 function FeedPanel({ clients, onCount }: { clients: ClientRow[]; onCount: (n: number) => void }) {
-  const { can } = useAuth();
+  const { can, actingTrainerId } = useAuth();
   const { notify } = useToast();
   const navigate = useNavigate();
   const [items, setItems] = useState<FeedItem[] | null>(null);
@@ -141,7 +141,7 @@ function FeedPanel({ clients, onCount }: { clients: ClientRow[]; onCount: (n: nu
       setItems([]);
       return;
     }
-    loadFeed(clients, { logs: can("logs"), assessments: can("assessments"), health: can("health"), files: can("files"), payments: can("payments") })
+    loadFeed(clients, { logs: can("logs"), assessments: can("assessments"), health: can("health"), files: can("files"), payments: can("payments"), videosFor: can("exercises", "write") ? actingTrainerId : null })
       .then(setItems)
       .catch((e: any) => {
         notify(e.message);
@@ -156,6 +156,7 @@ function FeedPanel({ clients, onCount }: { clients: ClientRow[]; onCount: (n: nu
     if (i.kind === "wellness" && can("health")) return paths.trainerWellness;
     if (i.kind === "photos" && can("files")) return paths.trainerProgressPhotos;
     if (i.kind === "payment" && can("payments")) return paths.trainerPayments;
+    if (i.kind === "video") return `${paths.trainerExercises}?videos=rotos`;
     if ((i.kind === "record" || i.kind === "measure") && can("analytics")) return paths.trainerReports;
     return paths.trainerClientDetail(i.clientId);
   };
@@ -212,7 +213,7 @@ function FeedPanel({ clients, onCount }: { clients: ClientRow[]; onCount: (n: nu
                 <div style={{ flex: 1, minWidth: 0, cursor: "pointer" }} onClick={() => navigate(linkFor(i))}>
                   <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
                     <Chip tone={i.tone}>{FEED_KIND_LABEL[i.kind]}</Chip>
-                    <b>{nameFor(i.clientId)}</b>
+                    <b>{i.who ?? nameFor(i.clientId)}</b>
                     <span className="note" style={{ fontSize: 12.5 }}>{relDay(i.at)}</span>
                   </div>
                   <div style={{ marginTop: 3 }}>{i.title}</div>
