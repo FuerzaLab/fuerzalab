@@ -343,3 +343,6 @@ select.input:hover { border-color: var(--pri); }
 .round-done.done { background: var(--ok-soft); color: #1F6B53; border-color: var(--ok); }
 
 .auth-tagline { margin: -6px 0 18px; font-family: 'Barlow Condensed', sans-serif; font-weight: 700; font-size: 17px; letter-spacing: .02em; color: var(--pri); }
+/* Plantillas: lista de ejercicios */
+.tpl-ex { margin: 8px 0 2px; padding-left: 20px; display: grid; gap: 5px; font-size: 14px; }
+.tpl-ex li { line-height: 1.4; }

@@ -22,6 +22,14 @@ export interface ChangelogEntry {
 
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    id: "2026-10-29-template-exercises",
+    date: "2026-10-29",
+    title: "Mira los ejercicios de tus plantillas",
+    body: "En Plantillas, \"Ver ejercicios\" muestra qué tiene cada día —series, repeticiones, carga, RIR y descanso, con las biseries marcadas A1, A2— antes de usarla con un alumno. En los programas completos, eliges la semana.",
+    for: ["trainer"],
+    link: { label: "Ir a Plantillas", to: paths.trainerTemplates },
+  },
+  {
     id: "2026-10-29-payment-alerts",
     date: "2026-10-29",
     title: "Avisos de pagos vencidos y por vencer",

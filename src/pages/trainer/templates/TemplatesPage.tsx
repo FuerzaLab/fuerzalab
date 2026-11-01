@@ -7,7 +7,7 @@ import ConfirmModal from "../../../components/ui/ConfirmModal";
 import Loading from "../../../components/ui/Loading";
 import { listClients, type ClientRow } from "../../../services/clients";
 import { listTemplates, deleteProgram, listWeeks, METHOD_LABEL, type ProgramRow, type WeekRow } from "../../../services/programs";
-import { cloneProgram, listSessions } from "../../../services/sessions";
+import { cloneProgram, listSessions, listWorkoutExercises } from "../../../services/sessions";
 import { getActiveProgramForClient } from "../../../services/training";
 import {
   listWorkoutTemplates,
@@ -16,13 +16,16 @@ import {
   applyTemplateDayToWeek,
   type WorkoutTemplateRow,
   type WorkoutTemplateSessionRow,
+  listTemplateExercises,
 } from "../../../services/templates";
 import SearchSelect from "../../../components/ui/SearchSelect";
 import EmptyState from "../../../components/ui/EmptyState";
+import { formatLoad } from "../../../lib/units";
 
 export default function TemplatesPage() {
   const { profile, actingTrainerId } = useAuth();
   const { notify } = useToast();
+  const [viewing, setViewing] = useState<string | null>(null);
   const [templates, setTemplates] = useState<ProgramRow[]>([]);
   const [looseTemplates, setLooseTemplates] = useState<WorkoutTemplateRow[]>([]);
   const [clients, setClients] = useState<ClientRow[]>([]);
@@ -72,15 +75,21 @@ export default function TemplatesPage() {
         <div style={{ display: "grid", gap: 12 }}>
           {templates.map((t) => (
             <div key={t.id} className="panel">
-              <div className="bd" style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 10 }}>
-                <div>
-                  <b>{t.name}</b>
-                  <div className="note">{METHOD_LABEL[t.method]}</div>
+              <div className="bd">
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 10 }}>
+                  <div>
+                    <b>{t.name}</b>
+                    <div className="note">{METHOD_LABEL[t.method]}</div>
+                  </div>
+                  <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+                    <button className="btn ghost" onClick={() => setViewing((v) => (v === t.id ? null : t.id))}>
+                      {viewing === t.id ? <ChevronUp size={14} /> : <ChevronDown size={14} />} {viewing === t.id ? "Ocultar" : "Ver ejercicios"}
+                    </button>
+                    <button className="btn" onClick={() => setApplyingTo(t)}>Usar con un cliente</button>
+                    <button className="btn ghost" onClick={() => setDeleting(t)}><Trash2 size={14} /></button>
+                  </div>
                 </div>
-                <div style={{ display: "flex", gap: 8 }}>
-                  <button className="btn" onClick={() => setApplyingTo(t)}>Usar con un cliente</button>
-                  <button className="btn ghost" onClick={() => setDeleting(t)}><Trash2 size={14} /></button>
-                </div>
+                {viewing === t.id && <ProgramTemplateContent programId={t.id} />}
               </div>
             </div>
           ))}
@@ -214,15 +223,7 @@ function LooseTemplateCard({
           <div style={{ marginTop: 14, display: "grid", gap: 8 }}>
             {days.length === 0 && <p className="note">Esta plantilla todavía no tiene ningún día guardado.</p>}
             {days.map((d) => (
-              <div key={d.id} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "8px 0", borderTop: "1px solid var(--line)" }}>
-                <span>
-                  <b>Día {d.day_index} — {d.name}</b>
-                  {d.focus && <span className="note"> · {d.focus}</span>}
-                </span>
-                <button className="btn ghost" style={{ padding: "4px 10px", fontSize: 12.5 }} onClick={() => onApplyDay(d)}>
-                  Usar con un cliente
-                </button>
-              </div>
+              <LooseDayRow key={d.id} day={d} onApply={() => onApplyDay(d)} />
             ))}
           </div>
         )}
@@ -374,5 +375,148 @@ function ApplyTemplateModal({
       <input className="input" style={{ marginBottom: 18 }} value={name} onChange={(e) => setName(e.target.value)} />
       <button className="btn" onClick={submit} disabled={saving}>{saving ? "Aplicando…" : "Aplicar plantilla"}</button>
     </Modal>
+  );
+}
+
+// --- Ver ejercicios de una plantilla --------------------------------------
+
+interface ExLine {
+  id: string;
+  exercise_name: string;
+  sets: number | null;
+  reps_min: number | null;
+  reps_max: number | null;
+  load_value: number | null;
+  rir: number | null;
+  rest_s: number | null;
+  superset_group: number | null;
+}
+
+const fmtRest = (s: number) => (s >= 60 ? `${Math.floor(s / 60)}:${String(s % 60).padStart(2, "0")}` : `${s} s`);
+
+/** Lista de ejercicios de un día: "A1 Sentadilla — 4 × 6–8 · 130 kg · RIR 2 · descanso 2:30". */
+function ExerciseLines({ items }: { items: ExLine[] }) {
+  if (items.length === 0) return <p className="note" style={{ margin: "4px 0 0" }}>Este día no tiene ejercicios.</p>;
+  // Letra por grupo (biserie / serie gigante): A, B, C… en el orden en que aparecen.
+  const letters = new Map<number, string>();
+  const pos = new Map<number, number>();
+  for (const it of items) if (it.superset_group != null && !letters.has(it.superset_group)) letters.set(it.superset_group, String.fromCharCode(65 + letters.size));
+  return (
+    <ol className="tpl-ex">
+      {items.map((it) => {
+        let tag = "";
+        if (it.superset_group != null && items.filter((x) => x.superset_group === it.superset_group).length > 1) {
+          const n = (pos.get(it.superset_group) ?? 0) + 1;
+          pos.set(it.superset_group, n);
+          tag = `${letters.get(it.superset_group)}${n}`;
+        }
+        const reps = it.reps_min != null && it.reps_max != null && it.reps_min !== it.reps_max ? `${it.reps_min}–${it.reps_max}` : it.reps_max ?? it.reps_min ?? "—";
+        const parts = [`${it.sets ?? "—"} × ${reps}`];
+        if (it.load_value) parts.push(formatLoad(it.load_value, "kg"));
+        if (it.rir != null) parts.push(`RIR ${it.rir}`);
+        if (it.rest_s) parts.push(`descanso ${fmtRest(it.rest_s)}`);
+        return (
+          <li key={it.id}>
+            {tag && <span className="chip pri" style={{ marginRight: 6 }}>{tag}</span>}
+            <b>{it.exercise_name}</b>
+            <span className="note"> — {parts.join(" · ")}</span>
+          </li>
+        );
+      })}
+    </ol>
+  );
+}
+
+/** Un día de una rutina suelta, con su botón "Ver ejercicios". */
+function LooseDayRow({ day, onApply }: { day: WorkoutTemplateSessionRow; onApply: () => void }) {
+  const { notify } = useToast();
+  const [items, setItems] = useState<ExLine[] | null>(null);
+  const [open, setOpen] = useState(false);
+  const toggle = async () => {
+    if (!open && items === null) {
+      try {
+        setItems(await listTemplateExercises(day.id));
+      } catch (e: any) {
+        notify(e.message);
+        return;
+      }
+    }
+    setOpen((o) => !o);
+  };
+  return (
+    <div style={{ padding: "8px 0", borderTop: "1px solid var(--line)" }}>
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
+        <span>
+          <b>Día {day.day_index} — {day.name}</b>
+          {day.focus && <span className="note"> · {day.focus}</span>}
+        </span>
+        <span style={{ display: "flex", gap: 6 }}>
+          <button className="btn ghost" style={{ padding: "4px 10px", fontSize: 12.5 }} onClick={toggle}>
+            {open ? <ChevronUp size={13} /> : <ChevronDown size={13} />} {open ? "Ocultar ejercicios" : "Ver ejercicios"}
+          </button>
+          <button className="btn ghost" style={{ padding: "4px 10px", fontSize: 12.5 }} onClick={onApply}>
+            Usar con un cliente
+          </button>
+        </span>
+      </div>
+      {open && items && <ExerciseLines items={items} />}
+    </div>
+  );
+}
+
+/** Contenido de un programa completo: elige la semana y ve sus días con sus ejercicios. */
+function ProgramTemplateContent({ programId }: { programId: string }) {
+  const { notify } = useToast();
+  const [weeks, setWeeks] = useState<WeekRow[] | null>(null);
+  const [weekId, setWeekId] = useState("");
+  const [days, setDays] = useState<{ id: string; name: string; items: ExLine[] }[] | null>(null);
+
+  useEffect(() => {
+    listWeeks(programId)
+      .then((w) => {
+        setWeeks(w);
+        if (w[0]) setWeekId(w[0].id);
+      })
+      .catch((e: any) => notify(e.message));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [programId]);
+
+  useEffect(() => {
+    if (!weekId) return;
+    setDays(null);
+    (async () => {
+      const sessions = await listSessions(weekId);
+      const withEx = await Promise.all(
+        sessions.map(async (se) => ({ id: se.id, name: se.name, items: (await listWorkoutExercises(se.id)) as unknown as ExLine[] })),
+      );
+      setDays(withEx);
+    })().catch((e: any) => notify(e.message));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [weekId]);
+
+  if (!weeks) return <Loading />;
+  if (weeks.length === 0) return <p className="note">Este programa no tiene semanas.</p>;
+  return (
+    <div style={{ marginTop: 12 }}>
+      {weeks.length > 1 && (
+        <select className="input" style={{ width: "auto", marginBottom: 8 }} value={weekId} onChange={(e) => setWeekId(e.target.value)}>
+          {weeks.map((w) => (
+            <option key={w.id} value={w.id}>Semana {w.week_number}</option>
+          ))}
+        </select>
+      )}
+      {!days ? (
+        <Loading />
+      ) : days.length === 0 ? (
+        <p className="note">Esta semana no tiene días armados.</p>
+      ) : (
+        days.map((d) => (
+          <div key={d.id} style={{ padding: "8px 0", borderTop: "1px solid var(--line)" }}>
+            <b>{d.name}</b>
+            <ExerciseLines items={d.items} />
+          </div>
+        ))
+      )}
+    </div>
   );
 }
