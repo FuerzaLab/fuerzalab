@@ -7,6 +7,7 @@ import { isDemoAccount } from "../../lib/demo";
 import BrandSettingsPanel from "../../components/BrandSettingsPanel";
 import { DefaultGymUnitsPanel } from "../../components/GymUnitsSettings";
 import MenuSectionsPanel from "../../components/MenuSectionsPanel";
+import MyPlanPanel from "../../components/MyPlanPanel";
 
 export default function Settings() {
   const { profile, updatePassword, refreshProfile } = useAuth();
@@ -57,6 +58,7 @@ export default function Settings() {
     <div className="page">
       <h1 style={{ marginBottom: 20 }}>Configuración</h1>
 
+      <MyPlanPanel />
       <BrandSettingsPanel />
       <DefaultGymUnitsPanel />
       <MenuSectionsPanel />

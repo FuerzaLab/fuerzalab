@@ -33,6 +33,7 @@ import { routeRequirement, hasLevel } from "../../lib/staffModules";
 import Brand from "../../components/ui/Brand";
 import DemoGate from "../../components/DemoGate";
 import ScreenIntro from "../../components/ScreenIntro";
+import BillingBanner from "../../components/BillingBanner";
 import PageLoading from "../../components/ui/PageLoading";
 import { useIsStudioOwner } from "../../hooks/useIsStudioOwner";
 import { useWhatsNew } from "../../hooks/useWhatsNew";
@@ -291,6 +292,7 @@ function TrainerLauncherShell({
             <Eye size={15} /> Tienes acceso de <strong>solo lectura</strong> a esta sección: puedes ver todo, pero los cambios no se van a guardar.
           </div>
         )}
+        <BillingBanner />
         <ScreenIntro />
         <DemoGate>
           <Suspense fallback={<PageLoading />}>

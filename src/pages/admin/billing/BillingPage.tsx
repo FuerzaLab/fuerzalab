@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { orgPeriodAmount } from "../../../services/orgBilling";
 import { Plus, Pencil, Check } from "lucide-react";
 import { useToast } from "../../../contexts/ToastContext";
 import Modal from "../../../components/ui/Modal";
@@ -94,7 +95,8 @@ export default function BillingPage() {
                   <div>
                     <b>{plan.name}</b>{" "}
                     <span className="note">
-                      {plan.currency} {plan.price} · {BILLING_PERIOD_LABEL[plan.billing_period]} · {plan.client_limit ? `hasta ${plan.client_limit} clientes` : "clientes ilimitados"} · {plan.trainer_limit ? `hasta ${plan.trainer_limit} entrenadores` : "entrenadores ilimitados"}
+                      {plan.currency} {plan.price} · {BILLING_PERIOD_LABEL[plan.billing_period]}
+                      {plan.price_per_client ? ` · ${plan.included_clients ?? 0} alumnos incluidos + ${plan.currency} ${plan.price_per_client} por alumno extra` : ""} · {plan.client_limit ? `tope ${plan.client_limit} alumnos` : "sin tope de alumnos"} · {plan.trainer_limit ? `hasta ${plan.trainer_limit} entrenadores` : "entrenadores ilimitados"}
                       {!plan.is_active ? " · inactivo" : ""}
                     </span>
                   </div>
@@ -228,12 +230,14 @@ function PlanModal({ plan, onClose, onSaved }: { plan: PlatformPlanRow | null; o
   const [price, setPrice] = useState(plan ? String(plan.price) : "");
   const [currency, setCurrency] = useState(plan?.currency ?? "Bs");
   const [period, setPeriod] = useState<PlatformPlanRow["billing_period"]>(plan?.billing_period ?? "monthly");
+  const [perClient, setPerClient] = useState(plan?.price_per_client ? String(plan.price_per_client) : "");
+  const [included, setIncluded] = useState(plan?.included_clients != null ? String(plan.included_clients) : "");
   const [error, setError] = useState("");
   const [saving, setSaving] = useState(false);
 
   const submit = async () => {
-    if (!name.trim() || !price) {
-      setError("Completa el nombre y el precio.");
+    if (!name.trim() || (price === "" && !perClient)) {
+      setError("Completa el nombre y el precio (o el precio por alumno).");
       return;
     }
     setError("");
@@ -243,9 +247,11 @@ function PlanModal({ plan, onClose, onSaved }: { plan: PlatformPlanRow | null; o
         name: name.trim(),
         clientLimit: clientLimit ? Number(clientLimit) : null,
         trainerLimit: trainerLimit ? Number(trainerLimit) : null,
-        price: Number(price),
+        price: Number(price || 0),
         currency,
         billingPeriod: period,
+        pricePerClient: perClient ? Number(perClient.replace(",", ".")) : 0,
+        includedClients: perClient ? Number(included || 0) : null,
       };
       if (plan) await updatePlatformPlan(plan.id, fields);
       else await createPlatformPlan(fields);
@@ -262,7 +268,7 @@ function PlanModal({ plan, onClose, onSaved }: { plan: PlatformPlanRow | null; o
       <input className="input" style={{ marginBottom: 12 }} value={name} onChange={(e) => setName(e.target.value)} placeholder="Ej. Arranque, Profesional, Estudio" autoFocus />
       <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 12, marginBottom: 12 }}>
         <div>
-          <label className="field-label">Precio</label>
+          <label className="field-label">Precio base</label>
           <input className="input" inputMode="decimal" value={price} onChange={(e) => setPrice(e.target.value)} />
         </div>
         <div>
@@ -287,9 +293,26 @@ function PlanModal({ plan, onClose, onSaved }: { plan: PlatformPlanRow | null; o
           Pensada para períodos de prueba gratuitos de 15 días — pon el precio en 0 si es justamente eso.
         </p>
       )}
+      <div style={{ background: "var(--bg)", borderRadius: 10, padding: 12, marginBottom: 12 }}>
+        <b style={{ fontSize: 14 }}>Cobro por alumno (opcional)</b>
+        <p className="note" style={{ margin: "2px 0 10px", fontSize: 12.5 }}>
+          El monto de cada período es: precio base + (alumnos activos − incluidos) × precio por alumno. Para cobrar solo por
+          alumno, pon el precio base y los incluidos en 0.
+        </p>
+        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
+          <div>
+            <label className="field-label">Alumnos incluidos en el precio base</label>
+            <input className="input" inputMode="numeric" value={included} onChange={(e) => setIncluded(e.target.value.replace(/\D/g, ""))} placeholder="Ej. 15" />
+          </div>
+          <div>
+            <label className="field-label">Precio por cada alumno extra</label>
+            <input className="input" inputMode="decimal" value={perClient} onChange={(e) => setPerClient(e.target.value)} placeholder="Vacío = no cobra por alumno" />
+          </div>
+        </div>
+      </div>
       <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12, marginBottom: 16 }}>
         <div>
-          <label className="field-label">Límite de clientes (vacío = sin límite)</label>
+          <label className="field-label">Tope máximo de alumnos (vacío = sin tope)</label>
           <input className="input" inputMode="numeric" value={clientLimit} onChange={(e) => setClientLimit(e.target.value.replace(/\D/g, ""))} />
         </div>
         <div>
@@ -325,14 +348,24 @@ function SubscriptionModal({
   const [error, setError] = useState("");
   const [saving, setSaving] = useState(false);
 
-  const applyPlan = (id: string) => {
+  const applyPlan = async (id: string) => {
     setPlanId(id);
     const plan = plans.find((p) => p.id === id);
     if (plan) {
       setAmount(String(plan.price));
       setCurrency(plan.currency);
+      // Con cobro por alumno: base + alumnos activos extra, calculado en la base de datos.
+      const total = await orgPeriodAmount(organization.id, id);
+      if (total != null) setAmount(String(total));
     }
   };
+
+  // Si la organización ya tiene un plan asignado, se propone ese.
+  useEffect(() => {
+    const own = (organization as any).plan_id as string | null | undefined;
+    if (own && plans.some((p) => p.id === own)) applyPlan(own);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const submit = async () => {
     if (!amount) {

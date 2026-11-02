@@ -351,3 +351,8 @@ select.input:hover { border-color: var(--pri); }
 .video-embed { position: relative; width: 100%; aspect-ratio: 16 / 9; border-radius: 10px; overflow: hidden; background: #000; margin-top: 8px; }
 .video-embed .video-frame, .video-embed .video-frame iframe { position: absolute; inset: 0; width: 100% !important; height: 100% !important; border: 0; }
 .video-broken { display: grid; gap: 4px; margin-top: 8px; padding: 12px 14px; border-radius: 10px; background: var(--warn-soft); color: #7A4F00; font-size: 13.5px; }
+/* Avisos del cobro de FuerzaLab */
+.billing-banner { display: flex; gap: 10px; align-items: center; padding: 10px 14px; border-radius: 10px; font-size: 13.5px; flex-wrap: wrap; }
+.billing-banner.warn { background: var(--warn-soft); color: #7A4F00; }
+.billing-banner.bad { background: var(--bad-soft); color: #A8341C; }
+@media (max-width: 860px) { .billing-banners { margin: 12px 16px 0 !important; } }

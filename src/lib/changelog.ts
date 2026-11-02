@@ -22,6 +22,15 @@ export interface ChangelogEntry {
 
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    id: "2026-11-02-my-plan",
+    date: "2026-11-02",
+    title: "Tu plan de FuerzaLab, a la vista",
+    body: "En Configuración → \"Mi plan de FuerzaLab\" ves tu plan, cuántos alumnos activos tienes, cuánto sería tu próximo período y cuándo vence. Además, la app te avisa unos días antes de cada vencimiento y si superas el tope de alumnos de tu plan.",
+    for: ["trainer"],
+    notForStaff: true,
+    link: { label: "Ver mi plan", to: paths.trainerSettings },
+  },
+  {
     id: "2026-11-01-video-links",
     date: "2026-11-01",
     title: "Videos de YouTube o Vimeo en tus ejercicios",

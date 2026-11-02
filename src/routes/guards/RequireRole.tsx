@@ -2,9 +2,11 @@ import { Navigate, Outlet } from "react-router-dom";
 import { useAuth } from "../../contexts/AuthContext";
 import type { Role } from "../../types/auth";
 import { paths } from "../paths";
+import BillingBlocked from "../../pages/shared/BillingBlocked";
+import { billingBlock } from "../../services/orgBilling";
 
 export default function RequireRole({ allow }: { allow: Role[] }) {
-  const { profile, loading } = useAuth();
+  const { profile, loading, orgBilling } = useAuth();
 
   if (loading) {
     return (
@@ -13,6 +15,8 @@ export default function RequireRole({ allow }: { allow: Role[] }) {
       </div>
     );
   }
+
+  if (billingBlock(orgBilling)) return <BillingBlocked />;
 
   if (!profile || !profile.is_active) {
     return <Navigate to={paths.noAccess} replace />;

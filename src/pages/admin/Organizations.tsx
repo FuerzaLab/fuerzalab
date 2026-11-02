@@ -18,6 +18,8 @@ import {
 } from "../../services/admin";
 import { paths } from "../../routes/paths";
 import Loading from "../../components/ui/Loading";
+import { listPlatformPlans, type PlatformPlanRow } from "../../services/billing";
+import { orgClientCounts, orgPeriodAmount, refreshAllOrgBilling, setOrgBillingSettings } from "../../services/orgBilling";
 
 export default function Organizations() {
   const { profile } = useAuth();
@@ -28,6 +30,8 @@ export default function Organizations() {
   const [inviteFor, setInviteFor] = useState<OrganizationRow | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<OrganizationRow | null>(null);
   const [trainers, setTrainers] = useState<UserRow[]>([]);
+  const [plans, setPlans] = useState<PlatformPlanRow[]>([]);
+  const [billingOrg, setBillingOrg] = useState<OrganizationRow | null>(null);
 
   const load = async () => {
     setLoading(true);
@@ -38,6 +42,9 @@ export default function Organizations() {
       })]);
       setOrgs(o);
       setTrainers(u.filter((x) => x.role === "trainer"));
+      await refreshAllOrgBilling(); // recalcula vencimientos y bloqueos antes de mostrar
+      setPlans(await listPlatformPlans().catch((): PlatformPlanRow[] => []));
+      setOrgs(await listOrganizations());
     } catch (e: any) {
       notify(e.message);
     }
@@ -85,6 +92,7 @@ export default function Organizations() {
                   <th style={{ padding: "10px 16px" }}>Organización</th>
                   <th style={{ padding: "10px 16px" }}>Estado</th>
                   <th style={{ padding: "10px 16px" }} title="El dueño ve la pantalla «Tu estudio» con el resumen de todos los entrenadores">Dueño del estudio</th>
+                  <th style={{ padding: "10px 16px" }}>Cobro</th>
                   <th style={{ padding: "10px 16px" }}>Acciones</th>
                 </tr>
               </thead>
@@ -125,6 +133,9 @@ export default function Organizations() {
                         );
                       })()}
                     </td>
+                    <td style={{ padding: "11px 16px", minWidth: 190 }}>
+                      <OrgBillingCell org={o} plans={plans} onEdit={() => setBillingOrg(o)} />
+                    </td>
                     <td style={{ padding: "11px 16px" }}>
                       <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
                         <button className="btn ghost" style={{ padding: "5px 10px", fontSize: 13 }} onClick={() => setInviteFor(o)}>
@@ -142,7 +153,7 @@ export default function Organizations() {
                 ))}
                 {orgs.length === 0 && (
                   <tr>
-                    <td colSpan={4} className="note" style={{ padding: 16 }}>Todavía no hay organizaciones.</td>
+                    <td colSpan={5} className="note" style={{ padding: 16 }}>Todavía no hay organizaciones.</td>
                   </tr>
                 )}
               </tbody>
@@ -167,6 +178,20 @@ export default function Organizations() {
           org={inviteFor}
           invitedBy={profile.id}
           onClose={() => setInviteFor(null)}
+        />
+      )}
+
+      {billingOrg && (
+        <OrgBillingModal
+          org={billingOrg}
+          plans={plans}
+          onClose={() => setBillingOrg(null)}
+          onSaved={(fields) => {
+            setOrgs((xs) => xs.map((x) => (x.id === billingOrg.id ? { ...x, ...fields } : x)));
+            setBillingOrg(null);
+            notify("Cobro de la organización guardado.");
+            load();
+          }}
         />
       )}
 
@@ -346,6 +371,106 @@ function InviteTrainerModal({ org, invitedBy, onClose }: { org: OrganizationRow;
           </button>
         </>
       )}
+    </Modal>
+  );
+}
+
+const fmtD = (iso: string) => new Date(iso.slice(0, 10) + "T12:00:00").toLocaleDateString("es", { day: "numeric", month: "short" });
+
+/** Estado de cobro en la fila de cada organización. */
+function OrgBillingCell({ org, plans, onEdit }: { org: OrganizationRow; plans: PlatformPlanRow[]; onEdit: () => void }) {
+  const plan = plans.find((p) => p.id === org.plan_id);
+  const today = new Date().toISOString().slice(0, 10);
+  let chip: { tone: "ok" | "warn" | "bad" | "pri"; text: string } | null = null;
+  if (org.billing_exempt) chip = { tone: "pri", text: "Sin cobro" };
+  else if (org.billing_blocked_since && org.billing_blocked_since <= today) chip = { tone: "bad", text: `Bloqueada desde ${fmtD(org.billing_blocked_since)}` };
+  else if (org.trial_ends_at && org.trial_ends_at.slice(0, 10) >= today) chip = { tone: "warn", text: `Prueba hasta ${fmtD(org.trial_ends_at)}` };
+  else if (org.limit_exceeded_since) chip = { tone: "warn", text: "Superó el tope" };
+  return (
+    <div style={{ display: "grid", gap: 4, justifyItems: "start" }}>
+      <span style={{ fontSize: 13.5 }}>{org.billing_exempt ? "—" : plan ? plan.name : <span className="note">Sin plan</span>}</span>
+      {chip && <Chip tone={chip.tone}>{chip.text}</Chip>}
+      <button className="link-btn" style={{ fontSize: 12.5 }} onClick={onEdit}>Plan y prueba</button>
+    </div>
+  );
+}
+
+/** Plan, prueba gratis y "sin cobro" de una organización. */
+function OrgBillingModal({
+  org,
+  plans,
+  onClose,
+  onSaved,
+}: {
+  org: OrganizationRow;
+  plans: PlatformPlanRow[];
+  onClose: () => void;
+  onSaved: (fields: Partial<OrganizationRow>) => void;
+}) {
+  const [planId, setPlanId] = useState(org.plan_id ?? "");
+  const [trial, setTrial] = useState(org.trial_ends_at ? org.trial_ends_at.slice(0, 10) : "");
+  const [exempt, setExempt] = useState(!!org.billing_exempt);
+  const [counts, setCounts] = useState<{ active: number; counted: number } | null>(null);
+  const [estimate, setEstimate] = useState<number | null>(null);
+  const [error, setError] = useState("");
+  const [saving, setSaving] = useState(false);
+
+  useEffect(() => {
+    orgClientCounts(org.id).then(setCounts).catch(() => {});
+  }, [org.id]);
+  useEffect(() => {
+    setEstimate(null);
+    if (planId) orgPeriodAmount(org.id, planId).then(setEstimate);
+  }, [org.id, planId]);
+
+  const plan = plans.find((p) => p.id === planId);
+  const save = async () => {
+    setSaving(true);
+    setError("");
+    const fields = {
+      plan_id: planId || null,
+      trial_ends_at: trial ? new Date(trial + "T23:59:00").toISOString() : null,
+      billing_exempt: exempt,
+    };
+    try {
+      await setOrgBillingSettings(org.id, fields);
+      onSaved(fields);
+    } catch (e: any) {
+      setError(e.message);
+      setSaving(false);
+    }
+  };
+
+  return (
+    <Modal title={`Cobro — ${org.name}`} onClose={onClose}>
+      <label style={{ display: "flex", gap: 10, alignItems: "center", marginBottom: 14 }}>
+        <input type="checkbox" checked={exempt} onChange={(e) => setExempt(e.target.checked)} />
+        <span>Sin cobro (por ejemplo, la demo o tu propia organización)</span>
+      </label>
+      {!exempt && (
+        <>
+          <label className="field-label">Plan</label>
+          <select className="input" style={{ marginBottom: 6 }} value={planId} onChange={(e) => setPlanId(e.target.value)}>
+            <option value="">Sin plan</option>
+            {plans.filter((p) => p.is_active || p.id === org.plan_id).map((p) => (
+              <option key={p.id} value={p.id}>{p.name} — {p.currency} {p.price}</option>
+            ))}
+          </select>
+          <p className="note" style={{ fontSize: 13, margin: "0 0 14px" }}>
+            {counts ? `${counts.active} alumnos activos${counts.counted > counts.active ? ` (+${counts.counted - counts.active} invitados sin aceptar)` : ""}` : "Contando alumnos…"}
+            {plan?.client_limit != null && ` · tope del plan: ${plan.client_limit}`}
+            {estimate != null && plan && ` · próximo período: ${plan.currency} ${estimate.toLocaleString("es")}`}
+          </p>
+          <label className="field-label">Prueba gratis hasta (vacío = sin prueba)</label>
+          <input className="input" type="date" style={{ marginBottom: 6 }} value={trial} onChange={(e) => setTrial(e.target.value)} />
+          <p className="note" style={{ fontSize: 12.5, margin: "0 0 14px" }}>
+            Las organizaciones nuevas empiezan con 14 días. Si la prueba termina y no hay ningún cobro registrado, al día siguiente se
+            suspende el acceso. Para que no pase, registra su primer cobro en Pagos de la plataforma.
+          </p>
+        </>
+      )}
+      {error && <p className="error-text">{error}</p>}
+      <button className="btn" onClick={save} disabled={saving}>{saving ? "Guardando…" : "Guardar"}</button>
     </Modal>
   );
 }

@@ -9,6 +9,12 @@ export interface OrganizationRow {
   created_at: string;
   /** Entrenador dueño del estudio (part3u_migration.sql); null si no tiene. */
   owner_id?: string | null;
+  /** Cobro de FuerzaLab (part3y_migration.sql). */
+  plan_id?: string | null;
+  trial_ends_at?: string | null;
+  billing_exempt?: boolean;
+  billing_blocked_since?: string | null;
+  limit_exceeded_since?: string | null;
 }
 
 export interface UserRow {

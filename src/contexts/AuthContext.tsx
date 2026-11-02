@@ -9,6 +9,7 @@ import type { Session, User } from "@supabase/supabase-js";
 import { supabase } from "../lib/supabase";
 import type { Profile, StaffAccess, StaffModule, StaffLevel } from "../types/auth";
 import { hasLevel } from "../lib/staffModules";
+import { fetchMyOrgBilling, type OrgBilling } from "../services/orgBilling";
 
 interface AuthContextValue {
   session: Session | null;
@@ -39,6 +40,8 @@ interface AuthContextValue {
   actingTrainerId: string | null;
   /** ¿Puede este usuario usar este módulo? El entrenador siempre puede. */
   can: (module: StaffModule, level?: StaffLevel) => boolean;
+  /** Cobro de FuerzaLab a la organización (part3y): plan, prueba, vencimientos, bloqueo. */
+  orgBilling: OrgBilling | null;
 }
 
 const AuthContext = createContext<AuthContextValue | undefined>(undefined);
@@ -49,8 +52,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [loading, setLoading] = useState(true);
   const [initialized, setInitialized] = useState(false);
   const [staffAccess, setStaffAccess] = useState<StaffAccess | null>(null);
+  const [orgBilling, setOrgBilling] = useState<OrgBilling | null>(null);
 
   const loadProfile = async (userId: string) => {
+    // Primero el estado de cobro: si la organización está bloqueada, el
+    // perfil no se puede leer (las reglas de seguridad lo impiden) y hay que
+    // saber por qué, para mostrarlo en vez de una pantalla vacía.
+    setOrgBilling(await fetchMyOrgBilling().catch(() => null));
     const { data, error } = await supabase
       .from("profiles")
       .select("*")
@@ -87,6 +95,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       } else {
         setProfile(null);
         setStaffAccess(null);
+        setOrgBilling(null);
       }
       setLoading(false);
       setInitialized(true);
@@ -167,6 +176,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         staffAccess,
         actingTrainerId,
         can,
+        orgBilling,
       }}
     >
       {children}

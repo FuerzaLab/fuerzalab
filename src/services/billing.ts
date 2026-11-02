@@ -9,6 +9,10 @@ export interface PlatformPlanRow {
   currency: string;
   billing_period: "biweekly" | "monthly" | "quarterly" | "annual";
   is_active: boolean;
+  /** Alumnos incluidos en el precio base (part3y). null = no cobra por alumno. */
+  included_clients?: number | null;
+  /** Precio por cada alumno activo por encima de los incluidos (part3y). */
+  price_per_client?: number;
 }
 
 export type SubscriptionStatus = "pending" | "paid" | "overdue" | "cancelled";
@@ -38,7 +42,7 @@ export const BILLING_PERIOD_LABEL: Record<PlatformPlanRow["billing_period"], str
 export async function listPlatformPlans(): Promise<PlatformPlanRow[]> {
   const { data, error } = await supabase
     .from("platform_plans")
-    .select("id, name, client_limit, trainer_limit, price, currency, billing_period, is_active")
+    .select("*")
     .order("price");
   if (error) throw error;
   return (data ?? []) as PlatformPlanRow[];
@@ -46,6 +50,8 @@ export async function listPlatformPlans(): Promise<PlatformPlanRow[]> {
 
 export async function createPlatformPlan(params: {
   name: string;
+  includedClients?: number | null;
+  pricePerClient?: number;
   clientLimit: number | null;
   trainerLimit: number | null;
   price: number;
@@ -61,8 +67,9 @@ export async function createPlatformPlan(params: {
       price: params.price,
       currency: params.currency,
       billing_period: params.billingPeriod,
+      ...(params.pricePerClient ? { included_clients: params.includedClients ?? 0, price_per_client: params.pricePerClient } : {}),
     })
-    .select("id, name, client_limit, trainer_limit, price, currency, billing_period, is_active")
+    .select("*")
     .single();
   if (error) throw error;
   return data as PlatformPlanRow;
@@ -70,6 +77,8 @@ export async function createPlatformPlan(params: {
 
 export async function updatePlatformPlan(id: string, fields: {
   name: string;
+  includedClients?: number | null;
+  pricePerClient?: number;
   clientLimit: number | null;
   trainerLimit: number | null;
   price: number;
@@ -85,6 +94,10 @@ export async function updatePlatformPlan(id: string, fields: {
       price: fields.price,
       currency: fields.currency,
       billing_period: fields.billingPeriod,
+      // Cobro por alumno (part3y): solo se manda si se usa, así funciona también sin la migración.
+      ...(fields.pricePerClient !== undefined && (fields.pricePerClient > 0 || fields.includedClients != null)
+        ? { included_clients: fields.pricePerClient > 0 ? fields.includedClients ?? 0 : null, price_per_client: fields.pricePerClient }
+        : {}),
     })
     .eq("id", id);
   if (error) throw error;
