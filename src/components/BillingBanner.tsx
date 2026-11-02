@@ -47,6 +47,20 @@ export default function BillingBanner() {
           : `Llegaste al tope de tu plan (${b.plan.client_limit} alumnos): para sumar alumnos nuevos, cambia de plan o da de baja a alguno.`,
     });
   }
+  // Alumnos nuevos que esperan el pago de su cupo (part4a).
+  if ((b.pending_clients ?? 0) > 0) {
+    const n = b.pending_clients!;
+    const who = n === 1 ? "1 alumno nuevo espera" : `${n} alumnos nuevos esperan`;
+    msgs.push({
+      tone: "warn",
+      text:
+        b.seat_mode === "trial"
+          ? `${who} su cupo: tu prueba gratis incluye ${b.trial_free_clients ?? 3} alumnos. Entran apenas pagues tu primer período.`
+          : b.pending_seats
+            ? `${who} el pago de su cupo (${b.pending_seats.currency} ${Number(b.pending_seats.amount).toLocaleString("es")}). Pueden registrarse y llenar su formulario; ven su rutina apenas se pague.`
+            : `${who} el pago de su cupo. Pueden registrarse y llenar su formulario; ven su rutina apenas se pague.`,
+    });
+  }
   if (msgs.length === 0) return null;
 
   return (

@@ -93,6 +93,9 @@ export default function RunSessionPage() {
     );
   }
 
+  // Alumno nuevo que espera el pago de su cupo en FuerzaLab (part4a): no se puede entrenar con él todavía.
+  const pendingSeat = !!clientId && !!clients.find((c) => c.id === clientId)?.seat_pending;
+
   return (
     <div className="page">
       <h1 style={{ marginBottom: 4 }}>Entrenar con un cliente</h1>
@@ -109,14 +112,20 @@ export default function RunSessionPage() {
       </div>
 
       {!clientId && <p className="note">Elige un cliente para ver su programa activo.</p>}
-      {clientId && loading && <Loading />}
-      {clientId && !loading && !program && (
+      {pendingSeat && (
+        <EmptyState title="Este alumno espera el pago de su cupo">
+          Mientras su cupo de FuerzaLab no esté pago no se pueden registrar entrenamientos con él. Puedes ir armándole el plan;
+          apenas se pague, queda habilitado. El detalle está en Configuración → Mi plan.
+        </EmptyState>
+      )}
+      {clientId && !pendingSeat && loading && <Loading />}
+      {clientId && !pendingSeat && !loading && !program && (
         <EmptyState title="Este alumno todavía no tiene un plan activo">
           Para entrenar con él, primero ármale su plan en Planificación y la rutina de cada día en el Constructor de rutinas.
         </EmptyState>
       )}
 
-      {clientId && !loading && program && (
+      {clientId && !pendingSeat && !loading && program && (
         <>
           <p className="note" style={{ marginBottom: 14 }}>{program.name}</p>
           {weeks.length > 0 && (

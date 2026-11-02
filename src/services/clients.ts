@@ -14,6 +14,8 @@ export interface ClientRow {
   start_date: string | null;
   created_at: string;
   updated_at: string;
+  /** Alumno nuevo que espera el pago de su cupo (part4a). */
+  seat_pending?: boolean;
 }
 
 export interface ParQAnswers {

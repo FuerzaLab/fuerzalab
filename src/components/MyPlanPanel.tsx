@@ -50,6 +50,24 @@ export default function MyPlanPanel() {
                 </div>
               )}
             </div>
+            {b.seat_mode && b.seat_mode !== "none" && b.seats_capacity != null && (
+              <div style={{ background: "var(--bg)", borderRadius: 10, padding: "10px 12px" }}>
+                <b style={{ fontSize: 14 }}>
+                  {b.seat_mode === "trial" ? "Cupos de tu prueba gratis" : "Cupos pagados de este período"}: {b.seats_used ?? 0} de {b.seats_capacity} usados
+                </b>
+                <div className="note" style={{ fontSize: 12.5 }}>
+                  {b.seat_mode === "trial"
+                    ? "Los alumnos por encima de los cupos de la prueba entran cuando pagas tu primer período."
+                    : "Cada alumno nuevo por encima de tus cupos se cobra en el momento, por los días que faltan del período, y entra apenas se paga. Los cupos no se reutilizan: dar de baja a un alumno sirve para no pagarlo desde el período siguiente."}
+                </div>
+                {(b.pending_clients ?? 0) > 0 && (
+                  <div style={{ marginTop: 6, fontSize: 13.5, color: "#7A4F00" }}>
+                    {b.pending_clients} {b.pending_clients === 1 ? "alumno espera" : "alumnos esperan"} su cupo
+                    {b.pending_seats && ` · por pagar: ${money(b.pending_seats.amount, b.pending_seats.currency)}`}
+                  </div>
+                )}
+              </div>
+            )}
             {b.trial_ends_at && !b.next_due && new Date(b.trial_ends_at) > new Date() && (
               <p className="note" style={{ margin: 0 }}>Estás en tu prueba gratis hasta el <b>{fmt(b.trial_ends_at)}</b>.</p>
             )}

@@ -410,6 +410,7 @@ function OrgBillingModal({
   const [planId, setPlanId] = useState(org.plan_id ?? "");
   const [trial, setTrial] = useState(org.trial_ends_at ? org.trial_ends_at.slice(0, 10) : "");
   const [exempt, setExempt] = useState(!!org.billing_exempt);
+  const [trialFree, setTrialFree] = useState(String((org as any).trial_free_clients ?? 3));
   const [counts, setCounts] = useState<{ active: number; counted: number } | null>(null);
   const [estimate, setEstimate] = useState<number | null>(null);
   const [error, setError] = useState("");
@@ -431,6 +432,7 @@ function OrgBillingModal({
       plan_id: planId || null,
       trial_ends_at: trial ? new Date(trial + "T23:59:00").toISOString() : null,
       billing_exempt: exempt,
+      ...((org as any).trial_free_clients !== undefined || trialFree !== "3" ? { trial_free_clients: Number(trialFree || 0) } : {}),
     };
     try {
       await setOrgBillingSettings(org.id, fields);
@@ -462,7 +464,13 @@ function OrgBillingModal({
             {estimate != null && plan && ` · próximo período: ${plan.currency} ${estimate.toLocaleString("es")}`}
           </p>
           <label className="field-label">Prueba gratis hasta (vacío = sin prueba)</label>
-          <input className="input" type="date" style={{ marginBottom: 6 }} value={trial} onChange={(e) => setTrial(e.target.value)} />
+          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10, marginBottom: 6 }}>
+            <input className="input" type="date" value={trial} onChange={(e) => setTrial(e.target.value)} />
+            <div>
+              <input className="input" inputMode="numeric" value={trialFree} onChange={(e) => setTrialFree(e.target.value.replace(/\D/g, ""))} aria-label="Alumnos gratis en la prueba" />
+              <div className="note" style={{ fontSize: 12 }}>alumnos gratis en la prueba</div>
+            </div>
+          </div>
           <p className="note" style={{ fontSize: 12.5, margin: "0 0 14px" }}>
             Las organizaciones nuevas empiezan con 14 días. Si la prueba termina y no hay ningún cobro registrado, al día siguiente se
             suspende el acceso. Para que no pase, registra su primer cobro en Pagos de la plataforma.

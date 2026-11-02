@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { orgPeriodAmount } from "../../../services/orgBilling";
+import { supabase } from "../../../lib/supabase";
 import { Plus, Pencil, Check } from "lucide-react";
 import { useToast } from "../../../contexts/ToastContext";
 import Modal from "../../../components/ui/Modal";
@@ -45,6 +46,7 @@ export default function BillingPage() {
   const [editingPlan, setEditingPlan] = useState<PlatformPlanRow | null>(null);
   const [registeringFor, setRegisteringFor] = useState<OrganizationRow | null>(null);
   const [editingSub, setEditingSub] = useState<OrganizationSubscriptionRow | null>(null);
+  const [historyFor, setHistoryFor] = useState<OrganizationRow | null>(null);
 
   const load = async () => {
     setLoading(true);
@@ -65,7 +67,7 @@ export default function BillingPage() {
   }, []);
 
   const latestSubFor = (orgId: string): OrganizationSubscriptionRow | null => {
-    const forOrg = subs.filter((s) => s.organization_id === orgId);
+    const forOrg = subs.filter((s) => s.organization_id === orgId && s.kind !== "seats");
     if (!forOrg.length) return null;
     return forOrg.reduce((latest, s) => (s.due_date > latest.due_date ? s : latest), forOrg[0]);
   };
@@ -83,6 +85,7 @@ export default function BillingPage() {
         <Loading />
       ) : (
         <>
+          <IncomeSummary orgs={orgs} plans={plans} subs={subs} />
           <div className="panel" style={{ marginBottom: 24 }}>
             <div className="hd">
               <h3>Planes</h3>
@@ -138,7 +141,7 @@ export default function BillingPage() {
                     return (
                       <tr key={org.id} style={{ borderTop: "1px solid var(--line)" }}>
                         <td style={{ padding: "11px 16px" }}>{org.name}</td>
-                        <td style={{ padding: "11px 16px" }}>{sub?.plan_name ?? "—"}</td>
+                        <td style={{ padding: "11px 16px" }}>{sub ? (sub.kind === "seats" ? `Cupos · ${sub.seats_count ?? 1} alumnos` : sub.plan_name ?? "—") : "—"}</td>
                         <td style={{ padding: "11px 16px" }}>{sub ? new Date(sub.due_date).toLocaleDateString("es") : "—"}</td>
                         <td style={{ padding: "11px 16px" }}>
                           {effectiveStatus ? <Chip tone={STATUS_TONE[effectiveStatus]}>{STATUS_LABEL[effectiveStatus]}</Chip> : <span className="note">Sin registrar</span>}
@@ -151,8 +154,8 @@ export default function BillingPage() {
                                 style={{ padding: "5px 10px", fontSize: 13 }}
                                 onClick={async () => {
                                   await markSubscriptionPaid(sub.id);
-                                  setSubs((ss) => ss.map((s) => (s.id === sub.id ? { ...s, status: "paid", paid_at: new Date().toISOString() } : s)));
-                                  notify("Marcado como pagado.");
+                                  notify("Marcado como pagado. Se creó solo el cobro del período siguiente.");
+                                  load();
                                 }}
                               >
                                 <Check size={13} /> Marcar pagado
@@ -166,7 +169,28 @@ export default function BillingPage() {
                             <button className="btn ghost" style={{ padding: "5px 10px", fontSize: 13 }} onClick={() => setRegisteringFor(org)}>
                               <Plus size={13} /> Registrar pago
                             </button>
+                            <button className="btn ghost" style={{ padding: "5px 10px", fontSize: 13 }} onClick={() => setHistoryFor(org)}>
+                              Historial
+                            </button>
                           </div>
+                          {subs
+                            .filter((x) => x.organization_id === org.id && x.kind === "seats" && x.status !== "paid" && x.status !== "cancelled")
+                            .map((x) => (
+                              <div key={x.id} style={{ marginTop: 8, display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
+                                <Chip tone="warn">Cupos por pagar: {x.currency} {Number(x.amount).toLocaleString("es")} · {x.seats_count ?? 1} {x.seats_count === 1 ? "alumno" : "alumnos"}</Chip>
+                                <button
+                                  className="btn ghost"
+                                  style={{ padding: "4px 10px", fontSize: 12.5 }}
+                                  onClick={async () => {
+                                    await markSubscriptionPaid(x.id);
+                                    notify("Cupos pagados: los alumnos que esperaban ya están activos.");
+                                    load();
+                                  }}
+                                >
+                                  <Check size={13} /> Marcar pagado
+                                </button>
+                              </div>
+                            ))}
                         </td>
                       </tr>
                     );
@@ -205,6 +229,12 @@ export default function BillingPage() {
             notify("Pago registrado.");
           }}
         />
+      )}
+
+      {historyFor && (
+        <Modal title={`Historial de cobros — ${historyFor.name}`} onClose={() => setHistoryFor(null)} wide>
+          <SubsTable rows={subs.filter((x) => x.organization_id === historyFor.id)} />
+        </Modal>
       )}
 
       {editingSub && (
@@ -464,7 +494,7 @@ function EditSubscriptionModal({
     setError("");
     setSaving(true);
     try {
-      await updateOrganizationSubscription(sub.id, { status, amount: Number(amount), currency, dueDate, method, notes });
+      await updateOrganizationSubscription(sub.id, { status, amount: Number(amount), currency, dueDate, method, notes, amountEdited: Number(amount) !== Number(sub.amount) });
       onSaved();
     } catch (e: any) {
       setError(e.message ?? "No pudimos guardar los cambios.");
@@ -511,5 +541,163 @@ function EditSubscriptionModal({
       {error && <p className="error-text" style={{ marginBottom: 12 }}>{error}</p>}
       <button className="btn" onClick={submit} disabled={saving}>{saving ? "Guardando…" : "Guardar cambios"}</button>
     </Modal>
+  );
+}
+
+// --- Resumen de ingresos, historial y exportación -------------------------
+
+const fmtMoney = (byCur: Record<string, number>) => {
+  const parts = Object.entries(byCur).filter(([, v]) => v > 0).map(([c, v]) => `${c} ${Math.round(v).toLocaleString("es")}`);
+  return parts.length ? parts.join(" · ") : "0";
+};
+const addTo = (acc: Record<string, number>, cur: string, v: number) => ({ ...acc, [cur]: (acc[cur] ?? 0) + Number(v) });
+const monthKey = (iso: string) => iso.slice(0, 7);
+const effective = (x: OrganizationSubscriptionRow, today: string): SubscriptionStatus =>
+  x.status === "pending" && x.due_date < today ? "overdue" : x.status;
+
+/** Cuánto ganas: cobrado este mes y el anterior, por cobrar, vencido, ingreso mensual estimado y alumnos activos. */
+function IncomeSummary({ orgs, plans, subs }: { orgs: OrganizationRow[]; plans: PlatformPlanRow[]; subs: OrganizationSubscriptionRow[] }) {
+  const { notify } = useToast();
+  const today = new Date().toISOString().slice(0, 10);
+  const now = new Date();
+  const thisMonth = monthKey(today);
+  const lastMonth = monthKey(new Date(now.getFullYear(), now.getMonth() - 1, 15).toISOString());
+  const [estimate, setEstimate] = useState<Record<string, number> | null>(null);
+  const [activeClients, setActiveClients] = useState<number | null>(null);
+
+  let paidThis: Record<string, number> = {};
+  let paidLast: Record<string, number> = {};
+  let toCollect: Record<string, number> = {};
+  let overdue: Record<string, number> = {};
+  const overdueOrgs = new Set<string>();
+  for (const x of subs) {
+    const st = effective(x, today);
+    if (x.status === "paid" && x.paid_at) {
+      if (monthKey(x.paid_at) === thisMonth) paidThis = addTo(paidThis, x.currency, x.amount);
+      if (monthKey(x.paid_at) === lastMonth) paidLast = addTo(paidLast, x.currency, x.amount);
+    } else if (st === "pending") toCollect = addTo(toCollect, x.currency, x.amount);
+    else if (st === "overdue") {
+      overdue = addTo(overdue, x.currency, x.amount);
+      overdueOrgs.add(x.organization_id);
+    }
+  }
+
+  useEffect(() => {
+    // Ingreso mensual estimado: lo que cobrarías por mes con los planes y alumnos activos de hoy.
+    (async () => {
+      const perMonth: Record<string, number> = {};
+      const factor = { biweekly: 30 / 14, monthly: 1, quarterly: 1 / 3, annual: 1 / 12 } as const;
+      await Promise.all(
+        orgs
+          .filter((o) => !o.billing_exempt && o.plan_id)
+          .map(async (o) => {
+            const plan = plans.find((p) => p.id === o.plan_id);
+            if (!plan) return;
+            const amount = await orgPeriodAmount(o.id, plan.id);
+            if (amount == null) return;
+            perMonth[plan.currency] = (perMonth[plan.currency] ?? 0) + amount * factor[plan.billing_period];
+          }),
+      );
+      setEstimate(perMonth);
+      const { count } = await supabase.from("clients").select("id", { count: "exact", head: true }).eq("status", "active");
+      setActiveClients(count ?? 0);
+    })().catch(() => setEstimate({}));
+  }, [orgs, plans]);
+
+  const exportExcel = async () => {
+    try {
+      const XLSX = await import("xlsx");
+      const orgName = (id: string) => orgs.find((o) => o.id === id)?.name ?? "";
+      const rows = [...subs]
+        .sort((a, b) => b.due_date.localeCompare(a.due_date))
+        .map((x) => ({
+          Organización: orgName(x.organization_id),
+          Plan: x.kind === "seats" ? `Cupos (${x.seats_count ?? 1} alumnos)` : x.plan_name ?? "",
+          Monto: Number(x.amount),
+          Moneda: x.currency,
+          Vencimiento: x.due_date,
+          Estado: STATUS_LABEL[effective(x, today)],
+          "Pagado el": x.paid_at ? x.paid_at.slice(0, 10) : "",
+          Método: x.method ?? "",
+          Notas: x.notes ?? "",
+        }));
+      const resumen = [
+        { Concepto: "Cobrado este mes", Monto: fmtMoney(paidThis) },
+        { Concepto: "Cobrado el mes pasado", Monto: fmtMoney(paidLast) },
+        { Concepto: "Por cobrar (no vencido)", Monto: fmtMoney(toCollect) },
+        { Concepto: `Vencido (${overdueOrgs.size} organizaciones)`, Monto: fmtMoney(overdue) },
+        { Concepto: "Ingreso mensual estimado", Monto: estimate ? fmtMoney(estimate) : "" },
+        { Concepto: "Alumnos activos en la plataforma", Monto: String(activeClients ?? "") },
+      ];
+      const wb = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(resumen), "Resumen");
+      XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(rows), "Cobros");
+      XLSX.writeFile(wb, `FuerzaLab-cobros-${today}.xlsx`);
+    } catch (e: any) {
+      notify("No se pudo exportar: " + e.message);
+    }
+  };
+
+  const Card = ({ label, value, tone, sub }: { label: string; value: string; tone?: string; sub?: string }) => (
+    <div className="panel">
+      <div className="bd">
+        <div style={{ fontFamily: "'Barlow Condensed',sans-serif", fontSize: 28, fontWeight: 700, color: tone }}>{value}</div>
+        <div className="note">{label}</div>
+        {sub && <div className="note" style={{ fontSize: 12 }}>{sub}</div>}
+      </div>
+    </div>
+  );
+
+  return (
+    <div style={{ marginBottom: 24 }}>
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 10, flexWrap: "wrap", marginBottom: 10 }}>
+        <h3 style={{ margin: 0 }}>Resumen</h3>
+        <button className="btn ghost" style={{ padding: "6px 12px", fontSize: 13 }} onClick={exportExcel}>Exportar a Excel</button>
+      </div>
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(170px,1fr))", gap: 12 }}>
+        <Card label="Cobrado este mes" value={fmtMoney(paidThis)} tone="var(--ok)" />
+        <Card label="Cobrado el mes pasado" value={fmtMoney(paidLast)} />
+        <Card label="Por cobrar" value={fmtMoney(toCollect)} sub="Pendiente que todavía no venció" />
+        <Card label="Vencido" value={fmtMoney(overdue)} tone={overdueOrgs.size ? "var(--bad)" : undefined} sub={`${overdueOrgs.size} ${overdueOrgs.size === 1 ? "organización" : "organizaciones"}`} />
+        <Card label="Ingreso mensual estimado" value={estimate ? fmtMoney(estimate) : "…"} sub="Con los planes y alumnos activos de hoy" />
+        <Card label="Alumnos activos" value={activeClients == null ? "…" : String(activeClients)} sub="En toda la plataforma" />
+      </div>
+    </div>
+  );
+}
+
+/** Todos los cobros de una organización, del más nuevo al más viejo. */
+function SubsTable({ rows }: { rows: OrganizationSubscriptionRow[] }) {
+  const today = new Date().toISOString().slice(0, 10);
+  const list = [...rows].sort((a, b) => b.due_date.localeCompare(a.due_date));
+  if (!list.length) return <p className="note">Todavía no tiene cobros registrados.</p>;
+  return (
+    <div style={{ overflowX: "auto" }}>
+      <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 14 }}>
+        <thead>
+          <tr style={{ textAlign: "left", color: "var(--muted)", fontSize: 12.5 }}>
+            <th style={{ padding: "8px 10px" }}>Vencimiento</th>
+            <th style={{ padding: "8px 10px" }}>Plan</th>
+            <th style={{ padding: "8px 10px" }}>Monto</th>
+            <th style={{ padding: "8px 10px" }}>Estado</th>
+            <th style={{ padding: "8px 10px" }}>Pagado el</th>
+          </tr>
+        </thead>
+        <tbody>
+          {list.map((x) => {
+            const st = effective(x, today);
+            return (
+              <tr key={x.id} style={{ borderTop: "1px solid var(--line)" }}>
+                <td style={{ padding: "8px 10px" }}>{new Date(x.due_date + "T12:00:00").toLocaleDateString("es")}</td>
+                <td style={{ padding: "8px 10px" }}>{x.kind === "seats" ? `Cupos · ${x.seats_count ?? 1} ${x.seats_count === 1 ? "alumno" : "alumnos"}` : x.plan_name ?? "—"}</td>
+                <td style={{ padding: "8px 10px" }}>{x.currency} {Number(x.amount).toLocaleString("es")}</td>
+                <td style={{ padding: "8px 10px" }}><Chip tone={STATUS_TONE[st]}>{STATUS_LABEL[st]}</Chip></td>
+                <td style={{ padding: "8px 10px" }}>{x.paid_at ? new Date(x.paid_at).toLocaleDateString("es") : "—"}</td>
+              </tr>
+            );
+          })}
+        </tbody>
+      </table>
+    </div>
   );
 }

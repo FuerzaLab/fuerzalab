@@ -22,6 +22,15 @@ export interface ChangelogEntry {
 
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    id: "2026-11-02-seats",
+    date: "2026-11-02",
+    title: "Cupos de alumnos en tu plan",
+    body: "Si tu plan cobra por alumno, en Configuración → Mi plan ves tus cupos pagados del período. Un alumno nuevo por encima de tus cupos puede registrarse y llenar su formulario, y ve su rutina apenas se paga su cupo (proporcional a los días que faltan del período).",
+    for: ["trainer"],
+    notForStaff: true,
+    link: { label: "Ver mi plan", to: paths.trainerSettings },
+  },
+  {
     id: "2026-11-02-my-plan",
     date: "2026-11-02",
     title: "Tu plan de FuerzaLab, a la vista",

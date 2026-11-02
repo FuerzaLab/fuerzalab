@@ -164,6 +164,11 @@ export default function ClientsList() {
                     <td style={{ padding: "11px 16px" }}>
                       <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
                         <Chip tone={STATUS_TONE[c.status]}>{STATUS_LABEL[c.status]}</Chip>
+                        {c.seat_pending && (
+                          <div style={{ marginTop: 4 }} title="Puede registrarse y llenar su formulario, pero no ve su rutina hasta que se pague su cupo en FuerzaLab">
+                            <Chip tone="warn">Esperando pago del cupo</Chip>
+                          </div>
+                        )}
                         {!c.profile_id && <Chip tone="warn">Sin aceptar invitación</Chip>}
                       </div>
                       {c.profile_id && (
@@ -230,6 +235,8 @@ export default function ClientsList() {
           onClose={() => setShowInvite(false)}
           onCreated={(client) => {
             setClients((cs) => [client, ...cs]);
+            if (client.seat_pending)
+              notify(`${client.full_name} queda esperando el pago de su cupo: puede registrarse y llenar su formulario, y ve su rutina apenas se pague. Lo ves en Configuración → Mi plan.`);
           }}
         />
       )}

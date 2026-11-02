@@ -30,6 +30,9 @@ export interface OrganizationSubscriptionRow {
   method: string | null;
   notes: string | null;
   created_at: string;
+  /** 'period' = el cobro del período; 'seats' = cupos para alumnos nuevos (part4a). */
+  kind?: "period" | "seats";
+  seats_count?: number | null;
 }
 
 export const BILLING_PERIOD_LABEL: Record<PlatformPlanRow["billing_period"], string> = {
@@ -111,7 +114,8 @@ export async function setPlatformPlanActive(id: string, isActive: boolean): Prom
 export async function listOrganizationSubscriptions(organizationId?: string): Promise<OrganizationSubscriptionRow[]> {
   let q = supabase
     .from("organization_subscriptions")
-    .select("id, organization_id, platform_plan_id, status, amount, currency, due_date, paid_at, method, notes, created_at, platform_plans(name)")
+    // "*": incluye kind / seats_count (cobros de cupos, part4a) si ya existen.
+    .select("*, platform_plans(name)")
     .order("due_date", { ascending: false });
   if (organizationId) q = q.eq("organization_id", organizationId);
   const { data, error } = await q;
@@ -142,7 +146,8 @@ export async function createOrganizationSubscription(params: {
       notes: params.notes || null,
       paid_at: params.status === "paid" ? new Date().toISOString() : null,
     })
-    .select("id, organization_id, platform_plan_id, status, amount, currency, due_date, paid_at, method, notes, created_at, platform_plans(name)")
+    // "*": incluye kind / seats_count (cobros de cupos, part4a) si ya existen.
+    .select("*, platform_plans(name)")
     .single();
   if (error) throw error;
   return { ...(data as any), plan_name: (data as any).platform_plans?.name ?? null } as OrganizationSubscriptionRow;
@@ -160,18 +165,23 @@ export async function updateOrganizationSubscription(id: string, fields: {
   dueDate: string;
   method: string;
   notes: string;
+  /** true si el Super Admin cambió el monto a mano: ya no se recalcula solo (part3z). */
+  amountEdited?: boolean;
 }): Promise<void> {
-  const { error } = await supabase
+  const base = {
+    status: fields.status,
+    amount: fields.amount,
+    currency: fields.currency,
+    due_date: fields.dueDate,
+    method: fields.method || null,
+    notes: fields.notes || null,
+    paid_at: fields.status === "paid" ? new Date().toISOString() : null,
+  };
+  let { error } = await supabase
     .from("organization_subscriptions")
-    .update({
-      status: fields.status,
-      amount: fields.amount,
-      currency: fields.currency,
-      due_date: fields.dueDate,
-      method: fields.method || null,
-      notes: fields.notes || null,
-      paid_at: fields.status === "paid" ? new Date().toISOString() : null,
-    })
+    .update(fields.amountEdited ? { ...base, auto_amount: false } : base)
     .eq("id", id);
+  // Sin part3z_migration.sql no existe auto_amount: se guarda igual, sin esa marca.
+  if (error && /auto_amount/.test(error.message)) ({ error } = await supabase.from("organization_subscriptions").update(base).eq("id", id));
   if (error) throw error;
 }

@@ -4,6 +4,7 @@ import { useAuth } from "../../contexts/AuthContext";
 import { getMyClientId, getClientProfile } from "../../services/clients";
 import OnboardingForm from "../../pages/client/OnboardingForm";
 import { paths } from "../paths";
+import { fetchMyOrgBilling } from "../../services/orgBilling";
 
 export default function RequireOnboarding() {
   const { signOut } = useAuth();
@@ -12,6 +13,8 @@ export default function RequireOnboarding() {
   const [clientId, setClientId] = useState<string | null>(null);
   const [submitted, setSubmitted] = useState(false);
   const [reviewed, setReviewed] = useState(false);
+  // Alumno nuevo cuyo cupo todavía no pagó su entrenador (part4a).
+  const [seatPending, setSeatPending] = useState(false);
   const [error, setError] = useState("");
 
   const handleLogout = async () => {
@@ -29,6 +32,8 @@ export default function RequireOnboarding() {
         setSubmitted(Boolean(prof?.submitted_at));
         setReviewed(Boolean(prof?.reviewed_at));
       }
+      const billing = await fetchMyOrgBilling().catch(() => null);
+      setSeatPending(Boolean(billing?.seat_pending));
     } catch (e: any) {
       setError(e.message ?? "No pudimos cargar tu cuenta.");
     }
@@ -84,6 +89,26 @@ export default function RequireOnboarding() {
           </p>
           <button className="btn ghost" style={{ width: "100%", justifyContent: "center", marginBottom: 10 }} onClick={check}>
             Ya me confirmaron, volver a intentar
+          </button>
+          <button className="btn ghost" style={{ width: "100%", justifyContent: "center" }} onClick={handleLogout}>
+            Cerrar sesión
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  if (seatPending) {
+    return (
+      <div className="auth-shell">
+        <div className="auth-card">
+          <h2 style={{ marginBottom: 10 }}>Tu cuenta está casi lista</h2>
+          <p className="note" style={{ marginBottom: 16 }}>
+            Ya tenemos tu formulario. Tu rutina se habilita apenas tu entrenador complete el alta de tu cupo en FuerzaLab. No
+            hace falta que hagas nada más: te avisamos al volver a entrar.
+          </p>
+          <button className="btn ghost" style={{ width: "100%", justifyContent: "center", marginBottom: 10 }} onClick={check}>
+            Volver a intentar
           </button>
           <button className="btn ghost" style={{ width: "100%", justifyContent: "center" }} onClick={handleLogout}>
             Cerrar sesión

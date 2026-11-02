@@ -75,6 +75,9 @@ const EVENT_LABEL: Record<PlatformEvent["kind"], { label: string; tone: "ok" | "
   limit_exceeded: { label: "Superó el tope", tone: "warn" },
   trial_ending: { label: "Termina la prueba", tone: "warn" },
   org_blocked: { label: "Suspendida por pago", tone: "bad" },
+  payment_due_soon: { label: "Cobro por vencer", tone: "warn" },
+  payment_due_today: { label: "Cobro vence hoy", tone: "bad" },
+  seats_requested: { label: "Cupos por pagar", tone: "warn" },
 };
 
 function describe(e: PlatformEvent): string {
@@ -89,6 +92,12 @@ function describe(e: PlatformEvent): string {
       return `${org} tiene ${p.clients} alumnos y su plan permite ${p.limit}. Tiene 7 días de margen para cambiar de plan.`;
     case "trial_ending":
       return `La prueba gratis de ${org} termina el ${p.trial_ends_at ? new Date(p.trial_ends_at).toLocaleDateString("es") : "pronto"}. Registra su primer cobro para que no se suspenda.`;
+    case "payment_due_soon":
+      return `El cobro de ${org} (${p.currency ?? ""} ${Number(p.amount ?? 0).toLocaleString("es")}) vence el ${p.due_date ? new Date(p.due_date + "T12:00:00").toLocaleDateString("es") : "pronto"}. Si quieres, recuérdaselo antes.`;
+    case "payment_due_today":
+      return `El cobro de ${org} (${p.currency ?? ""} ${Number(p.amount ?? 0).toLocaleString("es")}) vence hoy. Si no se registra, mañana se suspende su acceso.`;
+    case "seats_requested":
+      return `${org} sumó ${p.count ?? 1} ${Number(p.count) === 1 ? "alumno nuevo" : "alumnos nuevos"} por encima de sus cupos. Esperan el pago de ${p.currency ?? ""} ${Number(p.amount ?? 0).toLocaleString("es")} (proporcional a los días que faltan del período). Al marcarlo pagado, entran solos.`;
     case "org_blocked":
       return `${org} quedó suspendida por falta de pago desde el ${p.since ? new Date(p.since + "T12:00:00").toLocaleDateString("es") : "hoy"}. Sus alumnos siguen entrenando 7 días más.`;
   }
@@ -144,7 +153,7 @@ function PlatformFeed() {
                   <Chip tone={meta.tone}>{meta.label}</Chip>{" "}
                   <span className="note" style={{ fontSize: 12.5 }}>{new Date(e.created_at).toLocaleString("es", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" })}</span>
                   <div style={{ marginTop: 4 }}>{describe(e)}</div>
-                  {(e.kind === "limit_exceeded" || e.kind === "trial_ending" || e.kind === "org_blocked") && (
+                  {(e.kind === "limit_exceeded" || e.kind === "trial_ending" || e.kind === "org_blocked" || e.kind === "payment_due_soon" || e.kind === "payment_due_today" || e.kind === "seats_requested") && (
                     <button className="link-btn" style={{ fontSize: 13, marginTop: 4 }} onClick={() => navigate(e.kind === "limit_exceeded" ? paths.adminOrgs : paths.adminBilling)}>
                       {e.kind === "limit_exceeded" ? "Ver organizaciones" : "Ir a Pagos de la plataforma"}
                     </button>

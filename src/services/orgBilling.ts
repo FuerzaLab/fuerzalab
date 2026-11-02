@@ -29,6 +29,14 @@ export interface OrgBilling {
   } | null;
   estimated_amount?: number | null;
   next_due?: { due_date: string; amount: number; currency: string } | null;
+  /** Cupos (part4a). */
+  seat_pending?: boolean;
+  seat_mode?: "none" | "trial" | "paid";
+  seats_capacity?: number | null;
+  seats_used?: number;
+  trial_free_clients?: number;
+  pending_clients?: number;
+  pending_seats?: { amount: number; currency: string; due_date: string; count: number } | null;
 }
 
 /** Recalcula el estado (por si venció algo) y lo devuelve. null si no aplica o falta la migración. */
@@ -65,7 +73,7 @@ export function billingBlock(b: OrgBilling | null): null | { reason: "suspended"
 export interface PlatformEvent {
   id: string;
   created_at: string;
-  kind: "client_added" | "trainer_added" | "limit_exceeded" | "org_blocked" | "trial_ending";
+  kind: "client_added" | "trainer_added" | "limit_exceeded" | "org_blocked" | "trial_ending" | "payment_due_soon" | "payment_due_today" | "seats_requested";
   organization_id: string | null;
   payload: Record<string, any>;
   seen_at: string | null;
@@ -87,9 +95,10 @@ export async function markPlatformEventsSeen(ids: string[]): Promise<void> {
   if (error) throw error;
 }
 
-export async function setOrgBillingSettings(orgId: string, fields: { plan_id?: string | null; trial_ends_at?: string | null; billing_exempt?: boolean }): Promise<void> {
+export async function setOrgBillingSettings(orgId: string, fields: { plan_id?: string | null; trial_ends_at?: string | null; billing_exempt?: boolean; trial_free_clients?: number }): Promise<void> {
   const { data, error } = await supabase.from("organizations").update(fields).eq("id", orgId).select("id");
   if (error) {
+    if (/trial_free_clients/.test(error.message)) throw new Error("Falta correr part4a_migration.sql en Supabase.");
     if (/plan_id|trial_ends_at|billing_exempt/.test(error.message)) throw new Error("Falta correr part3y_migration.sql en Supabase.");
     throw error;
   }
