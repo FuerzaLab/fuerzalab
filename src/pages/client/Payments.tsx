@@ -5,6 +5,7 @@ import Chip from "../../components/ui/Chip";
 import { getMyClientId } from "../../services/clients";
 import { listPayments, uploadReceipt, getReceiptUrl, type PaymentRow, type PaymentStatus } from "../../services/payments";
 import Loading from "../../components/ui/Loading";
+import { compressImage } from "../../lib/imageCompress";
 
 const STATUS_LABEL: Record<PaymentStatus, string> = { pending: "Pendiente", paid: "Pagado", cancelled: "Cancelado" };
 const STATUS_TONE: Record<PaymentStatus, "warn" | "ok" | "bad"> = { pending: "warn", paid: "ok", cancelled: "bad" };
@@ -40,7 +41,9 @@ export default function ClientPayments() {
     e.target.value = "";
     if (!file || !uploadingFor || !clientId || !profile?.organization_id) return;
     try {
-      await uploadReceipt({ paymentId: uploadingFor, organizationId: profile.organization_id, clientId, file });
+      // Si el comprobante es una foto, se comprime antes de subir (los PDF quedan igual).
+      const compressed = await compressImage(file);
+      await uploadReceipt({ paymentId: uploadingFor, organizationId: profile.organization_id, clientId, file: compressed });
       notify("Comprobante subido.");
       await load();
     } catch (err: any) {

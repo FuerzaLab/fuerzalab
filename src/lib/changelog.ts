@@ -22,6 +22,14 @@ export interface ChangelogEntry {
 
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    id: "2026-11-02-import-create-exercises",
+    date: "2026-11-02",
+    title: "Crea ejercicios nuevos sin salir del Constructor",
+    body: "Si el ejercicio que buscas no está en tu biblioteca, créalo ahí mismo y se añade a la sesión en un paso. Y al importar una rutina desde Excel o Word, puedes crear los que falten —uno por uno o todos de una vez—. Después los completas en Ejercicios.",
+    for: ["trainer"],
+    link: { label: "Ir al Constructor", to: paths.trainerBuilder },
+  },
+  {
     id: "2026-11-02-seats",
     date: "2026-11-02",
     title: "Cupos de alumnos en tu plan",

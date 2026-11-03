@@ -1,11 +1,12 @@
 import { useEffect, useMemo, useRef, useState, type ChangeEvent } from "react";
-import { Plus, FileUp, Film, Trash2, Pencil } from "lucide-react";
+import { Plus, FileUp, Film, Trash2, Pencil, Image as ImageIcon } from "lucide-react";
 import { useAuth } from "../../../contexts/AuthContext";
 import { useToast } from "../../../contexts/ToastContext";
 import {
   listExercises,
   listCatalog,
   bodyRegionOf,
+  exerciseRegion,
   uploadExerciseMedia,
   removeExerciseMedia,
   getExerciseMediaUrl,
@@ -105,6 +106,13 @@ export default function ExercisesPage({ scope }: { scope: "global" | "trainer" }
   const pickMedia = async (e: ChangeEvent<HTMLInputElement>) => {
     const raw = e.target.files?.[0];
     if (!raw || !selected || !profile) return;
+    // Por ahora solo fotos: los videos ocupan mucho espacio y tráfico de la app.
+    // Para videos se usa el enlace de YouTube o Vimeo (más abajo).
+    if (!raw.type.startsWith("image/")) {
+      notify("Aquí solo se suben fotos. Para un video, súbelo a YouTube (como «No listado») o a Vimeo y pega el enlace abajo.");
+      if (mediaInputRef.current) mediaInputRef.current.value = "";
+      return;
+    }
     setUploadingMedia(true);
     try {
       const file = await compressImage(raw);
@@ -168,7 +176,7 @@ export default function ExercisesPage({ scope }: { scope: "global" | "trainer" }
   const filtered = useMemo(() => {
     return exercises.filter((e) => {
       const matchesQuery = e.name.toLowerCase().includes(query.toLowerCase());
-      const region = bodyRegionOf(muscleById[e.primary_muscle_id ?? ""]?.key ?? null);
+      const region = exerciseRegion(e, muscleById);
       const matchesBody = bodyFilter === "all" || region === bodyFilter;
       const matchesVideo = !onlyBroken || e.video_status === "broken";
       return matchesQuery && matchesBody && matchesVideo;
@@ -312,8 +320,7 @@ export default function ExercisesPage({ scope }: { scope: "global" | "trainer" }
                 <thead>
                   <tr style={{ textAlign: "left", color: "var(--muted)", fontSize: 13 }}>
                     <th style={{ padding: "10px 14px" }}>Ejercicio</th>
-                    <th style={{ padding: "10px 14px" }}>Grupo</th>
-                    <th style={{ padding: "10px 14px" }}>Nivel</th>
+                    <th style={{ padding: "10px 14px" }}>Grupo muscular</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -337,12 +344,11 @@ export default function ExercisesPage({ scope }: { scope: "global" | "trainer" }
                         )}
                       </td>
                       <td style={{ padding: "10px 14px" }}>{muscleById[e.primary_muscle_id ?? ""]?.label ?? "—"}</td>
-                      <td style={{ padding: "10px 14px" }}>{difficultyLabel(e.difficulty)}</td>
                     </tr>
                   ))}
                   {filtered.length === 0 && (
                     <tr>
-                      <td colSpan={3} className="note" style={{ padding: 16 }}>
+                      <td colSpan={2} className="note" style={{ padding: 16 }}>
                         No hay ejercicios con ese filtro.
                       </td>
                     </tr>
@@ -396,12 +402,12 @@ export default function ExercisesPage({ scope }: { scope: "global" | "trainer" }
                     </div>
                   ) : (
                     <div>
-                      <input ref={mediaInputRef} type="file" accept="image/*,video/mp4,video/webm" onChange={pickMedia} style={{ display: "none" }} />
+                      <input ref={mediaInputRef} type="file" accept="image/*" onChange={pickMedia} style={{ display: "none" }} />
                       <button className="btn ghost" style={{ padding: "6px 14px", fontSize: 13 }} onClick={startMediaUpload} disabled={uploadingMedia}>
-                        <Film size={14} /> {uploadingMedia ? "Subiendo…" : "Subir foto o video de demostración"}
+                        <ImageIcon size={14} /> {uploadingMedia ? "Subiendo…" : "Subir foto de demostración"}
                       </button>
                       <p className="note" style={{ fontSize: 12, margin: "6px 0 0" }}>
-                        Solo fotos o videos tuyos, o que tengas permiso para usar.
+                        Solo fotos tuyas, o que tengas permiso para usar. Para un video, pega el enlace de YouTube o Vimeo abajo.
                       </p>
                     </div>
                   )}
@@ -417,9 +423,7 @@ export default function ExercisesPage({ scope }: { scope: "global" | "trainer" }
                   }}
                 />
                 <div style={{ display: "flex", flexWrap: "wrap", gap: 6, marginBottom: 12 }}>
-                  {selected.goals.map((g) => (
-                    <Chip key={g} tone="pri">{g}</Chip>
-                  ))}
+                  <Chip tone="pri">{exerciseRegion(selected, muscleById) === "Superior" ? "Tren superior" : exerciseRegion(selected, muscleById) === "Inferior" ? "Tren inferior" : "Full body"}</Chip>
                   {selected.equipment_ids.map((id) => (
                     <Chip key={id}>{equipById[id]?.label ?? id}</Chip>
                   ))}
@@ -613,13 +617,6 @@ export default function ExercisesPage({ scope }: { scope: "global" | "trainer" }
       )}
     </div>
   );
-}
-
-function difficultyLabel(d: ExerciseRow["difficulty"]): string {
-  if (d === "beginner") return "Principiante";
-  if (d === "intermediate") return "Intermedio";
-  if (d === "advanced") return "Avanzado";
-  return "—";
 }
 
 /**

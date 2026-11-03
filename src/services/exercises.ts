@@ -23,6 +23,8 @@ export interface ExerciseRow {
   media_type: "image" | "video" | null;
   /** Video de YouTube o Vimeo (part3x_migration.sql). */
   video_url?: string | null;
+  /** Región elegida a mano (part4b): Superior / Inferior / Full body. Vacío = se deduce del grupo muscular. */
+  body_region?: "Superior" | "Inferior" | "Full body" | null;
   video_status?: "broken" | null;
   video_broken_reason?: string | null;
 }
@@ -39,6 +41,11 @@ export const GOAL_OPTIONS = ["Fuerza", "Hipertrofia", "Potencia", "Resistencia",
 /** Grupos musculares considerados "tren inferior"; el resto (salvo cardio/cuerpo completo) se trata como superior. */
 const LOWER_BODY_KEYS = new Set(["cuadriceps", "isquiotibiales", "gluteos", "pantorrillas"]);
 const FULL_BODY_KEYS = new Set(["cuerpo_completo", "cardio", "core"]);
+
+/** Región de un ejercicio: la elegida a mano o, si no tiene, la de su grupo muscular. */
+export function exerciseRegion(e: Pick<ExerciseRow, "body_region" | "primary_muscle_id">, muscleById: Record<string, CatalogItem>): "Superior" | "Inferior" | "Full body" {
+  return e.body_region ?? bodyRegionOf(muscleById[e.primary_muscle_id ?? ""]?.key ?? null);
+}
 
 export function bodyRegionOf(muscleKey: string | null): "Superior" | "Inferior" | "Full body" {
   if (!muscleKey) return "Full body";
@@ -221,6 +228,8 @@ export interface NewExerciseInput {
   instructions: string;
   technical_cues: string;
   common_mistakes: string;
+  /** Región del cuerpo (part4b). Solo se manda si se eligió. */
+  body_region?: "Superior" | "Inferior" | "Full body" | null;
 }
 
 export async function createExercise(
@@ -235,7 +244,12 @@ export async function createExercise(
     organization_id: scope === "global" ? null : organizationId,
     owner_id: scope === "global" ? null : ownerId,
   };
-  const { data, error } = await supabase.from("exercises").insert(row).select().single();
+  let { data, error } = await supabase.from("exercises").insert(row).select().single();
+  // Sin part4b_migration.sql no existe body_region: se guarda igual, sin la región.
+  if (error && /body_region/.test(error.message)) {
+    const { body_region: _omit, ...rest } = row as any;
+    ({ data, error } = await supabase.from("exercises").insert(rest).select().single());
+  }
   if (error) throw error;
   return data as ExerciseRow;
 }
@@ -246,7 +260,11 @@ export async function createExercise(
  * no da error: simplemente no actualiza nada — por eso se chequea a mano.
  */
 export async function updateExercise(id: string, input: NewExerciseInput): Promise<ExerciseRow> {
-  const { data, error } = await supabase.from("exercises").update(input).eq("id", id).select();
+  let { data, error } = await supabase.from("exercises").update(input).eq("id", id).select();
+  if (error && /body_region/.test(error.message)) {
+    const { body_region: _omit, ...rest } = input as any;
+    ({ data, error } = await supabase.from("exercises").update(rest).eq("id", id).select());
+  }
   if (error) throw error;
   if (!data || data.length === 0) throw new Error("No tienes permiso para editar este ejercicio.");
   return data[0] as ExerciseRow;

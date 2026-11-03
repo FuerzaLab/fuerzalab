@@ -3,10 +3,10 @@ import Modal from "../../../components/ui/Modal";
 import {
   createExercise,
   updateExercise,
-  GOAL_OPTIONS,
   type CatalogItem,
   type ExerciseRow,
   type NewExerciseInput,
+  bodyRegionOf,
 } from "../../../services/exercises";
 import SearchSelect from "../../../components/ui/SearchSelect";
 
@@ -38,7 +38,9 @@ export default function NewExerciseModal({
   const [patternId, setPatternId] = useState(exercise?.movement_pattern_id ?? "");
   const [equipIds, setEquipIds] = useState<string[]>(exercise?.equipment_ids ?? []);
   const [difficulty, setDifficulty] = useState<NewExerciseInput["difficulty"]>(exercise?.difficulty ?? "intermediate");
-  const [goals, setGoals] = useState<string[]>(exercise?.goals ?? []);
+  // Tren superior / inferior / full body. Si no se elige a mano, se propone según el grupo muscular.
+  const [region, setRegion] = useState<"" | "Superior" | "Inferior" | "Full body">(exercise?.body_region ?? "");
+  const [regionTouched, setRegionTouched] = useState(!!exercise?.body_region);
   const [cues, setCues] = useState(exercise?.technical_cues ?? "");
   const [mistakes, setMistakes] = useState(exercise?.common_mistakes ?? "");
   const [error, setError] = useState("");
@@ -46,7 +48,13 @@ export default function NewExerciseModal({
 
   const toggleEquip = (id: string) =>
     setEquipIds((ids) => (ids.includes(id) ? ids.filter((x) => x !== id) : [...ids, id]));
-  const toggleGoal = (g: string) => setGoals((gs) => (gs.includes(g) ? gs.filter((x) => x !== g) : [...gs, g]));
+  const pickMuscle = (id: string) => {
+    setMuscleId(id);
+    if (!regionTouched) {
+      const m = muscles.find((x) => x.id === id);
+      setRegion(m ? bodyRegionOf(m.key) : "");
+    }
+  };
 
   const submit = async () => {
     if (!name.trim()) {
@@ -62,7 +70,9 @@ export default function NewExerciseModal({
         movement_pattern_id: patternId || null,
         equipment_ids: equipIds,
         difficulty,
-        goals: goals.length ? goals : ["Fuerza"],
+        // Los objetivos ya no se piden en el formulario: se conserva lo que tuviera.
+        goals: exercise?.goals?.length ? exercise.goals : ["Fuerza"],
+        ...(region ? { body_region: region } : {}),
         // "instructions" no se muestra en ningún formulario: al editar se
         // conserva lo que tuviera (por ejemplo, de una importación).
         instructions: exercise?.instructions ?? "",
@@ -94,7 +104,7 @@ export default function NewExerciseModal({
       <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(170px,1fr))", gap: 12, marginBottom: 12 }}>
         <div>
           <label className="field-label">Grupo muscular</label>
-          <SearchSelect className="input" value={muscleId} onChange={(e) => setMuscleId(e.target.value)}>
+          <SearchSelect className="input" value={muscleId} onChange={(e) => pickMuscle(e.target.value)}>
             <option value="">Selecciona</option>
             {muscles.map((m) => (
               <option key={m.id} value={m.id}>{m.label}</option>
@@ -140,22 +150,25 @@ export default function NewExerciseModal({
         ))}
       </div>
 
-      <label className="field-label">Objetivos de entrenamiento</label>
+      <label className="field-label">Región del cuerpo</label>
       <div style={{ display: "flex", flexWrap: "wrap", gap: 6, marginBottom: 12 }}>
-        {GOAL_OPTIONS.map((g) => (
+        {(["Superior", "Inferior", "Full body"] as const).map((r) => (
           <button
-            key={g}
+            key={r}
             type="button"
-            onClick={() => toggleGoal(g)}
+            onClick={() => {
+              setRegion(r);
+              setRegionTouched(true);
+            }}
             className="chip"
             style={{
               cursor: "pointer",
               border: "1px solid var(--line)",
-              background: goals.includes(g) ? "var(--pri)" : "#fff",
-              color: goals.includes(g) ? "#fff" : "var(--muted)",
+              background: region === r ? "var(--pri)" : "#fff",
+              color: region === r ? "#fff" : "var(--muted)",
             }}
           >
-            {g}
+            {r === "Superior" ? "Tren superior" : r === "Inferior" ? "Tren inferior" : "Full body"}
           </button>
         ))}
       </div>

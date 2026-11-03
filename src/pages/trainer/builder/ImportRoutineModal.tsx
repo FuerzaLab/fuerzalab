@@ -11,7 +11,8 @@ import {
   fileKind,
 } from "../../../lib/importParsing";
 import { addWorkoutExercise, updateWorkoutExercise, BLOCK_LABEL, BLOCK_ORDER, type BlockKind, type SessionBlockRow } from "../../../services/sessions";
-import type { ExerciseRow } from "../../../services/exercises";
+import { createExercise, type CatalogItem, type ExerciseRow } from "../../../services/exercises";
+import { useAuth } from "../../../contexts/AuthContext";
 import SearchSelect from "../../../components/ui/SearchSelect";
 
 const ALIASES = {
@@ -49,17 +50,92 @@ function matchBlock(text: string): BlockKind {
 
 export default function ImportRoutineModal({
   blocks,
-  exercises,
+  exercises: libraryExercises,
+  muscles = [],
   existingCount,
   onClose,
   onImport,
+  onExerciseCreated,
 }: {
   blocks: SessionBlockRow[];
   exercises: ExerciseRow[];
+  /** Grupos musculares, para crear un ejercicio nuevo desde acá. */
+  muscles?: CatalogItem[];
   existingCount: number;
   onClose: () => void;
   onImport: (rows: DraftRow[]) => Promise<void>;
+  /** Avisa a la pantalla de atrás que se creó un ejercicio (para que aparezca en su lista). */
+  onExerciseCreated?: (ex: ExerciseRow) => void;
 }) {
+  const { profile, actingTrainerId, can } = useAuth();
+  // Los ejercicios creados desde esta ventana se suman a la lista enseguida.
+  const [created, setCreated] = useState<ExerciseRow[]>([]);
+  const exercises = [...created, ...libraryExercises];
+  // Fila para la que se está creando un ejercicio, y sus datos.
+  const [creatingFor, setCreatingFor] = useState<number | null>(null);
+  const [newName, setNewName] = useState("");
+  const [newMuscle, setNewMuscle] = useState("");
+  const [savingNew, setSavingNew] = useState(false);
+  const [bulkMuscle, setBulkMuscle] = useState("");
+  const [creatingAll, setCreatingAll] = useState(false);
+  const canCreate = !!profile && (profile.role === "super_admin" || can("exercises", "write"));
+
+  /** Crea un ejercicio en la biblioteca del entrenador (o global, si es el Super Admin). */
+  const createOne = async (name: string, muscleId: string): Promise<ExerciseRow> => {
+    const isAdmin = profile?.role === "super_admin";
+    const ex = await createExercise(
+      {
+        name: name.trim(),
+        primary_muscle_id: muscleId || null,
+        movement_pattern_id: null,
+        equipment_ids: [],
+        difficulty: "intermediate",
+        goals: [],
+        instructions: "",
+        technical_cues: "",
+        common_mistakes: "",
+      },
+      isAdmin ? "global" : "trainer",
+      isAdmin ? null : profile?.organization_id ?? null,
+      isAdmin ? null : actingTrainerId ?? profile?.id ?? null,
+    );
+    setCreated((cs) => [ex, ...cs]);
+    onExerciseCreated?.(ex);
+    return ex;
+  };
+
+  const saveNew = async () => {
+    if (creatingFor == null || !newName.trim()) return;
+    setSavingNew(true);
+    setError("");
+    try {
+      const ex = await createOne(newName, newMuscle);
+      // Si otras filas tienen el mismo nombre, también quedan resueltas.
+      const target = rows.find((r) => r.id === creatingFor);
+      setRows((rs) => rs.map((r) => (r.id === creatingFor || (!r.exerciseId && target && norm(r.name) === norm(target.name)) ? { ...r, exerciseId: ex.id } : r)));
+      setCreatingFor(null);
+    } catch (e: any) {
+      setError("No se pudo crear el ejercicio: " + (e.message ?? ""));
+    }
+    setSavingNew(false);
+  };
+
+  /** Crea de una vez todos los que no coinciden (con el nombre del archivo). */
+  const createAllMissing = async () => {
+    const missing = rows.filter((r) => !r.exerciseId);
+    const names = [...new Map(missing.map((r) => [norm(r.name), r.name.trim()])).values()].filter(Boolean);
+    if (!names.length) return;
+    setCreatingAll(true);
+    setError("");
+    try {
+      const byName: Record<string, string> = {};
+      for (const n of names) byName[norm(n)] = (await createOne(n, bulkMuscle)).id;
+      setRows((rs) => rs.map((r) => (!r.exerciseId && byName[norm(r.name)] ? { ...r, exerciseId: byName[norm(r.name)] } : r)));
+    } catch (e: any) {
+      setError("No se pudieron crear todos los ejercicios: " + (e.message ?? ""));
+    }
+    setCreatingAll(false);
+  };
   const [rows, setRows] = useState<DraftRow[]>([]);
   const [pastedText, setPastedText] = useState("");
   const [error, setError] = useState("");
@@ -169,6 +245,21 @@ export default function ImportRoutineModal({
             Hacemos coincidir el nombre con tu biblioteca de ejercicios; corrige lo que no haya quedado bien.
             {unmatchedCount > 0 && <span style={{ color: "var(--bad)" }}> {unmatchedCount} fila{unmatchedCount === 1 ? "" : "s"} sin coincidir todavía.</span>}
           </p>
+          {unmatchedCount > 0 && canCreate && (
+            <div className="import-create-all">
+              <span style={{ flex: "1 1 220px" }}>
+                ¿Son ejercicios que todavía no están en tu biblioteca? Créalos de una vez con el nombre del archivo (después
+                puedes completarlos en Ejercicios).
+              </span>
+              <select className="input" style={{ width: "auto", padding: "6px 8px" }} value={bulkMuscle} onChange={(e) => setBulkMuscle(e.target.value)} aria-label="Grupo muscular para todos">
+                <option value="">Sin grupo muscular</option>
+                {muscles.map((m) => <option key={m.id} value={m.id}>{m.label}</option>)}
+              </select>
+              <button type="button" className="btn" style={{ padding: "6px 12px", fontSize: 13 }} onClick={createAllMissing} disabled={creatingAll}>
+                {creatingAll ? "Creando…" : `Crear los ${new Set(rows.filter((r) => !r.exerciseId).map((r) => norm(r.name))).size} que faltan`}
+              </button>
+            </div>
+          )}
           <div style={{ overflowX: "auto", marginBottom: 16 }}>
             <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 14 }}>
               <thead>
@@ -190,6 +281,37 @@ export default function ImportRoutineModal({
                         <option value="">{r.name} (sin coincidir, elige uno)</option>
                         {exercises.map((e) => <option key={e.id} value={e.id}>{e.name}</option>)}
                       </SearchSelect>
+                      {!r.exerciseId && canCreate && creatingFor !== r.id && (
+                        <button
+                          type="button"
+                          className="link-btn"
+                          style={{ fontSize: 12.5, marginTop: 4 }}
+                          onClick={() => {
+                            setCreatingFor(r.id);
+                            setNewName(r.name);
+                            setNewMuscle("");
+                          }}
+                        >
+                          + Crear «{r.name}» como ejercicio nuevo
+                        </button>
+                      )}
+                      {creatingFor === r.id && (
+                        <div className="import-new-ex">
+                          <input className="input" value={newName} onChange={(e) => setNewName(e.target.value)} aria-label="Nombre del ejercicio nuevo" />
+                          <select className="input" value={newMuscle} onChange={(e) => setNewMuscle(e.target.value)} aria-label="Grupo muscular principal">
+                            <option value="">Grupo muscular (opcional)</option>
+                            {muscles.map((m) => <option key={m.id} value={m.id}>{m.label}</option>)}
+                          </select>
+                          <div style={{ display: "flex", gap: 6 }}>
+                            <button type="button" className="btn" style={{ padding: "5px 10px", fontSize: 12.5 }} onClick={saveNew} disabled={savingNew || !newName.trim()}>
+                              {savingNew ? "Creando…" : "Crear y usar"}
+                            </button>
+                            <button type="button" className="btn ghost" style={{ padding: "5px 10px", fontSize: 12.5 }} onClick={() => setCreatingFor(null)}>
+                              Cancelar
+                            </button>
+                          </div>
+                        </div>
+                      )}
                     </td>
                     <td style={{ padding: "6px 8px" }}>
                       <select className="input" style={{ padding: "6px 8px" }} value={r.block} onChange={(e) => patch(r.id, "block", e.target.value)}>

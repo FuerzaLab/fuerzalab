@@ -18,6 +18,7 @@ import {
   type PhotoVisibility,
   type ProgressPhotoRow,
 } from "../../../services/progressPhotos";
+import { compressImage } from "../../../lib/imageCompress";
 
 /**
  * Fotos de progreso dentro de una evaluación. No son una tabla aparte:
@@ -67,7 +68,9 @@ export default function AssessmentPhotosSection({
     if (!file || !profile?.organization_id) return;
     setUploading(angle);
     try {
-      await uploadProgressPhoto({ organizationId: profile.organization_id, clientId, file, takenAt: date, notes: "", visibility, angle });
+      // Se comprime antes de subir (una foto de celular de 8–15 MB queda en 1–2 MB).
+      const compressed = await compressImage(file);
+      await uploadProgressPhoto({ organizationId: profile.organization_id, clientId, file: compressed, takenAt: date, notes: "", visibility, angle });
       await load();
       notify(`Foto ${ANGLE_LABEL[angle].toLowerCase()} guardada.`);
     } catch (e: any) {

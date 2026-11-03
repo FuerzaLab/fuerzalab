@@ -11,7 +11,9 @@ import { listPrograms, listWeeks, listMesocycles, createWeek, type ProgramRow, t
 import {
   listExercises,
   listCatalog,
+  createExercise,
   bodyRegionOf,
+  exerciseRegion,
   type ExerciseRow,
   type CatalogItem,
 } from "../../../services/exercises";
@@ -356,6 +358,7 @@ export default function BuilderPage() {
               muscles={muscles}
               muscleById={muscleById}
               onRenamed={() => loadSessions(weekId)}
+              onExerciseCreated={(ex) => setExercises((xs) => [ex, ...xs])}
             />
           )}
         </>
@@ -390,6 +393,7 @@ function SessionEditor({
   muscles,
   muscleById,
   onRenamed,
+  onExerciseCreated,
 }: {
   sessionId: string;
   initialSession: SessionRow;
@@ -397,9 +401,10 @@ function SessionEditor({
   muscles: CatalogItem[];
   muscleById: Record<string, CatalogItem>;
   onRenamed: () => void;
+  onExerciseCreated?: (ex: ExerciseRow) => void;
 }) {
   const { notify, flashSaved } = useToast();
-  const { profile, actingTrainerId } = useAuth();
+  const { profile, actingTrainerId, can } = useAuth();
   const [session, setSession] = useState<SessionRow>(initialSession);
   // kg o lb para cada ejercicio, según el gimnasio del alumno de este programa (ver lib/units.ts).
   const [unitResolver, setUnitResolver] = useState<{ fn: (ex: WorkoutExerciseRow) => LoadUnit }>({ fn: () => "kg" });
@@ -431,6 +436,13 @@ function SessionEditor({
   const [search, setSearch] = useState("");
   const [pickExercise, setPickExercise] = useState("");
   const [pickBlock, setPickBlock] = useState<BlockKind>("main");
+  // Crear un ejercicio que no está en la biblioteca, sin salir del Constructor.
+  const [creating, setCreating] = useState(false);
+  const [newName, setNewName] = useState("");
+  const [newMuscle, setNewMuscle] = useState("");
+  const [newEquipment, setNewEquipment] = useState("");
+  const [equipmentList, setEquipmentList] = useState<CatalogItem[]>([]);
+  const [savingNew, setSavingNew] = useState(false);
 
   const load = async () => {
     const [bl, ex] = await Promise.all([listSessionBlocks(sessionId), listWorkoutExercises(sessionId)]);
@@ -446,7 +458,7 @@ function SessionEditor({
 
   const filteredExercises = useMemo(() => {
     return exercises.filter((e) => {
-      const region = bodyRegionOf(muscleById[e.primary_muscle_id ?? ""]?.key ?? null);
+      const region = exerciseRegion(e, muscleById);
       const okBody = bodyFilter === "all" || region === bodyFilter;
       const okMuscle = muscleFilter === "all" || e.primary_muscle_id === muscleFilter;
       const okSearch = e.name.toLowerCase().includes(search.toLowerCase());
@@ -534,8 +546,52 @@ function SessionEditor({
     }
   };
 
-  const addExercise = async () => {
-    if (!pickExercise) {
+  const canCreateExercise = profile?.role === "super_admin" || can("exercises", "write");
+  const normName = (t: string) => t.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().trim();
+  // Si ya existe uno con el mismo nombre (sin tildes ni mayúsculas), se ofrece usar ese.
+  const sameName = newName.trim() ? exercises.find((e) => normName(e.name) === normName(newName)) : undefined;
+
+  const openCreate = () => {
+    setNewName(search.trim());
+    setNewMuscle(muscleFilter !== "all" ? muscleFilter : "");
+    setNewEquipment("");
+    setCreating(true);
+    if (!equipmentList.length) listCatalog("equipment").then(setEquipmentList).catch(() => {});
+  };
+
+  const createAndAdd = async () => {
+    if (!newName.trim() || !profile) return;
+    setSavingNew(true);
+    try {
+      const isAdmin = profile.role === "super_admin";
+      const ex = await createExercise(
+        {
+          name: newName.trim(),
+          primary_muscle_id: newMuscle || null,
+          movement_pattern_id: null,
+          equipment_ids: newEquipment ? [newEquipment] : [],
+          difficulty: "intermediate",
+          goals: [],
+          instructions: "",
+          technical_cues: "",
+          common_mistakes: "",
+        },
+        isAdmin ? "global" : "trainer",
+        isAdmin ? null : profile.organization_id,
+        isAdmin ? null : actingTrainerId ?? profile.id,
+      );
+      onExerciseCreated?.(ex);
+      setCreating(false);
+      setSearch("");
+      await addExercise(ex.id);
+    } catch (e: any) {
+      notify("No se pudo crear el ejercicio: " + e.message);
+    }
+    setSavingNew(false);
+  };
+
+  const addExercise = async (exerciseId: string = pickExercise) => {
+    if (!exerciseId) {
       notify("Elige un ejercicio de la lista.");
       return;
     }
@@ -544,7 +600,7 @@ function SessionEditor({
     const created = await addWorkoutExercise({
       sessionId,
       blockId: block.id,
-      exerciseId: pickExercise,
+      exerciseId,
       sortOrder: items.length,
       isCardio: pickBlock === "cardio",
     });
@@ -905,10 +961,70 @@ function SessionEditor({
                 {BLOCK_ORDER.map((k) => <option key={k} value={k}>{BLOCK_LABEL[k]}</option>)}
               </select>
             </div>
-            <button className="btn" onClick={addExercise}>
+            <button className="btn" onClick={() => addExercise()}>
               <Plus size={16} /> Añadir a la sesión
             </button>
           </div>
+
+          {canCreateExercise && !creating && (
+            <p className="note" style={{ margin: "10px 0 0", fontSize: 13.5 }}>
+              {search.trim() && filteredExercises.length === 0 ? `No hay ningún ejercicio que se llame «${search.trim()}». ` : "¿No está en la lista? "}
+              <button type="button" className="link-btn" onClick={openCreate}>
+                {search.trim() && filteredExercises.length === 0 ? `Crear «${search.trim()}»` : "Crear un ejercicio nuevo"}
+              </button>
+            </p>
+          )}
+
+          {creating && (
+            <div className="builder-new-ex">
+              <b style={{ fontSize: 14 }}>Ejercicio nuevo</b>
+              <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))", gap: 10 }}>
+                <div>
+                  <label className="field-label">Nombre</label>
+                  <input className="input" value={newName} onChange={(e) => setNewName(e.target.value)} placeholder="Ej. Remo en máquina" autoFocus />
+                </div>
+                <div>
+                  <label className="field-label">Grupo muscular (opcional)</label>
+                  <select className="input" value={newMuscle} onChange={(e) => setNewMuscle(e.target.value)}>
+                    <option value="">Sin elegir</option>
+                    {muscles.map((m) => <option key={m.id} value={m.id}>{m.label}</option>)}
+                  </select>
+                </div>
+                <div>
+                  <label className="field-label">Equipamiento (opcional)</label>
+                  <select className="input" value={newEquipment} onChange={(e) => setNewEquipment(e.target.value)}>
+                    <option value="">Sin elegir</option>
+                    {equipmentList.map((q) => <option key={q.id} value={q.id}>{q.label}</option>)}
+                  </select>
+                </div>
+              </div>
+              {sameName && (
+                <p className="note" style={{ margin: 0, color: "#7A4F00" }}>
+                  Ya tienes un ejercicio que se llama «{sameName.name}».{" "}
+                  <button
+                    type="button"
+                    className="link-btn"
+                    onClick={async () => {
+                      setCreating(false);
+                      await addExercise(sameName.id);
+                    }}
+                  >
+                    Usar ese
+                  </button>
+                </p>
+              )}
+              <p className="note" style={{ margin: 0, fontSize: 12.5 }}>
+                Se agrega a tu biblioteca y a esta sesión, en el bloque {BLOCK_LABEL[pickBlock]}. Después puedes completarlo en
+                Ejercicios (instrucciones, foto o video). El equipamiento sirve para saber si va en kg o en libras en gimnasios mixtos.
+              </p>
+              <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+                <button className="btn" onClick={createAndAdd} disabled={savingNew || !newName.trim()}>
+                  <Plus size={15} /> {savingNew ? "Creando…" : "Crear y añadir a la sesión"}
+                </button>
+                <button className="btn ghost" onClick={() => setCreating(false)}>Cancelar</button>
+              </div>
+            </div>
+          )}
         </div>
       </div>
 
@@ -916,6 +1032,8 @@ function SessionEditor({
         <ImportRoutineModal
           blocks={blocks}
           exercises={exercises}
+          muscles={muscles}
+          onExerciseCreated={onExerciseCreated}
           existingCount={items.length}
           onClose={() => setShowImport(false)}
           onImport={async (rows) => {

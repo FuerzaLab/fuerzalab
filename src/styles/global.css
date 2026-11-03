@@ -356,3 +356,9 @@ select.input:hover { border-color: var(--pri); }
 .billing-banner.warn { background: var(--warn-soft); color: #7A4F00; }
 .billing-banner.bad { background: var(--bad-soft); color: #A8341C; }
 @media (max-width: 860px) { .billing-banners { margin: 12px 16px 0 !important; } }
+/* Importar rutina: crear ejercicios que faltan */
+.import-create-all { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; background: var(--pri-soft); border-radius: 10px; padding: 10px 12px; margin-bottom: 12px; font-size: 13.5px; }
+.import-new-ex { display: grid; gap: 6px; margin-top: 6px; padding: 8px; background: #fff; border: 1px solid var(--line); border-radius: 8px; }
+.import-new-ex .input { padding: 6px 8px; }
+/* Constructor: crear un ejercicio nuevo sin salir */
+.builder-new-ex { display: grid; gap: 10px; margin-top: 12px; padding: 14px; border: 1.5px dashed var(--pri); border-radius: 12px; background: var(--pri-soft); }
