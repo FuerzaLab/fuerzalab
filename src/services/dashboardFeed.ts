@@ -13,7 +13,7 @@ import { wellnessScore, lowFields, WELLNESS_FIELD_LABEL, type WellnessLogRow } f
  * lo que se guarda al marcarla como atendida.
  */
 
-export type FeedKind = "record" | "measure" | "note" | "skip" | "wellness" | "photos" | "payment" | "video";
+export type FeedKind = "record" | "measure" | "note" | "skip" | "wellness" | "photos" | "payment" | "video" | "suggestion";
 
 export interface FeedItem {
   key: string;
@@ -26,6 +26,8 @@ export interface FeedItem {
   tone: "ok" | "warn" | "bad" | "pri" | "";
   /** Qué se muestra en negrita en lugar del nombre del cliente (ej. el ejercicio, en los avisos de video). */
   who?: string;
+  /** Solo en las sugerencias: qué regla la generó. */
+  suggestionType?: "no_logs" | "low_adherence" | "stagnation" | "wellness_risk" | "assessment_due" | "payment_overdue";
 }
 
 export const FEED_KIND_LABEL: Record<FeedKind, string> = {
@@ -37,6 +39,7 @@ export const FEED_KIND_LABEL: Record<FeedKind, string> = {
   photos: "Fotos",
   payment: "Pago",
   video: "Video",
+  suggestion: "Sugerencia",
 };
 
 const DAYS = 30;
@@ -363,6 +366,29 @@ async function videoItems(trainerId: string): Promise<FeedItem[]> {
   }));
 }
 
+// --- Sugerencias (antes, una sección aparte del menú) ----------------------
+
+/** Las mismas reglas de la vieja pantalla "Sugerencias", sin repetir lo que Novedades ya avisa (bienestar y pagos). */
+async function suggestionItems(): Promise<FeedItem[]> {
+  const { computeSuggestions } = await import("./suggestions");
+  const list = await computeSuggestions();
+  // La clave cambia cada semana: si el problema sigue, vuelve a aparecer aunque se haya marcado como atendido.
+  const d = new Date();
+  const week = `${d.getFullYear()}-${Math.ceil(((d.getTime() - new Date(d.getFullYear(), 0, 1).getTime()) / 86400000 + 1) / 7)}`;
+  return list
+    .filter((x) => x.type !== "wellness_risk" && x.type !== "payment_overdue")
+    .map((x) => ({
+      key: `sug:${x.type}:${x.clientId}:${week}`,
+      kind: "suggestion" as const,
+      clientId: x.clientId,
+      at: new Date().toISOString(),
+      title: x.title,
+      detail: x.detail,
+      tone: x.severity === "urgent" ? ("bad" as const) : x.severity === "review" ? ("warn" as const) : ("pri" as const),
+      suggestionType: x.type,
+    }));
+}
+
 /**
  * Todas las novedades pendientes (sin las ya atendidas), más nuevas primero.
  * `allow` dice qué tipos puede ver este usuario (para un asistente, según
@@ -370,7 +396,7 @@ async function videoItems(trainerId: string): Promise<FeedItem[]> {
  */
 export async function loadFeed(
   clients: ClientRow[],
-  allow: Record<"logs" | "assessments" | "health" | "files" | "payments", boolean> & { videosFor?: string | null },
+  allow: Record<"logs" | "assessments" | "health" | "files" | "payments", boolean> & { videosFor?: string | null; suggestions?: boolean },
 ): Promise<FeedItem[]> {
   const known = new Set(clients.map((c) => c.id));
   const safe = (p: Promise<FeedItem[]>) => p.catch((): FeedItem[] => []);
@@ -383,6 +409,7 @@ export async function loadFeed(
     allow.files ? safe(photoItems(clients)) : Promise.resolve([] as FeedItem[]),
     allow.payments ? safe(paymentItems()) : Promise.resolve([] as FeedItem[]),
     allow.videosFor ? safe(videoItems(allow.videosFor)) : Promise.resolve([] as FeedItem[]),
+    allow.suggestions ? safe(suggestionItems()) : Promise.resolve([] as FeedItem[]),
   ]);
   return groups
     .flat()

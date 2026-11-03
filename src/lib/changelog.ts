@@ -22,6 +22,52 @@ export interface ChangelogEntry {
 
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    id: "2026-11-03-done-routines-locked",
+    date: "2026-11-03",
+    title: "Las rutinas ya realizadas quedan como historial",
+    body: "Cuando un alumno termina una rutina, en el Constructor aparece con un 🔒 y queda en solo lectura: no se le pueden cambiar ni quitar ejercicios, ni eliminarla, para no perder su registro. Para cambiarla, duplícala o cópiala a la semana siguiente. Además, ahora puedes arrastrar las rutinas de la semana para cambiarlas de lugar.",
+    for: ["trainer"],
+    link: { label: "Ir al Constructor", to: paths.trainerBuilder },
+  },
+  {
+    id: "2026-11-03-session-summary",
+    date: "2026-11-03",
+    title: "Resumen al terminar cada sesión",
+    body: "Al terminar de entrenar ves cuánto duró la sesión, cuántas series y repeticiones hiciste, cuánto levantaste en total y cómo te fue comparado con la última vez. Si batiste un récord, se celebra ahí mismo.",
+    for: ["trainer", "client"],
+  },
+  {
+    id: "2026-11-03-whatsapp",
+    date: "2026-11-03",
+    title: "WhatsApp con el mensaje ya escrito",
+    body: "Botones para mandar por WhatsApp la invitación de un alumno, el recordatorio de un pago vencido o por vencer, un mensaje a quien dejó de entrenar (desde Novedades) y un resumen de su progreso (desde Reportes). Se abre WhatsApp con el texto listo: solo tocas Enviar.",
+    for: ["trainer"],
+  },
+  {
+    id: "2026-11-03-bulk-invite",
+    date: "2026-11-03",
+    title: "Invita a varios alumnos de una vez",
+    body: "En Clientes, pega una lista (nombre, WhatsApp y correo) o sube un Excel: se crean todos con su invitación, y te queda un botón de WhatsApp por persona para mandársela.",
+    for: ["trainer"],
+    notForStaff: true,
+    link: { label: "Ir a Clientes", to: paths.trainerClients },
+  },
+  {
+    id: "2026-11-03-starter-templates",
+    date: "2026-11-03",
+    title: "Rutinas de ejemplo listas para usar",
+    body: "En Plantillas puedes agregar con un toque 4 rutinas armadas (por ejemplo, fuerza para principiantes en 3 días) para aplicarlas a un alumno y ajustarlas, en vez de empezar de cero.",
+    for: ["trainer"],
+    link: { label: "Ir a Plantillas", to: paths.trainerTemplates },
+  },
+  {
+    id: "2026-11-03-search-drag",
+    date: "2026-11-03",
+    title: "Buscador general y reordenar arrastrando",
+    body: "Con Ctrl + K (o el botón Buscar de arriba) saltas a la ficha de un alumno o a cualquier sección escribiendo su nombre. En el Constructor, en la computadora, reordenas los ejercicios arrastrándolos desde el ícono ⋮⋮. Y las Sugerencias ahora aparecen en tus Novedades, todo en un solo lugar.",
+    for: ["trainer"],
+  },
+  {
     id: "2026-11-02-import-create-exercises",
     date: "2026-11-02",
     title: "Crea ejercicios nuevos sin salir del Constructor",

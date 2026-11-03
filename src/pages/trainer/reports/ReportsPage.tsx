@@ -22,6 +22,8 @@ import {
 import Loading from "../../../components/ui/Loading";
 import SearchSelect from "../../../components/ui/SearchSelect";
 import { ReportBrandHeader } from "../../../components/ui/Brand";
+import WhatsAppButton from "../../../components/WhatsAppButton";
+import { appUrl, firstName } from "../../../lib/whatsapp";
 
 export default function ReportsPage() {
   const { notify } = useToast();
@@ -82,6 +84,13 @@ export default function ReportsPage() {
           <button className="btn ghost" onClick={handleExport} disabled={exporting}>
             <Download size={16} /> {exporting ? "Generando…" : "Exportar a PDF"}
           </button>
+        )}
+        {clientId && (
+          <WhatsAppButton
+            label="Mandar por WhatsApp"
+            phone={clients.find((c) => c.id === clientId)?.phone}
+            text={reportMessage(clientName, data.exerciseSummaries ?? [])}
+          />
         )}
       </div>
 
@@ -203,4 +212,16 @@ export default function ReportsPage() {
       )}
     </div>
   );
+}
+
+/** Mensaje con el progreso del alumno (sus 3 ejercicios que más mejoraron) y el enlace a sus reportes. */
+function reportMessage(clientName: string, summaries: { exerciseName: string; pctChange: number | null }[]): string {
+  const n = firstName(clientName);
+  const best = summaries
+    .filter((x) => x.pctChange != null && x.pctChange > 0)
+    .sort((a, b) => (b.pctChange ?? 0) - (a.pctChange ?? 0))
+    .slice(0, 3)
+    .map((x) => `• ${x.exerciseName}: +${Math.round(x.pctChange!)}%`)
+    .join("\n");
+  return `Hola${n ? ` ${n}` : ""}! Te paso cómo vienes${best ? `:\n${best}\n` : ". "}Mira todo tu progreso en FuerzaLab: ${appUrl()}/c/reportes`;
 }

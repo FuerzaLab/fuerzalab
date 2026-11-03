@@ -27,6 +27,8 @@ import {
 import Loading from "../../../components/ui/Loading";
 import SearchSelect from "../../../components/ui/SearchSelect";
 import EmptyState from "../../../components/ui/EmptyState";
+import WhatsAppButton from "../../../components/WhatsAppButton";
+import { firstName } from "../../../lib/whatsapp";
 
 const STATUS_LABEL: Record<PaymentStatus, string> = { pending: "Pendiente", paid: "Pagado", cancelled: "Cancelado" };
 const STATUS_TONE: Record<PaymentStatus, "warn" | "ok" | "bad"> = { pending: "warn", paid: "ok", cancelled: "bad" };
@@ -179,10 +181,18 @@ export default function PaymentsPage() {
                         return <Chip tone={STATUS_TONE[p.status]}>{STATUS_LABEL[p.status]}</Chip>;
                       })()}
                       {p.status === "pending" && (
-                        <div style={{ marginTop: 6 }}>
+                        <div style={{ marginTop: 6, display: "flex", gap: 6, flexWrap: "wrap" }}>
                           <button className="btn" style={{ padding: "5px 10px", fontSize: 13 }} onClick={() => markPaid(p)}>
                             <Check size={13} /> Marcar pagado
                           </button>
+                          {(dueInfo(p).kind === "overdue" || dueInfo(p).kind === "soon") && (
+                            <WhatsAppButton
+                              small
+                              label="Recordar"
+                              phone={clients.find((c) => c.id === p.client_id)?.phone}
+                              text={paymentReminder(clients.find((c) => c.id === p.client_id)?.full_name, p.amount, p.currency, p.due_date, dueInfo(p).kind === "overdue")}
+                            />
+                          )}
                         </div>
                       )}
                     </td>
@@ -621,4 +631,14 @@ function EditPaymentModal({
       <button className="btn" onClick={submit} disabled={saving}>{saving ? "Guardando…" : "Guardar cambios"}</button>
     </Modal>
   );
+}
+
+/** Recordatorio de pago por WhatsApp. */
+function paymentReminder(fullName: string | undefined, amount: number, currency: string, due: string, overdue: boolean): string {
+  const n = firstName(fullName);
+  const when = new Date(due + "T12:00:00").toLocaleDateString("es", { day: "numeric", month: "long" });
+  const money = `${currency} ${Number(amount).toLocaleString("es")}`;
+  return overdue
+    ? `Hola${n ? ` ${n}` : ""}! Te recuerdo que tu pago de ${money}, que vencía el ${when}, todavía está pendiente. Cualquier cosa me avisas. ¡Gracias!`
+    : `Hola${n ? ` ${n}` : ""}! Te recuerdo que tu pago de ${money} vence el ${when}. ¡Gracias!`;
 }

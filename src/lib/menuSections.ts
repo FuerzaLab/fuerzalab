@@ -18,7 +18,6 @@ export const OPTIONAL_SECTIONS: { to: string; label: string; hint: string }[] = 
   { to: paths.trainerWellness, label: "Bienestar", hint: "Cómo llegan tus alumnos a entrenar" },
   { to: paths.trainerProgressPhotos, label: "Fotos", hint: "Fotos de progreso de tus alumnos" },
   { to: paths.trainerReports, label: "Reportes", hint: "La evolución de cada alumno en gráficos" },
-  { to: paths.trainerSuggestions, label: "Sugerencias", hint: "Recomendaciones calculadas por la app" },
   { to: paths.trainerPayments, label: "Pagos", hint: "Planes y cobros de tus alumnos" },
   { to: paths.trainerTeam, label: "Equipo", hint: "Asistentes que trabajan contigo" },
 ];

@@ -32,6 +32,9 @@ import { paths } from "../../../routes/paths";
 import Loading from "../../../components/ui/Loading";
 import { normalizeHeightCm, parseHeightCm } from "../../../services/assessments";
 import { ClientGymUnitsField } from "../../../components/GymUnitsSettings";
+import WhatsAppButton from "../../../components/WhatsAppButton";
+import { firstName } from "../../../lib/whatsapp";
+import { supabase } from "../../../lib/supabase";
 
 const STATUS_LABEL: Record<ClientStatus, string> = {
   prospect: "Prospecto",
@@ -159,6 +162,7 @@ export default function ClientDetail() {
         <div>
           <h1 style={{ marginBottom: 4 }}>{client.full_name}</h1>
           <p className="note">{client.email || "Sin correo registrado"}</p>
+          <ClientPhoneField client={client} onSaved={(phone) => setClient((c) => (c ? { ...c, phone } : c))} />
         </div>
         <div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
           <Chip tone={STATUS_TONE[client.status]}>{STATUS_LABEL[client.status]}</Chip>
@@ -339,7 +343,7 @@ export default function ClientDetail() {
       {showIntake && intake && (
         <Modal title="Formulario de ingreso" onClose={() => setShowIntake(false)} wide>
           <div ref={intakeRef}>
-            <IntakeFormView data={intake} clientName={client.full_name} />
+            <IntakeFormView data={intake} clientName={client.full_name} phone={client.phone} />
           </div>
           <div style={{ display: "flex", gap: 8, marginTop: 16, flexWrap: "wrap" }}>
             <button
@@ -570,6 +574,43 @@ function ClientNotesPanel({ clientId, organizationId, trainerId }: { clientId: s
           </div>
         )}
       </div>
+    </div>
+  );
+}
+
+/** Celular del alumno (WhatsApp): se ve, se corrige y abre WhatsApp con un toque. */
+function ClientPhoneField({ client, onSaved }: { client: ClientRow; onSaved: (phone: string | null) => void }) {
+  const { notify } = useToast();
+  const [editing, setEditing] = useState(false);
+  const [value, setValue] = useState(client.phone ?? "");
+  const save = async () => {
+    const phone = value.trim() || null;
+    const { error } = await supabase.from("clients").update({ phone }).eq("id", client.id);
+    if (error) return notify(error.message);
+    onSaved(phone);
+    setEditing(false);
+    notify("Celular guardado.");
+  };
+  if (editing) {
+    return (
+      <div style={{ display: "flex", gap: 6, alignItems: "center", flexWrap: "wrap", marginTop: 6 }}>
+        <input className="input" type="tel" inputMode="tel" style={{ width: 170, padding: "6px 8px" }} placeholder="Ej. 71234567" value={value} onChange={(e) => setValue(e.target.value)} autoFocus />
+        <button className="btn" style={{ padding: "5px 12px", fontSize: 13 }} onClick={save}>Guardar</button>
+        <button className="btn ghost" style={{ padding: "5px 10px", fontSize: 13 }} onClick={() => setEditing(false)}>Cancelar</button>
+      </div>
+    );
+  }
+  return (
+    <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap", marginTop: 6 }}>
+      {client.phone ? (
+        <>
+          <span className="note">📱 {client.phone}</span>
+          <WhatsAppButton small phone={client.phone} label="Escribir por WhatsApp" text={`Hola ${firstName(client.full_name)}! `} />
+          <button className="link-btn" style={{ fontSize: 12.5 }} onClick={() => setEditing(true)}>Cambiar</button>
+        </>
+      ) : (
+        <button className="link-btn" style={{ fontSize: 13 }} onClick={() => setEditing(true)}>+ Agregar su celular (WhatsApp)</button>
+      )}
     </div>
   );
 }

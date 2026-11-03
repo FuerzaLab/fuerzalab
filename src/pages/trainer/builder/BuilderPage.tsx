@@ -49,6 +49,7 @@ import {
   type WorkoutExerciseRow,
   type BlockKind,
   type StrengthType,
+  listDoneSessions,
 } from "../../../services/sessions";
 import SearchSelect from "../../../components/ui/SearchSelect";
 import { loadInputValue, parseLoadToKg, type LoadUnit } from "../../../lib/units";
@@ -118,10 +119,35 @@ export default function BuilderPage() {
     });
   }, [programId]);
 
+  const [doneSessions, setDoneSessions] = useState<Record<string, string>>({});
+  // Arrastrar las rutinas de la semana para cambiarlas de lugar.
+  const [dragSession, setDragSession] = useState<string | null>(null);
+  const [dragOverSession, setDragOverSession] = useState<string | null>(null);
+  const dropSessionOn = async (targetId: string) => {
+    const from = dragSession;
+    setDragSession(null);
+    setDragOverSession(null);
+    if (!from || from === targetId) return;
+    const ids = sessions.map((x) => x.id);
+    const fromIdx = ids.indexOf(from);
+    const toIdx = ids.indexOf(targetId);
+    ids.splice(fromIdx, 1);
+    ids.splice(toIdx, 0, from);
+    try {
+      await reorderSessions(ids);
+      await loadSessions(weekId);
+    } catch (err: any) {
+      notify(err.message ?? "No pudimos mover esta rutina.");
+    }
+  };
+
   const loadSessions = async (wId: string) => {
     const ss = await listSessions(wId);
     setSessions(ss);
-    setSessionId(ss[0]?.id ?? "");
+    // Se mantiene la rutina abierta si sigue en la semana (al reordenar, por ejemplo).
+    setSessionId((prev) => (ss.some((x) => x.id === prev) ? prev : ss[0]?.id ?? ""));
+    // Rutinas que el alumno ya realizó: quedan en solo lectura.
+    listDoneSessions(ss.map((x) => x.id)).then(setDoneSessions).catch(() => setDoneSessions({}));
 
     const result = await computeWeekStatuses([wId]).catch(() => ({ [wId]: "empty" as WeekStatus }));
     setWeekStatus((prev) => ({ ...prev, ...result }));
@@ -238,7 +264,31 @@ export default function BuilderPage() {
         <>
           <div style={{ display: "flex", flexWrap: "wrap", gap: 8, alignItems: "center", marginBottom: 18 }}>
             {sessions.map((s, i) => (
-              <span key={s.id} className="chip" style={{ background: s.id === sessionId ? "var(--pri)" : "#fff", color: s.id === sessionId ? "#fff" : "var(--muted)", border: "1px solid var(--line)", display: "inline-flex", alignItems: "center", gap: 4 }}>
+              <span
+                key={s.id}
+                className={`chip session-chip${dragOverSession === s.id ? " drag-over" : ""}${dragSession === s.id ? " dragging" : ""}`}
+                draggable
+                title="Arrastra para cambiar de lugar"
+                onDragStart={(e) => {
+                  setDragSession(s.id);
+                  e.dataTransfer.effectAllowed = "move";
+                }}
+                onDragOver={(e) => {
+                  if (!dragSession) return;
+                  e.preventDefault();
+                  setDragOverSession(s.id);
+                }}
+                onDragLeave={() => setDragOverSession((x) => (x === s.id ? null : x))}
+                onDrop={(e) => {
+                  e.preventDefault();
+                  dropSessionOn(s.id);
+                }}
+                onDragEnd={() => {
+                  setDragSession(null);
+                  setDragOverSession(null);
+                }}
+                style={{ background: s.id === sessionId ? "var(--pri)" : "#fff", color: s.id === sessionId ? "#fff" : "var(--muted)", border: "1px solid var(--line)", display: "inline-flex", alignItems: "center", gap: 4 }}
+              >
                 {i > 0 && (
                   <button
                     aria-label={`Mover ${s.name} antes`}
@@ -259,6 +309,7 @@ export default function BuilderPage() {
                   </button>
                 )}
                 <button onClick={() => setSessionId(s.id)} style={{ border: 0, background: "none", color: "inherit", cursor: "pointer", font: "inherit" }}>
+                  {doneSessions[s.id] !== undefined && <span title="Ya realizada: solo lectura" aria-label="Realizada">🔒 </span>}
                   {s.name}
                   {s.day_of_week && <span style={{ opacity: 0.75 }}> · {DAY_OF_WEEK_LABEL[s.day_of_week].slice(0, 3)}</span>}
                 </button>
@@ -296,17 +347,23 @@ export default function BuilderPage() {
                 >
                   <Copy size={12} />
                 </button>
-                <button
-                  aria-label={`Eliminar ${s.name}`}
-                  onClick={async () => {
-                    await deleteSession(s.id);
-                    await loadSessions(weekId);
-                    notify("Rutina eliminada");
-                  }}
-                  style={{ border: 0, background: "none", color: "inherit", cursor: "pointer", display: "inline-flex" }}
-                >
-                  <X size={12} />
-                </button>
+                {doneSessions[s.id] === undefined && (
+                  <button
+                    aria-label={`Eliminar ${s.name}`}
+                    onClick={async () => {
+                      try {
+                        await deleteSession(s.id);
+                        await loadSessions(weekId);
+                        notify("Rutina eliminada");
+                      } catch (err: any) {
+                        notify(err.message ?? "No se pudo eliminar la rutina.");
+                      }
+                    }}
+                    style={{ border: 0, background: "none", color: "inherit", cursor: "pointer", display: "inline-flex" }}
+                  >
+                    <X size={12} />
+                  </button>
+                )}
               </span>
             ))}
             <button
@@ -359,6 +416,7 @@ export default function BuilderPage() {
               muscleById={muscleById}
               onRenamed={() => loadSessions(weekId)}
               onExerciseCreated={(ex) => setExercises((xs) => [ex, ...xs])}
+              doneAt={doneSessions[sessionId]}
             />
           )}
         </>
@@ -394,6 +452,7 @@ function SessionEditor({
   muscleById,
   onRenamed,
   onExerciseCreated,
+  doneAt,
 }: {
   sessionId: string;
   initialSession: SessionRow;
@@ -402,6 +461,8 @@ function SessionEditor({
   muscleById: Record<string, CatalogItem>;
   onRenamed: () => void;
   onExerciseCreated?: (ex: ExerciseRow) => void;
+  /** Si el alumno ya la realizó: fecha. La rutina queda en solo lectura. */
+  doneAt?: string;
 }) {
   const { notify, flashSaved } = useToast();
   const { profile, actingTrainerId, can } = useAuth();
@@ -529,6 +590,28 @@ function SessionEditor({
     setItems((its) => its.filter((it) => it.id !== id));
   };
 
+  // Arrastrar y soltar para reordenar (en computadora; en el celular siguen los botones ▲ ▼).
+  const [dragId, setDragId] = useState<string | null>(null);
+  const [dragOverId, setDragOverId] = useState<string | null>(null);
+  // Solo se arrastra desde el ícono ⋮⋮ (así escribir en los campos no mueve la fila).
+  const [dragArmed, setDragArmed] = useState<string | null>(null);
+  const dropOn = async (targetId: string) => {
+    const from = items.find((it) => it.id === dragId);
+    const to = items.find((it) => it.id === targetId);
+    setDragId(null);
+    setDragOverId(null);
+    if (!from || !to || from.id === to.id || from.block_id !== to.block_id) return; // solo dentro del mismo bloque
+    const ids = items.filter((it) => it.block_id === from.block_id).sort((a, b) => a.sort_order - b.sort_order).map((r) => r.id);
+    ids.splice(ids.indexOf(from.id), 1);
+    ids.splice(ids.indexOf(to.id) + (from.sort_order < to.sort_order ? 1 : 0), 0, from.id);
+    try {
+      await Promise.all(ids.map((rid, i) => updateWorkoutExercise(rid, { sort_order: i })));
+      setItems((its) => its.map((it) => (ids.includes(it.id) ? { ...it, sort_order: ids.indexOf(it.id) } : it)));
+    } catch (e: any) {
+      notify(e.message);
+    }
+  };
+
   const moveItem = async (id: string, direction: -1 | 1) => {
     const moved = items.find((it) => it.id === id);
     if (!moved) return;
@@ -609,8 +692,16 @@ function SessionEditor({
     notify(`"${created.exercise_name}" añadido a ${BLOCK_LABEL[pickBlock]}.`);
   };
 
+  const locked = doneAt !== undefined;
   return (
     <div>
+      {locked && (
+        <div className="locked-banner" role="status">
+          🔒 <b>Esta rutina ya fue realizada{doneAt ? ` el ${new Date(doneAt).toLocaleDateString("es")}` : ""}</b> y queda como historial: no se puede
+          modificar. Para cambiarla, duplícala (ícono de copiar, arriba) o cópiala a la semana siguiente.
+        </div>
+      )}
+      <fieldset disabled={locked} className="locked-fieldset">
       <div className="panel" style={{ marginBottom: 16 }}>
         <div className="bd">
           <label className="field-label">Nombre de la rutina</label>
@@ -780,8 +871,39 @@ function SessionEditor({
                 <tbody>
                   {rows.map((it, i) => (
                     <Fragment key={it.id}>
-                    <tr className="rt-row" style={{ borderTop: "1px solid var(--line)" }}>
+                    <tr
+                      className={`rt-row${dragOverId === it.id ? " drag-over" : ""}${dragId === it.id ? " dragging" : ""}`}
+                      style={{ borderTop: "1px solid var(--line)" }}
+                      draggable={!locked && dragArmed === it.id}
+                      onDragStart={(e) => {
+                        setDragId(it.id);
+                        e.dataTransfer.effectAllowed = "move";
+                      }}
+                      onDragOver={(e) => {
+                        if (!dragId) return;
+                        e.preventDefault();
+                        if (dragOverId !== it.id) setDragOverId(it.id);
+                      }}
+                      onDragLeave={() => dragOverId === it.id && setDragOverId(null)}
+                      onDrop={(e) => {
+                        e.preventDefault();
+                        dropOn(it.id);
+                      }}
+                      onDragEnd={() => {
+                        setDragId(null);
+                        setDragOverId(null);
+                        setDragArmed(null);
+                      }}
+                    >
                       <td className="rt-select" style={{ padding: "8px 10px" }}>
+                        <span
+                          className="drag-handle"
+                          title="Arrastra para cambiar el orden"
+                          onMouseDown={() => setDragArmed(it.id)}
+                          onMouseUp={() => setDragArmed(null)}
+                        >
+                          ⋮⋮
+                        </span>
                         <input type="checkbox" aria-label="Elegir para agrupar" checked={selected.includes(it.id)} onChange={() => toggleSelect(it.id)} />
                       </td>
                       <td className="rt-group" style={{ padding: "8px 10px" }}>
@@ -1027,6 +1149,8 @@ function SessionEditor({
           )}
         </div>
       </div>
+
+      </fieldset>
 
       {showImport && (
         <ImportRoutineModal

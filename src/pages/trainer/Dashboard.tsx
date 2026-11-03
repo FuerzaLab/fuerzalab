@@ -6,7 +6,6 @@ import Chip from "../../components/ui/Chip";
 import { paths } from "../../routes/paths";
 import { listClients, type ClientRow } from "../../services/clients";
 import { loadFeed, dismissItems, FEED_KIND_LABEL, type FeedItem, type FeedKind } from "../../services/dashboardFeed";
-import { computeSuggestions } from "../../services/suggestions";
 import { getTodaysSessionForClient, type TodaysSession } from "../../services/sessions";
 import Loading from "../../components/ui/Loading";
 import Watermark from "../../components/ui/Watermark";
@@ -14,6 +13,8 @@ import ConfirmModal from "../../components/ui/ConfirmModal";
 import InstallAppCard from "../../components/InstallAppCard";
 import { getOnboardingStatus, type OnboardingStatus } from "../../services/trainerHome";
 import WhatsNewBanner from "../../components/WhatsNewBanner";
+import WhatsAppButton from "../../components/WhatsAppButton";
+import { firstName } from "../../lib/whatsapp";
 
 const SESSION_STATUS_LABEL: Record<TodaysSession["status"], string> = {
   pending: "Todavía no la empezó",
@@ -26,12 +27,10 @@ export default function TrainerDashboard() {
   const { profile, can, actingTrainerId } = useAuth();
   // Para un asistente, Sugerencias solo si tiene ese permiso (las Novedades
   // se filtran solas según sus permisos, ver FeedPanel).
-  const showSuggestions = can("analytics");
   const { notify } = useToast();
   const navigate = useNavigate();
   const [clients, setClients] = useState<ClientRow[]>([]);
   const [loading, setLoading] = useState(true);
-  const [suggestionCount, setSuggestionCount] = useState<number | null>(null);
   const [todaysSessions, setTodaysSessions] = useState<TodaysSession[] | null>(null);
   const [pendingFeed, setPendingFeed] = useState<number | null>(null);
 
@@ -45,7 +44,6 @@ export default function TrainerDashboard() {
       })
       .catch((e: any) => notify(e.message))
       .finally(() => setLoading(false));
-    computeSuggestions().then((s) => setSuggestionCount(s.length)).catch(() => setSuggestionCount(null));
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -97,11 +95,6 @@ export default function TrainerDashboard() {
 
           <FeedPanel clients={clients} onCount={setPendingFeed} />
 
-          {showSuggestions && suggestionCount !== null && suggestionCount > 0 && (
-            <p className="note" style={{ cursor: "pointer" }} onClick={() => navigate(paths.trainerSuggestions)}>
-              Hay {suggestionCount} sugerencia{suggestionCount === 1 ? "" : "s"} más esperando — ver Sugerencias.
-            </p>
-          )}
         </>
       )}
     </div>
@@ -110,7 +103,7 @@ export default function TrainerDashboard() {
 
 // --- Novedades ------------------------------------------------------------
 
-const KIND_ORDER: FeedKind[] = ["payment", "record", "measure", "note", "wellness", "skip", "photos", "video"];
+const KIND_ORDER: FeedKind[] = ["payment", "record", "measure", "note", "wellness", "skip", "suggestion", "photos", "video"];
 
 function relDay(iso: string): string {
   const d = new Date(iso);
@@ -141,7 +134,7 @@ function FeedPanel({ clients, onCount }: { clients: ClientRow[]; onCount: (n: nu
       setItems([]);
       return;
     }
-    loadFeed(clients, { logs: can("logs"), assessments: can("assessments"), health: can("health"), files: can("files"), payments: can("payments"), videosFor: can("exercises", "write") ? actingTrainerId : null })
+    loadFeed(clients, { logs: can("logs"), assessments: can("assessments"), health: can("health"), files: can("files"), payments: can("payments"), videosFor: can("exercises", "write") ? actingTrainerId : null, suggestions: can("logs") })
       .then(setItems)
       .catch((e: any) => {
         notify(e.message);
@@ -157,6 +150,10 @@ function FeedPanel({ clients, onCount }: { clients: ClientRow[]; onCount: (n: nu
     if (i.kind === "photos" && can("files")) return paths.trainerProgressPhotos;
     if (i.kind === "payment" && can("payments")) return paths.trainerPayments;
     if (i.kind === "video") return `${paths.trainerExercises}?videos=rotos`;
+    if (i.kind === "suggestion") {
+      if (i.suggestionType === "assessment_due" && can("assessments")) return paths.trainerAssessments;
+      if (i.suggestionType === "stagnation" && can("logs")) return paths.trainerReports;
+    }
     if ((i.kind === "record" || i.kind === "measure") && can("analytics")) return paths.trainerReports;
     return paths.trainerClientDetail(i.clientId);
   };
@@ -219,14 +216,24 @@ function FeedPanel({ clients, onCount }: { clients: ClientRow[]; onCount: (n: nu
                   <div style={{ marginTop: 3 }}>{i.title}</div>
                   {i.detail && <div className="note" style={{ fontSize: 13, marginTop: 2, overflowWrap: "anywhere" }}>{i.detail}</div>}
                 </div>
-                <button
-                  className="btn ghost"
-                  title="Marcar como atendida"
-                  style={{ padding: "5px 10px", fontSize: 12.5, flex: "none" }}
-                  onClick={() => dismiss([i.key])}
-                >
-                  ✓ Atendida
-                </button>
+                <div style={{ display: "flex", gap: 6, flexWrap: "wrap", justifyContent: "flex-end", flex: "none" }}>
+                  {waMessage(i, nameFor(i.clientId)) && (
+                    <WhatsAppButton
+                      small
+                      label="Escribirle"
+                      phone={clients.find((c) => c.id === i.clientId)?.phone}
+                      text={waMessage(i, nameFor(i.clientId))!}
+                    />
+                  )}
+                  <button
+                    className="btn ghost"
+                    title="Marcar como atendida"
+                    style={{ padding: "5px 10px", fontSize: 12.5 }}
+                    onClick={() => dismiss([i.key])}
+                  >
+                    ✓ Atendida
+                  </button>
+                </div>
               </div>
             ))}
           </>
@@ -376,4 +383,16 @@ function FirstSteps({ trainerId }: { trainerId: string }) {
       </div>
     </div>
   );
+}
+
+/** Mensaje de WhatsApp para las novedades que piden hablar con el alumno (pago, rutina saltada, bienestar en rojo). */
+function waMessage(i: FeedItem, clientName: string): string | null {
+  const n = firstName(clientName);
+  const hola = `Hola${n ? ` ${n}` : ""}!`;
+  if (i.kind === "payment") return `${hola} Te recuerdo tu pago pendiente (${i.detail ?? ""}). Cualquier cosa me avisas. ¡Gracias!`;
+  if (i.kind === "skip") return `${hola} Vi que no pudiste hacer tu rutina. ¿Todo bien? Si quieres, la acomodamos para otro día.`;
+  if (i.kind === "suggestion" && (i.suggestionType === "no_logs" || i.suggestionType === "low_adherence"))
+    return `${hola} Hace unos días que no te veo entrenar. ¿Cómo vas? Si quieres, ajustamos tu rutina para que te quede más cómoda.`;
+  if (i.kind === "wellness" && i.tone === "bad") return `${hola} Vi en tu registro de bienestar que hoy no llegas del todo bien. ¿Cómo te sientes? Si hace falta, ajustamos la sesión.`;
+  return null;
 }

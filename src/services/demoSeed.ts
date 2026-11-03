@@ -425,8 +425,16 @@ export async function seedDemo(params: {
       }
     });
   }
+  // Los entrenamientos terminados no admiten series nuevas (part4c_migration.sql):
+  // se cargan primero "en curso", después sus series y recién ahí se marcan terminados.
+  const doneIds = logs.filter((l: any) => l.status === "completed").map((l: any) => l.id as string);
+  for (const l of logs as any[]) if (l.status === "completed") l.status = "in_progress";
   await insertAll("workout_logs", logs);
   await insertAll("workout_set_logs", setLogs, 500);
+  for (let i = 0; i < doneIds.length; i += 200) {
+    const { error } = await supabase.from("workout_logs").update({ status: "completed" }).in("id", doneIds.slice(i, i + 200));
+    if (error) throw error;
+  }
 
   // Evaluaciones ------------------------------------------------------------
   say("Cargando evaluaciones y medidas…");

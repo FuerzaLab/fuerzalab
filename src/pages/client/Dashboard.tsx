@@ -24,6 +24,7 @@ import InstallAppCard from "../../components/InstallAppCard";
 import { getMyTrainerName, getMonthlySessionCounts, listMyRecentRecords, describeRecord, type MyRecord } from "../../services/clientHome";
 import { useOrgBrand } from "../../hooks/useOrgBrand";
 import WhatsNewBanner from "../../components/WhatsNewBanner";
+import AddPhoneCard from "../../components/AddPhoneCard";
 
 const SESSION_STATUS_LABEL: Record<TodaysSession["status"], string> = {
   pending: "Todavía no la empezaste",
@@ -124,6 +125,7 @@ export default function ClientDashboard() {
       <p className="note" style={{ marginBottom: 20 }}>Esto es lo que te toca hoy.</p>
 
       <WhatsNewBanner />
+      <AddPhoneCard />
 
       {showWelcome && (
         <div className="welcome-card">

@@ -737,3 +737,15 @@ export async function copyWeek(
   }
   void programId;
 }
+
+/** Rutinas (sesiones) que el alumno ya realizó: id → fecha en que la terminó. */
+export async function listDoneSessions(sessionIds: string[]): Promise<Record<string, string>> {
+  if (!sessionIds.length) return {};
+  const { data, error } = await supabase
+    .from("workout_logs")
+    .select("session_id, completed_at")
+    .in("session_id", sessionIds)
+    .eq("status", "completed");
+  if (error) return {};
+  return Object.fromEntries((data ?? []).map((r: any) => [r.session_id as string, (r.completed_at as string) ?? ""]));
+}

@@ -21,6 +21,8 @@ import {
 import SearchSelect from "../../../components/ui/SearchSelect";
 import EmptyState from "../../../components/ui/EmptyState";
 import { formatLoad } from "../../../lib/units";
+import { STARTER_TEMPLATES, installStarterTemplates } from "../../../services/starterTemplates";
+import Chip from "../../../components/ui/Chip";
 
 export default function TemplatesPage() {
   const { profile, actingTrainerId } = useAuth();
@@ -34,6 +36,27 @@ export default function TemplatesPage() {
   const [deleting, setDeleting] = useState<ProgramRow | null>(null);
   const [deletingLoose, setDeletingLoose] = useState<WorkoutTemplateRow | null>(null);
   const [applyingDay, setApplyingDay] = useState<{ template: WorkoutTemplateRow; day: WorkoutTemplateSessionRow } | null>(null);
+  const [installing, setInstalling] = useState(false);
+  const starterNames = new Set(STARTER_TEMPLATES.map((t) => t.name));
+  const missingStarters = STARTER_TEMPLATES.filter((t) => !looseTemplates.some((x) => x.name === t.name)).length;
+
+  /** Agrega las 4 rutinas de ejemplo (crea los ejercicios que no estén en la biblioteca). */
+  const installStarters = async () => {
+    if (!profile?.organization_id) return;
+    setInstalling(true);
+    try {
+      const r = await installStarterTemplates(profile.organization_id, actingTrainerId ?? profile.id);
+      notify(
+        r.templates
+          ? `Listo: ${r.templates} ${r.templates === 1 ? "rutina de ejemplo" : "rutinas de ejemplo"}${r.exercises ? ` y ${r.exercises} ejercicios nuevos en tu biblioteca` : ""}. Ábrelas, ajústalas y úsalas con tus alumnos.`
+          : "Ya tienes todas las rutinas de ejemplo.",
+      );
+      await load();
+    } catch (e: any) {
+      notify("No se pudieron agregar las rutinas de ejemplo: " + e.message);
+    }
+    setInstalling(false);
+  };
 
   const load = async () => {
     setLoading(true);
@@ -101,15 +124,27 @@ export default function TemplatesPage() {
         Días de entrenamiento guardados por separado — útil para un split que usas con varios clientes, sin tener que armarlo entero cada vez. Para crear uno, ve al Constructor de rutinas y toca "Guardar como plantilla" sobre la rutina que tengas abierta.
       </p>
 
+      {!loading && missingStarters > 0 && looseTemplates.length > 0 && (
+        <div className="import-create-all" style={{ marginBottom: 12 }}>
+          <span style={{ flex: "1 1 240px" }}>¿Quieres rutinas de ejemplo para empezar más rápido? Hay {missingStarters} que todavía no agregaste.</span>
+          <button className="btn" style={{ padding: "6px 12px", fontSize: 13 }} onClick={installStarters} disabled={installing}>
+            {installing ? "Agregando…" : "Agregar rutinas de ejemplo"}
+          </button>
+        </div>
+      )}
       {loading ? null : looseTemplates.length === 0 ? (
-        <EmptyState title="Todavía no guardaste ninguna rutina suelta">
-          Para guardar un día de entrenamiento y reutilizarlo con otros alumnos, usa "Guardar como plantilla" en el
-          Constructor de rutinas.
+        <EmptyState
+          title="Empieza con rutinas de ejemplo"
+          action={{ label: installing ? "Agregando…" : "Agregar 4 rutinas de ejemplo", onClick: () => !installing && installStarters() }}
+        >
+          Fuerza para principiantes (3 días), hipertrofia torso/pierna (4 días), tren inferior (2 días) y full body para poco
+          tiempo (2 días). Las aplicas a un alumno y las ajustas. También puedes guardar las tuyas con "Guardar como plantilla"
+          en el Constructor de rutinas.
         </EmptyState>
       ) : (
         <div style={{ display: "grid", gap: 12 }}>
           {looseTemplates.map((t) => (
-            <LooseTemplateCard key={t.id} template={t} onDelete={() => setDeletingLoose(t)} onApplyDay={(day) => setApplyingDay({ template: t, day })} />
+            <LooseTemplateCard key={t.id} template={t} isStarter={starterNames.has(t.name)} onDelete={() => setDeletingLoose(t)} onApplyDay={(day) => setApplyingDay({ template: t, day })} />
           ))}
         </div>
       )}
@@ -177,10 +212,12 @@ export default function TemplatesPage() {
 
 function LooseTemplateCard({
   template,
+  isStarter,
   onDelete,
   onApplyDay,
 }: {
   template: WorkoutTemplateRow;
+  isStarter?: boolean;
   onDelete: () => void;
   onApplyDay: (day: WorkoutTemplateSessionRow) => void;
 }) {
@@ -205,9 +242,10 @@ function LooseTemplateCard({
       <div className="bd">
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 10 }}>
           <div>
-            <b>{template.name}</b>
+            <b>{template.name}</b> {isStarter && <Chip tone="pri">Ejemplo</Chip>}
+            {template.description && <div className="note" style={{ fontSize: 13 }}>{template.description}</div>}
             <div className="note">
-              {days ? `${days.length} día${days.length === 1 ? "" : "s"}` : "…"}
+              {days ? `${days.length} día${days.length === 1 ? "" : "s"}` : ""}
               {template.visibility === "organization" ? " · Compartida con tu equipo" : ""}
             </div>
           </div>

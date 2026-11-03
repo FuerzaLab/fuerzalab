@@ -30,6 +30,10 @@ export default function Settings() {
     try {
       const { error } = await supabase.from("profiles").update({ full_name: fullName.trim(), phone: phone || null }).eq("id", profile.id);
       if (error) throw error;
+      // El alumno: su celular también va a su ficha, que es la que usa su entrenador para escribirle por WhatsApp.
+      if (profile.role === "client") {
+        await supabase.from("clients").update({ phone: phone || null }).eq("profile_id", profile.id);
+      }
       await refreshProfile();
       notify("Datos actualizados.");
     } catch (e: any) {
@@ -68,8 +72,8 @@ export default function Settings() {
         <div className="bd">
           <label className="field-label">Nombre completo</label>
           <input className="input" style={{ marginBottom: 12 }} value={fullName} onChange={(e) => setFullName(e.target.value)} />
-          <label className="field-label">Teléfono</label>
-          <input className="input" style={{ marginBottom: 16 }} value={phone} onChange={(e) => setPhone(e.target.value)} />
+          <label className="field-label">Celular (WhatsApp)</label>
+          <input className="input" type="tel" inputMode="tel" placeholder="Ej. 71234567" style={{ marginBottom: 16 }} value={phone} onChange={(e) => setPhone(e.target.value)} />
           <label className="field-label">Correo electrónico</label>
           <p className="note" style={{ marginBottom: 16 }}>{profile.email} (no se puede cambiar desde aquí)</p>
           <button className="btn" onClick={saveProfile} disabled={savingProfile}>{savingProfile ? "Guardando…" : "Guardar"}</button>

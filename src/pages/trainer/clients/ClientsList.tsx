@@ -18,6 +18,10 @@ import { paths } from "../../../routes/paths";
 import Loading from "../../../components/ui/Loading";
 import IntakeFormView from "../../../components/IntakeFormView";
 import EmptyState from "../../../components/ui/EmptyState";
+import WhatsAppButton from "../../../components/WhatsAppButton";
+import { inviteMessage } from "../../../lib/whatsapp";
+import BulkInviteModal from "./BulkInviteModal";
+import { firstName } from "../../../lib/whatsapp";
 
 const STATUS_LABEL: Record<ClientStatus, string> = {
   prospect: "Prospecto",
@@ -43,6 +47,7 @@ export default function ClientsList() {
   const [query, setQuery] = useState("");
   const [filter, setFilter] = useState<"all" | ClientStatus>("all");
   const [showInvite, setShowInvite] = useState(false);
+  const [showBulk, setShowBulk] = useState(false);
   const [toArchive, setToArchive] = useState<ClientRow | null>(null);
   const [lastSignIn, setLastSignIn] = useState<Record<string, string | null>>({});
 
@@ -100,9 +105,12 @@ export default function ClientsList() {
         </div>
         {/* Invitar clientes nuevos queda reservado al entrenador (la base de datos tampoco se lo permite al staff). */}
         {profile.role === "trainer" && (
-          <button className="btn" onClick={() => setShowInvite(true)}>
-            <UserPlus size={16} /> Invitar cliente
-          </button>
+          <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+            <button className="btn ghost" onClick={() => setShowBulk(true)}>Cargar varios</button>
+            <button className="btn" onClick={() => setShowInvite(true)}>
+              <UserPlus size={16} /> Invitar cliente
+            </button>
+          </div>
         )}
       </div>
 
@@ -160,6 +168,7 @@ export default function ClientsList() {
                     >
                       <b>{c.full_name}</b>
                       {c.email && <div className="note">{c.email}</div>}
+                      {c.phone && <div className="note">📱 {c.phone}</div>}
                     </td>
                     <td style={{ padding: "11px 16px" }}>
                       <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
@@ -179,6 +188,9 @@ export default function ClientsList() {
                     </td>
                     <td style={{ padding: "11px 16px" }}>
                       <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
+                        {c.phone && (
+                          <WhatsAppButton small phone={c.phone} label="WhatsApp" text={`Hola ${firstName(c.full_name)}! `} />
+                        )}
                         {c.status !== "active" && (
                           <button className="btn ghost" style={{ padding: "5px 10px", fontSize: 13 }} onClick={() => changeStatus(c, "active")}>
                             Reactivar
@@ -241,6 +253,15 @@ export default function ClientsList() {
         />
       )}
 
+      {showBulk && (
+        <BulkInviteModal
+          organizationId={profile.organization_id!}
+          trainerId={profile.id}
+          onClose={() => setShowBulk(false)}
+          onCreated={(cs) => setClients((prev) => [...cs, ...prev])}
+        />
+      )}
+
       {toArchive && (
         <ConfirmModal
           title="Dar de baja"
@@ -273,6 +294,7 @@ function InviteClientModal({
   const [showBlankForm, setShowBlankForm] = useState(false);
   const [fullName, setFullName] = useState("");
   const [email, setEmail] = useState("");
+  const [phone, setPhone] = useState("");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
   const [code, setCode] = useState<string | null>(null);
@@ -290,6 +312,7 @@ function InviteClientModal({
         trainerId,
         fullName: fullName.trim(),
         email: email.trim(),
+        phone: phone.trim(),
       });
       onCreated(client);
       setCode(inviteCode);
@@ -315,6 +338,8 @@ function InviteClientModal({
           </p>
           <label className="field-label">Nombre completo</label>
           <input className="input" style={{ marginBottom: 12 }} value={fullName} onChange={(e) => setFullName(e.target.value)} autoFocus />
+          <label className="field-label">WhatsApp (opcional, para mandarle la invitación con un toque)</label>
+          <input className="input" style={{ marginBottom: 12 }} inputMode="tel" placeholder="Ej. 71234567" value={phone} onChange={(e) => setPhone(e.target.value)} />
           <label className="field-label">Email (opcional, fija el código a ese correo)</label>
           <input className="input" style={{ marginBottom: 16 }} value={email} onChange={(e) => setEmail(e.target.value)} />
           {error && <p className="error-text" style={{ marginBottom: 12 }}>{error}</p>}
@@ -340,16 +365,24 @@ function InviteClientModal({
             {code}
           </div>
           <p className="note" style={{ wordBreak: "break-all", marginBottom: 16 }}>{link}</p>
-          <button
-            className="btn"
-            onClick={() => {
-              navigator.clipboard?.writeText(link);
-              notify("Enlace copiado");
-              onClose();
-            }}
-          >
-            <Copy size={16} /> Copiar enlace y cerrar
-          </button>
+          <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+            <WhatsAppButton
+              primary
+              phone={phone}
+              label="Enviar por WhatsApp"
+              text={inviteMessage(fullName, link)}
+            />
+            <button
+              className="btn ghost"
+              onClick={() => {
+                navigator.clipboard?.writeText(link);
+                notify("Enlace copiado");
+                onClose();
+              }}
+            >
+              <Copy size={16} /> Copiar enlace y cerrar
+            </button>
+          </div>
         </>
       )}
     </Modal>

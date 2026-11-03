@@ -59,7 +59,7 @@ function Field({ label, value, blank, options, wide }: { label: string; value?: 
   );
 }
 
-export default function IntakeFormView({ data, clientName }: { data?: ClientProfileRow | null; clientName?: string }) {
+export default function IntakeFormView({ data, clientName, phone }: { data?: ClientProfileRow | null; clientName?: string; phone?: string | null }) {
   const blank = !data;
   const d = data ?? null;
   const parq = d?.par_q ?? null;
@@ -80,6 +80,7 @@ export default function IntakeFormView({ data, clientName }: { data?: ClientProf
 
       <Section title="Datos personales">
         <div className="intake-grid">
+          <Field label="Celular (WhatsApp)" blank={blank} value={phone} />
           <Field label="Fecha de nacimiento" blank={blank} value={d?.birth_date ? `${fmtDate(d.birth_date)} (${age(d.birth_date)} años)` : null} />
           <Field label="Sexo" blank={blank} options={["Femenino", "Masculino", "Otro"]} value={d?.sex ? SEX[d.sex] : null} />
           <Field label="Estatura" blank={blank} value={d?.height_cm ? `${normalizeHeightCm(d.height_cm)} cm` : null} />

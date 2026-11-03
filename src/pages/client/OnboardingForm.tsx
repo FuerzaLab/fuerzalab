@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "../../contexts/AuthContext";
 import { useToast } from "../../contexts/ToastContext";
@@ -10,6 +10,7 @@ import {
   type ParQAnswers,
 } from "../../services/clients";
 import { parseHeightCm } from "../../services/assessments";
+import { supabase } from "../../lib/supabase";
 
 export default function OnboardingForm({ clientId, onDone }: { clientId: string; onDone: () => void }) {
   const { profile, signOut } = useAuth();
@@ -48,6 +49,13 @@ export default function OnboardingForm({ clientId, onDone }: { clientId: string;
   const [sessionDuration, setSessionDuration] = useState("");
   const [equipmentAccess, setEquipmentAccess] = useState("");
   const [preferredTime, setPreferredTime] = useState("");
+  // Su propio celular (WhatsApp): se guarda en su ficha, para que el entrenador pueda escribirle.
+  const [myPhone, setMyPhone] = useState("");
+  useEffect(() => {
+    supabase.from("clients").select("phone").eq("id", clientId).maybeSingle().then(({ data }) => {
+      if (data?.phone) setMyPhone(data.phone as string);
+    });
+  }, [clientId]);
   const [emergencyName, setEmergencyName] = useState("");
   const [emergencyPhone, setEmergencyPhone] = useState("");
   const [emergencyRelationship, setEmergencyRelationship] = useState("");
@@ -59,11 +67,14 @@ export default function OnboardingForm({ clientId, onDone }: { clientId: string;
     setSecondaryGoals((gs) => (gs.includes(g) ? gs.filter((x) => x !== g) : [...gs, g]));
 
   const submit = async () => {
+    if (!myPhone.trim()) return setError("Escribe tu número de celular, para que tu entrenador pueda contactarte.");
     if (!mainGoal) return setError("Elige tu objetivo principal.");
     if (!consent) return setError("Necesitamos que aceptes el consentimiento para continuar.");
     setError("");
     setSaving(true);
     try {
+      const { error: phoneError } = await supabase.from("clients").update({ phone: myPhone.trim() }).eq("id", clientId);
+      if (phoneError) throw phoneError;
       await submitOnboarding(clientId, {
         birth_date: birthDate || null,
         sex: (sex || null) as any,
@@ -103,6 +114,10 @@ export default function OnboardingForm({ clientId, onDone }: { clientId: string;
         </p>
 
         <h3 style={{ marginBottom: 10 }}>Datos personales</h3>
+        <div style={{ marginBottom: 12, maxWidth: 320 }}>
+          <label className="field-label">Tu celular (WhatsApp)</label>
+          <input className="input" type="tel" inputMode="tel" placeholder="Ej. 71234567" value={myPhone} onChange={(e) => setMyPhone(e.target.value)} autoComplete="tel" />
+        </div>
         <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(150px,1fr))", gap: 12, marginBottom: 20 }}>
           <div>
             <label className="field-label">Fecha de nacimiento</label>

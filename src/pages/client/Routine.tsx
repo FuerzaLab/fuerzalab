@@ -289,6 +289,15 @@ export function TrainSession({ sessionId, onExit, backLabel = "Volver a mi rutin
   const [rpe, setRpe] = useState("");
   const [comments, setComments] = useState("");
   const [celebration, setCelebration] = useState<MyRecord[] | null>(null);
+  // Resumen al terminar: duración, series, reps, volumen y comparación con la última vez.
+  const [summary, setSummary] = useState<null | {
+    minutes: number;
+    sets: number;
+    reps: number;
+    volumeKg: number;
+    prevVolumeKg: number | null;
+    exercises: number;
+  }>(null);
   const [saving, setSaving] = useState(false);
   const [restTotal, setRestTotal] = useState(0);
   const [restRemaining, setRestRemaining] = useState(0);
@@ -401,39 +410,74 @@ export function TrainSession({ sessionId, onExit, backLabel = "Volver a mi rutin
     setSaving(true);
     try {
       await completeWorkout({ workoutLogId: log.id, sessionRpe: rpe ? Number(rpe) : null, comments, startedAt: log.started_at });
-      // ¿Batió algún récord en esta sesión? Si sí, se celebra antes de salir.
-      const recs = await listRecordsForWorkout(log.id).catch((): MyRecord[] => []);
-      if (recs.length > 0) {
-        setCelebration(recs);
-      } else {
-        notify("¡Sesión completada! Buen trabajo.");
-        onExit();
+      // Resumen de la sesión (con los datos ya cargados en pantalla; por dentro las cargas están en kg).
+      const done = setLogs.filter((x) => x.completed);
+      const doneExercises = [...new Set(done.map((x) => x.exercise_id))];
+      const volumeKg = done.reduce((t, x) => t + (Number(x.load_kg) || 0) * (x.reps || 0), 0);
+      // La última vez, en los mismos ejercicios que hizo hoy (para comparar parejo).
+      let prevVolumeKg: number | null = 0;
+      let anyPrev = false;
+      for (const exId of doneExercises) {
+        const lp = lastPerf[exId];
+        if (!lp) continue;
+        anyPrev = true;
+        for (const st of Object.values(lp.bySet)) prevVolumeKg += (Number(st.loadKg) || 0) * (st.reps || 0);
       }
+      if (!anyPrev) prevVolumeKg = null;
+      setSummary({
+        minutes: log.started_at ? Math.max(1, Math.round((Date.now() - new Date(log.started_at).getTime()) / 60000)) : 0,
+        sets: done.length,
+        reps: done.reduce((t, x) => t + (x.reps || 0), 0),
+        volumeKg,
+        prevVolumeKg,
+        exercises: doneExercises.length,
+      });
+      // ¿Batió algún récord en esta sesión? Se celebra en el mismo resumen.
+      const recs = await listRecordsForWorkout(log.id).catch((): MyRecord[] => []);
+      setCelebration(recs);
     } catch (e: any) {
       notify(e.message);
     }
     setSaving(false);
   };
 
-  if (celebration) {
+  if (summary) {
+    const recs = celebration ?? [];
+    const fmt = (n: number) => Math.round(n).toLocaleString("es");
+    const delta = summary.prevVolumeKg && summary.prevVolumeKg > 0 ? Math.round(((summary.volumeKg - summary.prevVolumeKg) / summary.prevVolumeKg) * 100) : null;
     return (
       <div className="page">
-        <div className="panel celebrate">
-          <div className="bd" style={{ padding: "28px 22px" }}>
-            <div className="burst">🏆</div>
-            <h2 style={{ margin: "10px 0 4px" }}>
-              {celebration.length === 1 ? "¡Nuevo récord!" : `¡${celebration.length} récords nuevos!`}
+        <div className={`panel${recs.length ? " celebrate" : ""}`}>
+          <div className="bd" style={{ padding: "26px 22px" }}>
+            {recs.length > 0 && <div className="burst">🏆</div>}
+            <h2 style={{ margin: "6px 0 4px" }}>
+              {recs.length === 0 ? "¡Sesión completada!" : recs.length === 1 ? "¡Nuevo récord!" : `¡${recs.length} récords nuevos!`}
             </h2>
-            <p className="note" style={{ marginTop: 0 }}>Sesión completada. Hoy superaste tu mejor marca en:</p>
-            <div style={{ display: "grid", gap: 10, textAlign: "left", margin: "16px 0 20px" }}>
-              {celebration.map((r) => (
+            <p className="note" style={{ marginTop: 0 }}>Así te fue hoy:</p>
+            <div className="session-summary">
+              {summary.minutes > 0 && <div><b>{summary.minutes}</b><span>minutos</span></div>}
+              <div><b>{summary.sets}</b><span>{summary.sets === 1 ? "serie" : "series"}</span></div>
+              <div><b>{fmt(summary.reps)}</b><span>repeticiones</span></div>
+              <div>
+                <b>{fmt(summary.volumeKg)} kg</b>
+                <span>levantados en total</span>
+                {delta !== null && (
+                  <em className={delta >= 0 ? "up" : "down"}>
+                    {delta === 0 ? "igual que la última vez" : `${delta > 0 ? "▲" : "▼"} ${Math.abs(delta)}% vs la última vez`}
+                  </em>
+                )}
+              </div>
+            </div>
+            {recs.length > 0 && <p className="note" style={{ margin: "14px 0 0" }}>Hoy superaste tu mejor marca en:</p>}
+            <div style={{ display: "grid", gap: 10, textAlign: "left", margin: recs.length ? "10px 0 20px" : "18px 0 0" }}>
+              {recs.map((r) => (
                 <div key={r.id} style={{ background: "var(--ok-soft)", borderRadius: 9, padding: "10px 12px" }}>
                   <b>{r.exercise_name}</b>
                   <div className="note" style={{ fontSize: 13 }}>{describeRecord(r)}</div>
                 </div>
               ))}
             </div>
-            <button className="btn" style={{ width: "100%" }} onClick={onExit}>¡Genial!</button>
+            <button className="btn" style={{ width: "100%", marginTop: recs.length ? 0 : 18 }} onClick={onExit}>{recs.length ? "¡Genial!" : "Listo"}</button>
           </div>
         </div>
       </div>

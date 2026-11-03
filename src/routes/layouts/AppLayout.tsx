@@ -34,6 +34,7 @@ import Brand from "../../components/ui/Brand";
 import DemoGate from "../../components/DemoGate";
 import ScreenIntro from "../../components/ScreenIntro";
 import BillingBanner from "../../components/BillingBanner";
+import QuickSearch from "../../components/QuickSearch";
 import PageLoading from "../../components/ui/PageLoading";
 import { useIsStudioOwner } from "../../hooks/useIsStudioOwner";
 import { useWhatsNew } from "../../hooks/useWhatsNew";
@@ -73,7 +74,6 @@ const NAV: Record<Role, NavItem[]> = {
     { to: paths.trainerProgressPhotos, label: "Fotos", icon: Camera, group: "Entrenamiento" },
 
     { to: paths.trainerReports, label: "Reportes", icon: FileText, group: "Seguimiento" },
-    { to: paths.trainerSuggestions, label: "Sugerencias", icon: Lightbulb, group: "Seguimiento" },
 
     { to: paths.trainerPayments, label: "Pagos", icon: CreditCard, group: "Negocio" },
     { to: paths.trainerStudio, label: "Tu estudio", icon: Building2, group: "Negocio" },
@@ -276,6 +276,7 @@ function TrainerLauncherShell({
     <div className="shell-launcher">
       <header className="launcher-topbar">
         <Brand />
+        <QuickSearch sections={items.map((i) => ({ to: i.to, label: i.label }))} />
         <button className="menu-trigger" aria-expanded={open} onClick={() => setOpen((o) => !o)}>
           <Menu size={17} /> Menú
           {unseenCount > 0 && <span className="wn-dot" aria-label="Hay novedades en Qué hay de nuevo" />}

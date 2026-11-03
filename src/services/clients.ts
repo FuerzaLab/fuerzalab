@@ -194,6 +194,8 @@ export async function createClientWithInvite(params: {
   trainerId: string;
   fullName: string;
   email: string;
+  /** Teléfono / WhatsApp (opcional). */
+  phone?: string;
 }): Promise<{ client: ClientRow; code: string }> {
   const { data: client, error: clientError } = await supabase
     .from("clients")
@@ -202,6 +204,7 @@ export async function createClientWithInvite(params: {
       trainer_id: params.trainerId,
       full_name: params.fullName,
       email: params.email || null,
+      phone: params.phone?.trim() || null,
       status: "prospect",
     })
     .select()
