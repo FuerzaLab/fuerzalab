@@ -397,3 +397,18 @@ select.input:hover { border-color: var(--pri); }
 .session-chip { cursor: grab; }
 .session-chip.dragging { opacity: .45; }
 .session-chip.drag-over { box-shadow: -3px 0 0 var(--pri); }
+
+/* Rutinas fijas */
+.fixed-mode-bar { display: flex; justify-content: space-between; align-items: center; gap: 12px; flex-wrap: wrap; background: #fff; border: 1px solid var(--line); border-radius: 12px; padding: 12px 16px; margin-bottom: 14px; font-size: 14px; }
+.fixed-day { display: inline-flex; align-items: center; border: 1px solid var(--line); background: #fff; border-radius: 99px; overflow: hidden; }
+.fixed-day > button { border: 0; background: none; font: inherit; font-weight: 700; font-size: 14px; color: var(--muted); padding: 8px 14px; cursor: pointer; }
+.fixed-day > button.x { padding: 8px 10px 8px 2px; }
+.fixed-day.on { background: var(--pri); border-color: var(--pri); }
+.fixed-day.on > button { color: #fff; }
+.fixed-day.add { border-style: dashed; color: var(--pri); font-weight: 700; font-size: 14px; padding: 8px 16px; cursor: pointer; }
+.fixed-add-form { display: inline-flex; gap: 6px; align-items: center; flex-wrap: wrap; }
+.mode-opts { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 14px; margin: 16px 0; }
+.mode-opt { display: grid; gap: 6px; text-align: left; border: 2px solid var(--line); background: #fff; border-radius: 14px; padding: 16px; cursor: pointer; font: inherit; color: var(--ink); }
+.mode-opt.sel { border-color: var(--pri); background: var(--pri-soft); }
+.mode-opt .ic { font-size: 26px; }
+.mode-opt b { font-size: 18px; }

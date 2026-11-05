@@ -153,6 +153,8 @@ export interface TodaysSession {
 export async function getTodaysSessionForClient(clientId: string): Promise<TodaysSession | null> {
   const program = await getActiveProgramForClient(clientId);
   if (!program) return null;
+  // Rutinas fijas: que siempre haya semanas por delante (las crea la base de datos).
+  if ((program as any).plan_mode === "fixed") await supabase.rpc("fixed_extend", { p_program: program.id, p_weeks_ahead: 8 }).then(() => null, () => null);
 
   const weeks = await listWeeks(program.id);
   const week1 = weeks.find((w) => w.week_number === 1);
@@ -192,6 +194,7 @@ export interface NextSession {
 export async function getNextScheduledSessionForClient(clientId: string): Promise<NextSession | null> {
   const program = await getActiveProgramForClient(clientId);
   if (!program) return null;
+  if ((program as any).plan_mode === "fixed") await supabase.rpc("fixed_extend", { p_program: program.id, p_weeks_ahead: 8 }).then(() => null, () => null);
 
   const weeks = await listWeeks(program.id);
   const week1 = weeks.find((w) => w.week_number === 1);

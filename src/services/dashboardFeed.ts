@@ -13,7 +13,7 @@ import { wellnessScore, lowFields, WELLNESS_FIELD_LABEL, type WellnessLogRow } f
  * lo que se guarda al marcarla como atendida.
  */
 
-export type FeedKind = "record" | "measure" | "note" | "skip" | "wellness" | "photos" | "payment" | "video" | "suggestion";
+export type FeedKind = "joined" | "intake" | "record" | "measure" | "note" | "skip" | "wellness" | "photos" | "payment" | "video" | "suggestion";
 
 export interface FeedItem {
   key: string;
@@ -37,6 +37,8 @@ export const FEED_KIND_LABEL: Record<FeedKind, string> = {
   skip: "Rutina saltada",
   wellness: "Bienestar",
   photos: "Fotos",
+  joined: "Alumno nuevo",
+  intake: "Formulario",
   payment: "Pago",
   video: "Video",
   suggestion: "Sugerencia",
@@ -275,6 +277,55 @@ async function wellnessItems(): Promise<FeedItem[]> {
   return items;
 }
 
+// --- Alumnos que aceptaron la invitación --------------------------------
+
+async function joinedItems(): Promise<FeedItem[]> {
+  // Solo se ven las invitaciones que creó la persona (regla de la base de datos).
+  const { data, error } = await supabase
+    .from("invitations")
+    .select("id, client_id, accepted_at")
+    .eq("status", "accepted")
+    .not("client_id", "is", null)
+    .gte("accepted_at", isoDaysAgo(DAYS));
+  if (error) return [];
+  return (data ?? []).map((r: any) => ({
+    key: `joined:${r.id}`,
+    kind: "joined" as const,
+    clientId: r.client_id,
+    at: r.accepted_at,
+    title: "Aceptó tu invitación y creó su cuenta",
+    detail: "Ahora le toca completar su formulario de ingreso.",
+    tone: "ok" as const,
+  }));
+}
+
+// --- Formularios de ingreso enviados y sin revisar ----------------------
+
+async function intakeItems(): Promise<FeedItem[]> {
+  const { data, error } = await supabase
+    .from("client_profiles")
+    .select("client_id, submitted_at, reviewed_at, par_q")
+    .not("submitted_at", "is", null)
+    .is("reviewed_at", null)
+    .gte("submitted_at", isoDaysAgo(DAYS));
+  if (error) return [];
+  return (data ?? []).map((r: any) => {
+    const p = r.par_q ?? {};
+    const anyYes = Object.entries(p).some(([k, v]) => k !== "otherDetail" && v === true);
+    return {
+      key: `intake:${r.client_id}:${r.submitted_at}`,
+      kind: "intake" as const,
+      clientId: r.client_id,
+      at: r.submitted_at,
+      title: "Completó su formulario de ingreso",
+      detail: anyYes
+        ? "Respondió «Sí» a alguna pregunta del PAR-Q+: revísalo antes de armarle el plan."
+        : "Revísalo y apruébalo para empezar a armarle su plan.",
+      tone: anyYes ? ("bad" as const) : ("pri" as const),
+    };
+  });
+}
+
 // --- Fotos que subió el cliente ----------------------------------------
 
 async function photoItems(clients: ClientRow[]): Promise<FeedItem[]> {
@@ -408,6 +459,8 @@ export async function loadFeed(
     allow.health ? safe(wellnessItems()) : Promise.resolve([] as FeedItem[]),
     allow.files ? safe(photoItems(clients)) : Promise.resolve([] as FeedItem[]),
     allow.payments ? safe(paymentItems()) : Promise.resolve([] as FeedItem[]),
+    safe(joinedItems()),
+    allow.health ? safe(intakeItems()) : Promise.resolve([] as FeedItem[]),
     allow.videosFor ? safe(videoItems(allow.videosFor)) : Promise.resolve([] as FeedItem[]),
     allow.suggestions ? safe(suggestionItems()) : Promise.resolve([] as FeedItem[]),
   ]);

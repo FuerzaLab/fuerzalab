@@ -43,6 +43,7 @@ import { listRecordsForWorkout, describeRecord, type MyRecord } from "../../serv
 import { formatLoad, loadInputValue, parseLoadToKg, type LoadUnit } from "../../lib/units";
 import { getEffectiveGymUnits, getEquipmentNames, makeUnitResolver } from "../../services/units";
 import VideoEmbed from "../../components/VideoEmbed";
+import { supabase } from "../../lib/supabase";
 
 const STATUS_LABEL: Record<WorkoutLogRow["status"], string> = {
   pending: "Pendiente",
@@ -312,6 +313,8 @@ export function TrainSession({ sessionId, onExit, backLabel = "Volver a mi rutin
   const [setNotesByExercise, setSetNotesByExercise] = useState<Record<string, Record<number, string>>>({});
   // kg o lb para cada ejercicio, según el gimnasio del alumno (ver lib/units.ts).
   const [unitResolver, setUnitResolver] = useState<{ fn: (ex: WorkoutExerciseRow) => LoadUnit }>({ fn: () => "kg" });
+  // Rutinas fijas (part4d): cada serie arranca con lo que hizo la última vez.
+  const [fixedMode, setFixedMode] = useState(false);
   const { profile: authProfile } = useAuth();
 
   useEffect(() => {
@@ -357,6 +360,17 @@ export function TrainSession({ sessionId, onExit, backLabel = "Volver a mi rutin
       Promise.all([getEffectiveGymUnits(l.client_id, authProfile?.organization_id ?? null), getEquipmentNames()])
         .then(([gym, eq]) => setUnitResolver({ fn: makeUnitResolver(gym, eq) }))
         .catch(() => {});
+
+      supabase
+        .from("sessions")
+        .select("program_id")
+        .eq("id", l.session_id)
+        .maybeSingle()
+        .then(async ({ data }) => {
+          if (!data?.program_id) return;
+          const { data: prog } = await supabase.from("programs").select("*").eq("id", data.program_id).maybeSingle();
+          setFixedMode((prog as any)?.plan_mode === "fixed");
+        });
 
       const uniqueExerciseIds = [...new Set(ex.map((e) => e.exercise_id))];
       const perfEntries = await Promise.all(
@@ -533,6 +547,7 @@ export function TrainSession({ sessionId, onExit, backLabel = "Volver a mi rutin
                       setNotesByExercise={setNotesByExercise}
                       unitFor={unitResolver.fn}
                       onStartRest={startRest}
+                      fixedMode={fixedMode}
                     />
                   ) : (
                     g.map((ex) => (
@@ -550,6 +565,7 @@ export function TrainSession({ sessionId, onExit, backLabel = "Volver a mi rutin
                         variations={variations[ex.exercise_id] ?? []}
                         setNotes={setNotesByExercise[ex.id] ?? {}}
                         unit={unitResolver.fn(ex)}
+                        fixedMode={fixedMode}
                       />
                     ))
                   )
@@ -705,6 +721,7 @@ function SupersetTrainer({
   setNotesByExercise,
   unitFor,
   onStartRest,
+  fixedMode = false,
 }: {
   exercises: WorkoutExerciseRow[];
   logFor: (workoutExerciseId: string, setNumber: number) => SetLogRow | undefined;
@@ -719,6 +736,7 @@ function SupersetTrainer({
   setNotesByExercise: Record<string, Record<number, string>>;
   unitFor: (ex: WorkoutExerciseRow) => LoadUnit;
   onStartRest: (seconds: number, anchor: string) => void;
+  fixedMode?: boolean;
 }) {
   // Lo que está escrito en cada ejercicio de cada ronda (reps, carga, RIR),
   // para guardarlo todo junto al tocar "Ronda realizada".
@@ -771,14 +789,14 @@ function SupersetTrainer({
                         <span style={{ flex: 1, minWidth: 120 }}>{ex.exercise_name}</span>
                         <span className="note" style={{ fontSize: 12.5 }}>Obj: {repsTarget}{ex.load_value ? ` @ ${formatLoad(ex.load_value, unitFor(ex))}` : ""}</span>
                         <MiniSetInputs
-                          key={`${ex.id}-${roundNumber}-${unitFor(ex)}`}
+                          key={`${ex.id}-${roundNumber}-${unitFor(ex)}-${fixedMode && lastPerf[ex.exercise_id] ? "p" : "n"}`}
                           inRound
                           register={(fn) => {
                             getters.current[`${ex.id}:${roundNumber}`] = fn;
                           }}
                           exUnit={unitFor(ex)}
                           defaultReps={ex.reps_max ?? ex.reps_min ?? 0}
-                          defaultLoad={ex.load_value}
+                          defaultLoad={prefillLoad(ex.load_value, lastPerf[ex.exercise_id], roundNumber, fixedMode)}
                           defaultRir={ex.rir}
                           existing={existing}
                           onSave={(fields) => onSaveSet(ex, roundNumber, fields)}
@@ -823,6 +841,23 @@ function SupersetTrainer({
       </div>
     </div>
   );
+}
+
+/**
+ * Carga con la que arranca una serie: en rutinas fijas, lo que el alumno hizo
+ * la última vez en esa serie (o en la última serie que tenga); si no, la que
+ * indicó el entrenador.
+ */
+function prefillLoad(prescribed: number | null, perf: LastPerformance | null | undefined, setNumber: number, fixedMode: boolean): number | null {
+  if (!fixedMode || !perf) return prescribed;
+  const same = perf.bySet[setNumber]?.loadKg;
+  if (same != null) return same;
+  const sets = Object.keys(perf.bySet).map(Number).sort((a, b) => b - a);
+  for (const n of sets) {
+    const v = perf.bySet[n]?.loadKg;
+    if (v != null) return v;
+  }
+  return prescribed;
 }
 
 function MiniSetInputs({
@@ -913,6 +948,7 @@ function ExerciseTrainer({
   variations,
   setNotes,
   unit,
+  fixedMode = false,
 }: {
   ex: WorkoutExerciseRow;
   logFor: (workoutExerciseId: string, setNumber: number) => SetLogRow | undefined;
@@ -926,6 +962,7 @@ function ExerciseTrainer({
   variations: ExerciseVariationRow[];
   setNotes: Record<number, string>;
   unit: LoadUnit;
+  fixedMode?: boolean;
 }) {
   const showRestHere = restRemaining > 0 && restAnchor != null && restAnchor.startsWith(`${ex.id}:`);
   const isCardio = ex.duration_min != null || ex.distance_km != null || ex.steps_target != null;
@@ -995,11 +1032,11 @@ function ExerciseTrainer({
               const existing = logFor(ex.id, setNumber);
               return (
                 <SetRow
-                  key={`${setNumber}-${unit}`}
+                  key={`${setNumber}-${unit}-${fixedMode && lastPerf ? "p" : "n"}`}
                   exUnit={unit}
                   setNumber={setNumber}
                   defaultReps={ex.reps_max ?? ex.reps_min ?? 0}
-                  defaultLoad={ex.load_value}
+                  defaultLoad={prefillLoad(ex.load_value, lastPerf, setNumber, fixedMode)}
                   defaultRir={ex.rir}
                   existing={existing}
                   onSave={(fields) => onSaveSet(ex, setNumber, fields)}

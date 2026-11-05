@@ -1,4 +1,5 @@
 import { Fragment, useEffect, useMemo, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { Plus, Trash2, X, Copy, FileUp, ChevronLeft, ChevronRight, ChevronUp, ChevronDown, MessageSquare } from "lucide-react";
 import ImportRoutineModal, { applyImportedRows } from "./ImportRoutineModal";
 import Modal from "../../../components/ui/Modal";
@@ -55,8 +56,13 @@ import SearchSelect from "../../../components/ui/SearchSelect";
 import { loadInputValue, parseLoadToKg, type LoadUnit } from "../../../lib/units";
 import { getDefaultGymUnits, getEffectiveGymUnits, getEquipmentNames, makeUnitResolver } from "../../../services/units";
 import { supabase } from "../../../lib/supabase";
+import FixedRoutinesBuilder from "./FixedRoutinesBuilder";
+import { createFixedProgram } from "../../../services/fixedRoutines";
+import { paths } from "../../../routes/paths";
 
 export default function BuilderPage() {
+  const navigate = useNavigate();
+  const { profile: me, actingTrainerId: meActing } = useAuth();
   const { notify } = useToast();
 
   const [clients, setClients] = useState<ClientRow[]>([]);
@@ -75,6 +81,16 @@ export default function BuilderPage() {
 
   const [exercises, setExercises] = useState<ExerciseRow[]>([]);
   const [muscles, setMuscles] = useState<CatalogItem[]>([]);
+
+  const selectedProgram = programs.find((p) => p.id === programId);
+  const isFixed = (selectedProgram as any)?.plan_mode === "fixed";
+  const [choosingMode, setChoosingMode] = useState<"fixed" | "weekly">("fixed");
+  const [creatingFixed, setCreatingFixed] = useState(false);
+  const reloadPrograms = async (selectId?: string) => {
+    const ps = await listPrograms(clientId);
+    setPrograms(ps);
+    setProgramId(selectId ?? ps[0]?.id ?? "");
+  };
 
   const [autoRegPreview, setAutoRegPreview] = useState<AutoregulationSuggestion[] | null>(null);
   const [autoRegTarget, setAutoRegTarget] = useState<{ fromWeekId: string; toWeek: WeekRow } | null>(null);
@@ -191,12 +207,58 @@ export default function BuilderPage() {
       </div>
 
       {clientId && !programs.length && (
-        <p className="note" style={{ marginBottom: 18 }}>
-          Este cliente todavía no tiene un programa. Créalo primero en "Planificación".
-        </p>
+        <ModeChoice
+          clientName={clients.find((c) => c.id === clientId)?.full_name ?? ""}
+          mode={choosingMode}
+          onMode={setChoosingMode}
+          busy={creatingFixed}
+          onStart={async () => {
+            if (choosingMode === "weekly") {
+              navigate(paths.trainerPrograms);
+              notify("Crea su programa por semanas en Planificación; después vuelve acá para armar cada día.");
+              return;
+            }
+            if (!me) return;
+            setCreatingFixed(true);
+            try {
+              const id = await createFixedProgram({
+                organizationId: me.organization_id!,
+                trainerId: meActing ?? me.id,
+                clientId,
+                clientName: clients.find((c) => c.id === clientId)?.full_name ?? "",
+              });
+              await reloadPrograms(id);
+              notify("Listo: arma el Día A y agrega los días que necesites.");
+            } catch (e: any) {
+              notify(e.message);
+            }
+            setCreatingFixed(false);
+          }}
+        />
       )}
 
-      {weeks.length > 0 && (
+      {isFixed && programId && (
+        <FixedRoutinesBuilder
+          programId={programId}
+          clientName={clients.find((c) => c.id === clientId)?.full_name ?? ""}
+          onSwitchedToWeekly={() => reloadPrograms(programId)}
+          renderEditor={(session, onChanged) => (
+            <SessionEditor
+              key={session.id}
+              sessionId={session.id}
+              initialSession={session}
+              exercises={exercises}
+              muscles={muscles}
+              muscleById={muscleById}
+              onRenamed={onChanged}
+              onExerciseCreated={(ex) => setExercises((xs) => [ex, ...xs])}
+              fixedMode
+            />
+          )}
+        />
+      )}
+
+      {!isFixed && weeks.length > 0 && (
         <>
           <p className="note" style={{ marginBottom: 4 }}>
             Planificación tiene {plannedWeeks} semana{plannedWeeks === 1 ? "" : "s"} en total
@@ -260,7 +322,7 @@ export default function BuilderPage() {
         </>
       )}
 
-      {weekId && (
+      {!isFixed && weekId && (
         <>
           <div style={{ display: "flex", flexWrap: "wrap", gap: 8, alignItems: "center", marginBottom: 18 }}>
             {sessions.map((s, i) => (
@@ -453,6 +515,7 @@ function SessionEditor({
   onRenamed,
   onExerciseCreated,
   doneAt,
+  fixedMode,
 }: {
   sessionId: string;
   initialSession: SessionRow;
@@ -463,6 +526,8 @@ function SessionEditor({
   onExerciseCreated?: (ex: ExerciseRow) => void;
   /** Si el alumno ya la realizó: fecha. La rutina queda en solo lectura. */
   doneAt?: string;
+  /** Rutinas fijas: sin las herramientas de planificación por semanas. */
+  fixedMode?: boolean;
 }) {
   const { notify, flashSaved } = useToast();
   const { profile, actingTrainerId, can } = useAuth();
@@ -1443,5 +1508,46 @@ function NumCell({ value, onChange, small }: { value: number | null; onChange: (
       onChange={(e) => setText(e.target.value)}
       onBlur={() => onChange(text === "" ? null : Number(text.replace(",", ".")) || null)}
     />
+  );
+}
+
+/** Primera vez que se arma algo para un alumno: ¿rutinas fijas o plan por semanas? */
+function ModeChoice({
+  clientName,
+  mode,
+  onMode,
+  onStart,
+  busy,
+}: {
+  clientName: string;
+  mode: "fixed" | "weekly";
+  onMode: (m: "fixed" | "weekly") => void;
+  onStart: () => void;
+  busy: boolean;
+}) {
+  return (
+    <div className="panel mode-choice" style={{ marginBottom: 18 }}>
+      <div className="bd">
+        <h2 style={{ margin: 0 }}>¿Cómo quieres trabajar con {clientName.split(" ")[0] || "este alumno"}?</h2>
+        <p className="note" style={{ margin: "4px 0 0" }}>Puedes cambiarlo más adelante.</p>
+        <div className="mode-opts">
+          <button type="button" className={`mode-opt${mode === "fixed" ? " sel" : ""}`} onClick={() => onMode("fixed")}>
+            <span className="ic">🔁</span>
+            <b>Rutinas fijas</b>
+            <span className="chip ok" style={{ justifySelf: "start" }}>Lo más simple</span>
+            <span className="note">Armas los días (Día A, B, C…) y se repiten cada semana. Sin semanas ni bloques.</span>
+          </button>
+          <button type="button" className={`mode-opt${mode === "weekly" ? " sel" : ""}`} onClick={() => onMode("weekly")}>
+            <span className="ic">📅</span>
+            <b>Plan por semanas</b>
+            <span className="chip pri" style={{ justifySelf: "start" }}>Para planificar</span>
+            <span className="note">Organizas el entrenamiento en semanas y bloques, con progresión de carga.</span>
+          </button>
+        </div>
+        <button className="btn" onClick={onStart} disabled={busy}>
+          {busy ? "Preparando…" : mode === "fixed" ? "Empezar con rutinas fijas" : "Ir a Planificación"}
+        </button>
+      </div>
+    </div>
   );
 }

@@ -22,6 +22,22 @@ export interface ChangelogEntry {
 
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    id: "2026-11-04-feed-joined-intake",
+    date: "2026-11-04",
+    title: "Te avisamos cuando un alumno nuevo se suma",
+    body: "En tus Novedades aparece cuando un alumno acepta tu invitación y crea su cuenta, y cuando completa su formulario de ingreso, para que lo revises y lo apruebes. Si respondió «Sí» a alguna pregunta del PAR-Q+, el aviso aparece en rojo.",
+    for: ["trainer"],
+    link: { label: "Ir a Inicio", to: paths.trainerDashboard },
+  },
+  {
+    id: "2026-11-04-fixed-routines",
+    date: "2026-11-04",
+    title: "Rutinas fijas: sin planificar por semanas",
+    body: "Si no planificas por etapas, elige \"Rutinas fijas\" al armar las rutinas de un alumno: armas los días (Día A, B, C…) y se repiten cada semana, sin semanas ni bloques. Lo que cambies aplica desde la próxima vez, y lo ya entrenado queda en el historial. Además, cada serie le aparece al alumno con la carga que hizo la última vez.",
+    for: ["trainer"],
+    link: { label: "Ir al Constructor", to: paths.trainerBuilder },
+  },
+  {
     id: "2026-11-03-done-routines-locked",
     date: "2026-11-03",
     title: "Las rutinas ya realizadas quedan como historial",
