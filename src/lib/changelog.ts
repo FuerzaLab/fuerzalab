@@ -22,6 +22,13 @@ export interface ChangelogEntry {
 
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    id: "2026-11-05-photo-compare",
+    date: "2026-11-05",
+    title: "Compara tus fotos: antes y después",
+    body: "En Fotos y en Reportes eliges qué fecha comparar con cuál, y las fotos se ven lado a lado por ángulo: frente con frente, perfil con perfil. Arriba ves cuántos días pasaron y, si hubo evaluaciones esos días, cuánto cambiaron tu peso y tu cintura.",
+    for: ["trainer", "client"],
+  },
+  {
     id: "2026-11-04-preview-confirm",
     date: "2026-11-04",
     title: "Mira tu rutina antes de empezar",

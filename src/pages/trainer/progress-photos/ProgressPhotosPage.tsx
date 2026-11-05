@@ -22,6 +22,7 @@ import {
 import Loading from "../../../components/ui/Loading";
 import SearchSelect from "../../../components/ui/SearchSelect";
 import EmptyState from "../../../components/ui/EmptyState";
+import PhotoComparator from "../../../components/PhotoComparator";
 
 export default function ProgressPhotosPage() {
   const { profile } = useAuth();
@@ -107,6 +108,13 @@ export default function ProgressPhotosPage() {
           Las puede subir tu alumno desde su app, o tú en Evaluaciones → "Fotos de progreso", el mismo día que lo mides. Con dos
           fechas, vas a poder compararlas antes y ahora.
         </EmptyState>
+      )}
+
+      {clientId && !loading && sessions.length > 1 && (
+        <div className="panel" style={{ marginBottom: 16 }}>
+          <div className="hd"><h3>Comparar antes y después</h3></div>
+          <div className="bd"><PhotoComparator key={clientId} clientId={clientId} restrictToShared={false} /></div>
+        </div>
       )}
 
       {clientId && !loading && sessions.length > 0 && (

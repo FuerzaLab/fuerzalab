@@ -18,6 +18,7 @@ import {
   type PhotoAngle,
 } from "../../services/progressPhotos";
 import Loading from "../../components/ui/Loading";
+import PhotoComparator from "../../components/PhotoComparator";
 
 export default function ClientProgressPhotos() {
   const { profile } = useAuth();
@@ -77,6 +78,12 @@ export default function ClientProgressPhotos() {
         <p className="note">Todavía no subiste ninguna foto.</p>
       ) : (
         <div style={{ display: "grid", gap: 16 }}>
+          {sessions.length > 1 && (
+            <div className="panel">
+              <div className="hd"><h3>Compara tu antes y después</h3></div>
+              <div className="bd"><PhotoComparator clientId={clientId} restrictToShared={false} /></div>
+            </div>
+          )}
           {sessions.map((s) => (
             <div key={s.key} className="panel">
               <div className="hd"><h3>{s.date ? new Date(s.date).toLocaleDateString("es") : "Sin fecha"}</h3></div>
