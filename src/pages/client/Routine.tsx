@@ -44,6 +44,8 @@ import { formatLoad, loadInputValue, parseLoadToKg, type LoadUnit } from "../../
 import { getEffectiveGymUnits, getEquipmentNames, makeUnitResolver } from "../../services/units";
 import VideoEmbed from "../../components/VideoEmbed";
 import { supabase } from "../../lib/supabase";
+import SessionPreview from "./SessionPreview";
+import { useSearchParams } from "react-router-dom";
 
 const STATUS_LABEL: Record<WorkoutLogRow["status"], string> = {
   pending: "Pendiente",
@@ -66,6 +68,9 @@ export default function ClientRoutine() {
   const [loading, setLoading] = useState(true);
   const [blockedByDailyLimit, setBlockedByDailyLimit] = useState<string | null>(null);
   const [pendingWarning, setPendingWarning] = useState<{ sessionId: string; weekLabel: string } | null>(null);
+  // Vista previa de una rutina antes de empezar (y confirmación al empezar).
+  const [previewSessionId, setPreviewSessionId] = useState<string | null>(null);
+  const [searchParams, setSearchParams] = useSearchParams();
 
   /**
    * No bloquea nada — solo avisa si la semana anterior quedó con rutinas sin
@@ -117,6 +122,14 @@ export default function ClientRoutine() {
   const loadSessions = async (wId: string) => {
     const ss = await listSessions(wId);
     setSessions(ss);
+    // Viene de "Entrenar ahora" del Inicio: abrir esa rutina (vista previa o, si ya estaba empezada, la sesión).
+    const wanted = searchParams.get("s");
+    if (wanted && ss.some((x) => x.id === wanted)) {
+      setSearchParams({}, { replace: true });
+      const st0 = await getSessionStatuses([wanted]);
+      if ((st0[wanted] ?? "pending") === "in_progress") startSession(wanted);
+      else setPreviewSessionId(wanted);
+    }
     const st = await getSessionStatuses(ss.map((s) => s.id));
     setStatuses(st);
     const status: WeekStatus = ss.length === 0 ? "empty" : ss.some((s) => (st[s.id] ?? "pending") !== "pending") ? "started" : "planned";
@@ -174,6 +187,25 @@ export default function ClientRoutine() {
         />
       </div>
     );
+  }
+
+  if (previewSessionId && clientId) {
+    const ps = sessions.find((x) => x.id === previewSessionId);
+    if (ps) {
+      const st = (statuses[ps.id] ?? "pending") as "pending" | "in_progress" | "completed" | "skipped";
+      return (
+        <SessionPreview
+          session={ps}
+          clientId={clientId}
+          status={st}
+          onBack={() => setPreviewSessionId(null)}
+          onStart={() => {
+            setPreviewSessionId(null);
+            startSession(ps.id);
+          }}
+        />
+      );
+    }
   }
 
   if (activeSessionId) {
@@ -236,9 +268,13 @@ export default function ClientRoutine() {
                         {s.day_of_week ? ` · ${DAY_OF_WEEK_LABEL[s.day_of_week]}` : ""}
                       </div>
                     </div>
-                    <button className="btn" onClick={() => startSession(s.id)} disabled={status === "completed"}>
-                      {status === "completed" ? "Completada" : status === "in_progress" ? "Continuar" : "Entrenar"}
-                    </button>
+                    {status === "in_progress" ? (
+                      <button className="btn" onClick={() => startSession(s.id)}>Continuar</button>
+                    ) : status === "completed" ? (
+                      <button className="btn ghost" onClick={() => setPreviewSessionId(s.id)}>Completada · Ver</button>
+                    ) : (
+                      <button className="btn" onClick={() => setPreviewSessionId(s.id)}>Ver y entrenar</button>
+                    )}
                   </div>
                 </div>
               );

@@ -22,6 +22,14 @@ export interface ChangelogEntry {
 
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    id: "2026-11-04-preview-confirm",
+    date: "2026-11-04",
+    title: "Mira tu rutina antes de empezar",
+    body: "Al tocar \"Entrenar ahora\" ves primero todos los ejercicios del día —series, repeticiones, carga, descanso y el video de cada uno— sin empezar nada. Cuando estés listo, \"Empezar entrenamiento\" te pide confirmar, así no empiezas una sesión sin querer.",
+    for: ["client"],
+    link: { label: "Ir a mi rutina", to: paths.clientRoutine },
+  },
+  {
     id: "2026-11-04-feed-joined-intake",
     date: "2026-11-04",
     title: "Te avisamos cuando un alumno nuevo se suma",

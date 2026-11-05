@@ -159,7 +159,7 @@ export default function ClientDashboard() {
                     <div className="note">{SESSION_STATUS_LABEL[todaysSession.status]}</div>
                   </div>
                   {todaysSession.status !== "completed" && (
-                    <button className="btn" onClick={() => navigate(paths.clientRoutine)}>
+                    <button className="btn" onClick={() => navigate(`${paths.clientRoutine}?s=${todaysSession.session.id}`)}>
                       {todaysSession.status === "in_progress" ? "Continuar" : "Entrenar ahora"}
                     </button>
                   )}
@@ -171,7 +171,7 @@ export default function ClientDashboard() {
                     <b className="today-hero-title">{nextSession.session.name}</b>
                   </div>
                   {nextSession.isToday && (
-                    <button className="btn" onClick={() => navigate(paths.clientRoutine)}>Entrenar ahora</button>
+                    <button className="btn" onClick={() => navigate(`${paths.clientRoutine}?s=${nextSession.session.id}`)}>Entrenar ahora</button>
                   )}
                 </div>
               ) : (
