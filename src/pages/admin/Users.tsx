@@ -132,6 +132,7 @@ export default function Users() {
                     <td style={{ padding: "11px 16px" }}>
                       <b>{u.full_name}</b>
                       <div className="note">{u.email}</div>
+                      {u.phone && <div className="note">📱 {u.phone}</div>}
                     </td>
                     <td style={{ padding: "11px 16px" }}>{ROLE_LABEL[u.role]}</td>
                     <td style={{ padding: "11px 16px" }}>{u.organizations?.name ?? "—"}</td>

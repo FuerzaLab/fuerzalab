@@ -1,4 +1,5 @@
 import { supabase } from "../lib/supabase";
+import { ensureNextPeriodPayments } from "./payments";
 import { formatLoad } from "../lib/units";
 import type { ClientRow } from "./clients";
 import { wellnessScore, lowFields, WELLNESS_FIELD_LABEL, type WellnessLogRow } from "./wellness";
@@ -361,6 +362,8 @@ async function photoItems(clients: ClientRow[]): Promise<FeedItem[]> {
 // --- Pagos vencidos o por vencer -----------------------------------------
 
 async function paymentItems(): Promise<FeedItem[]> {
+  // Si a algún plan le falta el cobro del próximo período, se crea antes de revisar vencimientos.
+  await ensureNextPeriodPayments().catch(() => 0);
   const today = new Date();
   today.setHours(0, 0, 0, 0);
   const limit = new Date(today.getTime() + 3 * 86400000).toISOString().slice(0, 10);

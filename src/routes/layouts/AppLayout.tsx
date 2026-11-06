@@ -24,8 +24,7 @@ import {
   UserCog,
   Sparkles,
   ChevronDown,
-  Eye,
-} from "lucide-react";
+  Eye, BarChart3 } from "lucide-react";
 import { useAuth } from "../../contexts/AuthContext";
 import { paths } from "../paths";
 import type { Role, StaffAccess } from "../../types/auth";
@@ -55,6 +54,7 @@ const NAV: Record<Role, NavItem[]> = {
     { to: paths.adminUsers, label: "Usuarios", icon: Users },
     { to: paths.adminExercises, label: "Ejercicios globales", icon: Dumbbell },
     { to: paths.adminBilling, label: "Pagos", icon: CreditCard },
+    { to: paths.adminReports, label: "Reportes", icon: BarChart3 },
     { to: paths.adminSettings, label: "Configuración", icon: Settings },
   ],
   trainer: [

@@ -21,6 +21,7 @@ const ComingSoon = lazy(() => import("../pages/shared/ComingSoon"));
 const AdminDashboard = lazy(() => import("../pages/admin/Dashboard"));
 const Organizations = lazy(() => import("../pages/admin/Organizations"));
 const AdminBillingPage = lazy(() => import("../pages/admin/billing/BillingPage"));
+const PlatformReportPage = lazy(() => import("../pages/admin/PlatformReportPage"));
 const Users = lazy(() => import("../pages/admin/Users"));
 const TrainerDashboard = lazy(() => import("../pages/trainer/Dashboard"));
 const ClientDashboard = lazy(() => import("../pages/client/Dashboard"));
@@ -91,6 +92,7 @@ export default function AppRoutes() {
             <Route path={paths.adminUsers} element={<Users />} />
             <Route path={paths.adminExercises} element={<ExercisesPage scope="global" />} />
             <Route path={paths.adminBilling} element={<AdminBillingPage />} />
+            <Route path={paths.adminReports} element={<PlatformReportPage />} />
             <Route path={paths.adminSettings} element={<Settings />} />
           </Route>
         </Route>

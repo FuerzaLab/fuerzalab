@@ -9,6 +9,10 @@ export interface OrganizationRow {
   created_at: string;
   /** Entrenador dueño del estudio (part3u_migration.sql); null si no tiene. */
   owner_id?: string | null;
+  /** Contacto de la organización (part4f_migration.sql). */
+  contact_name?: string | null;
+  contact_email?: string | null;
+  contact_phone?: string | null;
   /** Cobro de FuerzaLab (part3y_migration.sql). */
   plan_id?: string | null;
   trial_ends_at?: string | null;
@@ -23,6 +27,7 @@ export interface UserRow {
   role: Role;
   full_name: string;
   email: string;
+  phone?: string | null;
   is_active: boolean;
   last_sign_in_at: string | null;
   organizations: { name: string } | null;
@@ -86,7 +91,7 @@ export async function listUsers(): Promise<UserRow[]> {
     // "!organization_id": desde part3u_migration.sql, profiles y organizations
     // están conectadas de dos formas (la organización de cada perfil, y el
     // dueño de cada organización). Hay que decir cuál usar, o la consulta falla.
-    .select("id, organization_id, role, full_name, email, is_active, last_sign_in_at, organizations!organization_id(name)")
+    .select("id, organization_id, role, full_name, email, phone, is_active, last_sign_in_at, organizations!organization_id(name)")
     .neq("role", "super_admin")
     .order("full_name");
   if (error) throw error;
@@ -153,20 +158,37 @@ export async function inviteTrainer(params: {
   invitedBy: string;
   fullName: string;
   email: string;
+  /** Celular (WhatsApp): queda en la invitación y pasa a su perfil al aceptar (part4f). */
+  phone?: string;
 }): Promise<string> {
-  const { data, error } = await supabase
-    .from("invitations")
-    .insert({
-      organization_id: params.organizationId,
-      invited_by: params.invitedBy,
-      role: "trainer",
-      full_name: params.fullName,
-      email: params.email || null,
-    })
-    .select("code")
-    .single();
+  const row: Record<string, unknown> = {
+    organization_id: params.organizationId,
+    invited_by: params.invitedBy,
+    role: "trainer",
+    full_name: params.fullName,
+    email: params.email || null,
+  };
+  if (params.phone?.trim()) row.phone = params.phone.trim();
+  let { data, error } = await supabase.from("invitations").insert(row).select("code").single();
+  // Sin part4f_migration.sql no existe la columna phone: se invita igual, sin guardarlo.
+  if (error && /phone/.test(error.message)) {
+    delete row.phone;
+    ({ data, error } = await supabase.from("invitations").insert(row).select("code").single());
+  }
   if (error) throw error;
-  return data.code as string;
+  return data!.code as string;
+}
+
+/** Guarda el contacto de una organización (persona, correo y WhatsApp). */
+export async function setOrganizationContact(orgId: string, c: { contact_name: string; contact_email: string; contact_phone: string }): Promise<void> {
+  const { error } = await supabase
+    .from("organizations")
+    .update({ contact_name: c.contact_name.trim() || null, contact_email: c.contact_email.trim() || null, contact_phone: c.contact_phone.trim() || null })
+    .eq("id", orgId);
+  if (error) {
+    if (/contact_/.test(error.message)) throw new Error("Falta correr part4f_migration.sql en Supabase.");
+    throw error;
+  }
 }
 
 /** Elige qué entrenador es el dueño del estudio (o ninguno). Ver part3u_migration.sql. */

@@ -16,6 +16,7 @@ import {
   updatePayment,
   markPaymentPaid,
   createNextPeriodPayment,
+  ensureNextPeriodPayments,
   dueInfo,
   getReceiptUrl,
   subscribeClientToPlan,
@@ -62,7 +63,12 @@ export default function PaymentsPage() {
   const load = async () => {
     setLoading(true);
     try {
-      const [cs, ps, pays] = await Promise.all([listClients(), listPaymentPlans(), listPayments()]);
+      const [cs, ps, firstPays] = await Promise.all([listClients(), listPaymentPlans(), listPayments()]);
+      // Red de seguridad: si a algún plan mensual o trimestral le falta el cobro
+      // del próximo período, se crea ahora (así te avisa cuando venza).
+      const fixed = await ensureNextPeriodPayments(firstPays).catch(() => 0);
+      const pays = fixed ? await listPayments() : firstPays;
+      if (fixed) notify(`Se ${fixed === 1 ? "creó 1 cobro pendiente" : `crearon ${fixed} cobros pendientes`} del próximo período, que faltaban.`);
       setClients(cs);
       setPlans(ps);
       // Primero lo vencido (lo más atrasado arriba), después lo que vence pronto, después el resto.
@@ -279,9 +285,11 @@ export default function PaymentsPage() {
           payment={editingPayment}
           onClose={() => setEditingPayment(null)}
           onSaved={(fields) => {
+            const becamePaid = editingPayment.status !== "paid" && fields.status === "paid";
             setPayments((ps) => ps.map((x) => (x.id === editingPayment.id ? { ...x, ...fields, paid_at: fields.status === "paid" ? x.paid_at ?? new Date().toISOString() : null } : x)));
             setEditingPayment(null);
-            notify("Pago actualizado.");
+            notify(becamePaid ? "Pago actualizado. Se creó el pendiente del próximo período." : "Pago actualizado.");
+            if (becamePaid) load();
           }}
         />
       )}
@@ -579,6 +587,11 @@ function EditPaymentModal({
     try {
       const fields = { amount: Number(amount), currency, dueDate, status, method: (method || null) as PaymentMethod | null, notes };
       await updatePayment(payment.id, fields);
+      // Si se pasó a Pagado acá (y no con "Marcar pagado"), también se deja
+      // creado el pendiente del próximo período, para el aviso de vencimiento.
+      if (payment.status !== "paid" && fields.status === "paid") {
+        await createNextPeriodPayment({ ...payment, due_date: fields.dueDate, amount: fields.amount, currency: fields.currency }).catch(() => null);
+      }
       onSaved({ amount: fields.amount, currency: fields.currency, due_date: fields.dueDate, status: fields.status, method: fields.method, notes: fields.notes || null });
     } catch (e: any) {
       setError(e.message ?? "No pudimos guardar los cambios.");

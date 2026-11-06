@@ -3,6 +3,7 @@ import Loading from "../../../components/ui/Loading";
 import Chip from "../../../components/ui/Chip";
 import { useIsStudioOwner } from "../../../hooks/useIsStudioOwner";
 import { getInactiveClients, getStudioStats, type InactiveClient, type TrainerStats } from "../../../services/studio";
+import StudioTrainersPanel from "./StudioTrainersPanel";
 
 /**
  * "Tu estudio" — solo para el dueño del estudio (lo elige el Super Admin
@@ -222,6 +223,8 @@ export default function StudioPage() {
               Cobrado y vencido incluyen todas las monedas sumadas como una sola.
             </p>
           </div>
+
+          <StudioTrainersPanel trainerCount={stats?.length ?? 0} />
 
           <div className="panel">
             <div className="hd" style={{ flexWrap: "wrap", gap: 8 }}>

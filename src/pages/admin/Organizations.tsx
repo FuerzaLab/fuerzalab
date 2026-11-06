@@ -10,6 +10,7 @@ import {
   setOrganizationOwner,
   type UserRow,
   createOrganization,
+  setOrganizationContact,
   toggleOrganizationStatus,
   countOrganizationMembers,
   deleteOrganization,
@@ -20,6 +21,7 @@ import { paths } from "../../routes/paths";
 import Loading from "../../components/ui/Loading";
 import { listPlatformPlans, type PlatformPlanRow } from "../../services/billing";
 import { orgClientCounts, orgPeriodAmount, refreshAllOrgBilling, setOrgBillingSettings } from "../../services/orgBilling";
+import WhatsAppButton from "../../components/WhatsAppButton";
 
 export default function Organizations() {
   const { profile } = useAuth();
@@ -27,6 +29,7 @@ export default function Organizations() {
   const [orgs, setOrgs] = useState<OrganizationRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [showNew, setShowNew] = useState(false);
+  const [showSolo, setShowSolo] = useState(false);
   const [inviteFor, setInviteFor] = useState<OrganizationRow | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<OrganizationRow | null>(null);
   const [trainers, setTrainers] = useState<UserRow[]>([]);
@@ -74,11 +77,16 @@ export default function Organizations() {
       <div style={{ display: "flex", flexWrap: "wrap", justifyContent: "space-between", gap: 12, marginBottom: 20 }}>
         <div>
           <h1 style={{ marginBottom: 4 }}>Organizaciones</h1>
-          <p className="note">Cada organización tiene sus datos aislados. Invita entrenadores desde la fila de cada una.</p>
+          <p className="note">Cada organización tiene sus datos aislados. Un entrenador independiente es una organización de una sola persona; en un estudio, el dueño puede invitar a sus entrenadores desde "Tu estudio".</p>
         </div>
-        <button className="btn" onClick={() => setShowNew(true)}>
-          <Plus size={16} /> Nueva organización
-        </button>
+        <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+          <button className="btn ghost" onClick={() => setShowSolo(true)}>
+            <UserPlus size={16} /> Invitar entrenador independiente
+          </button>
+          <button className="btn" onClick={() => setShowNew(true)}>
+            <Plus size={16} /> Nueva organización
+          </button>
+        </div>
       </div>
 
       {loading ? (
@@ -99,15 +107,22 @@ export default function Organizations() {
               <tbody>
                 {orgs.map((o) => (
                   <tr key={o.id} style={{ borderTop: "1px solid var(--line)" }}>
-                    <td style={{ padding: "11px 16px" }}><b>{o.name}</b></td>
+                    <td style={{ padding: "11px 16px" }}>
+                      <b>{o.name}</b>
+                      {(o.contact_name || o.contact_phone || o.contact_email) && (
+                        <div className="note" style={{ fontSize: 12.5, marginTop: 2 }}>
+                          {[o.contact_name, o.contact_phone && `📱 ${o.contact_phone}`, o.contact_email].filter(Boolean).join(" · ")}
+                        </div>
+                      )}
+                    </td>
                     <td style={{ padding: "11px 16px" }}>
                       <Chip tone={o.status === "active" ? "ok" : "bad"}>{o.status === "active" ? "Activa" : "Suspendida"}</Chip>
                     </td>
                     <td style={{ padding: "11px 16px", minWidth: 200 }}>
                       {(() => {
                         const orgTrainers = trainers.filter((t) => t.organization_id === o.id);
-                        if (orgTrainers.length < 2) {
-                          return <span className="note" style={{ fontSize: 13 }}>{orgTrainers.length === 1 ? "Un solo entrenador" : "Sin entrenadores"}</span>;
+                        if (orgTrainers.length < 1) {
+                          return <span className="note" style={{ fontSize: 13 }}>Sin entrenadores</span>;
                         }
                         return (
                           <select
@@ -178,6 +193,14 @@ export default function Organizations() {
           org={inviteFor}
           invitedBy={profile.id}
           onClose={() => setInviteFor(null)}
+        />
+      )}
+
+      {showSolo && profile && (
+        <SoloTrainerModal
+          invitedBy={profile.id}
+          onClose={() => setShowSolo(false)}
+          onCreated={() => load()}
         />
       )}
 
@@ -274,6 +297,9 @@ function DeleteOrgModal({ org, onClose, onDeleted }: { org: OrganizationRow; onC
 }
 
 function NewOrgModal({ onClose, onCreated }: { onClose: () => void; onCreated: (o: OrganizationRow) => void }) {
+  const [contactName, setContactName] = useState("");
+  const [contactEmail, setContactEmail] = useState("");
+  const [contactPhone, setContactPhone] = useState("");
   const [name, setName] = useState("");
   const [error, setError] = useState("");
   const [saving, setSaving] = useState(false);
@@ -286,7 +312,11 @@ function NewOrgModal({ onClose, onCreated }: { onClose: () => void; onCreated: (
     setError("");
     setSaving(true);
     try {
-      onCreated(await createOrganization(name.trim()));
+      const org = await createOrganization(name.trim());
+      if (contactName.trim() || contactEmail.trim() || contactPhone.trim()) {
+        await setOrganizationContact(org.id, { contact_name: contactName, contact_email: contactEmail, contact_phone: contactPhone }).catch((e) => setError(e.message));
+      }
+      onCreated({ ...org, contact_name: contactName.trim() || null, contact_email: contactEmail.trim() || null, contact_phone: contactPhone.trim() || null });
     } catch (e: any) {
       setError(e.message ?? "No pudimos crear la organización.");
     }
@@ -304,6 +334,20 @@ function NewOrgModal({ onClose, onCreated }: { onClose: () => void; onCreated: (
         placeholder="Ej. Vértice Training Center"
         autoFocus
       />
+      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12, marginBottom: 14 }}>
+        <div style={{ gridColumn: "1 / -1" }}>
+          <label className="field-label">Persona de contacto (opcional)</label>
+          <input className="input" value={contactName} onChange={(e) => setContactName(e.target.value)} placeholder="Ej. el dueño o el administrador" />
+        </div>
+        <div>
+          <label className="field-label">Correo (opcional)</label>
+          <input className="input" type="email" value={contactEmail} onChange={(e) => setContactEmail(e.target.value)} />
+        </div>
+        <div>
+          <label className="field-label">WhatsApp (opcional)</label>
+          <input className="input" type="tel" inputMode="tel" value={contactPhone} onChange={(e) => setContactPhone(e.target.value)} placeholder="Ej. 71234567" />
+        </div>
+      </div>
       {error && <p className="error-text" style={{ marginBottom: 14 }}>{error}</p>}
       <p className="note" style={{ marginBottom: 18 }}>Se crea sin entrenadores ni clientes. Después puedes invitar al primer entrenador desde aquí.</p>
       <button className="btn" onClick={submit} disabled={saving}>
@@ -315,6 +359,7 @@ function NewOrgModal({ onClose, onCreated }: { onClose: () => void; onCreated: (
 
 function InviteTrainerModal({ org, invitedBy, onClose }: { org: OrganizationRow; invitedBy: string; onClose: () => void }) {
   const { notify } = useToast();
+  const [phone, setPhone] = useState("");
   const [fullName, setFullName] = useState("");
   const [email, setEmail] = useState("");
   const [error, setError] = useState("");
@@ -329,7 +374,7 @@ function InviteTrainerModal({ org, invitedBy, onClose }: { org: OrganizationRow;
     setError("");
     setSaving(true);
     try {
-      setCode(await inviteTrainer({ organizationId: org.id, invitedBy, fullName: fullName.trim(), email: email.trim() }));
+      setCode(await inviteTrainer({ organizationId: org.id, invitedBy, fullName: fullName.trim(), email: email.trim(), phone: phone.trim() }));
     } catch (e: any) {
       setError(e.message ?? "No pudimos crear la invitación.");
     }
@@ -347,6 +392,8 @@ function InviteTrainerModal({ org, invitedBy, onClose }: { org: OrganizationRow;
           <input className="input" style={{ marginBottom: 12 }} value={fullName} onChange={(e) => setFullName(e.target.value)} autoFocus />
           <label className="field-label">Email (opcional, fija el código a ese correo)</label>
           <input className="input" style={{ marginBottom: 16 }} value={email} onChange={(e) => setEmail(e.target.value)} />
+          <label className="field-label">WhatsApp (opcional)</label>
+          <input className="input" type="tel" inputMode="tel" style={{ marginBottom: 14 }} value={phone} onChange={(e) => setPhone(e.target.value)} placeholder="Ej. 71234567" />
           {error && <p className="error-text" style={{ marginBottom: 12 }}>{error}</p>}
           <button className="btn" onClick={submit} disabled={saving}>
             {saving ? "Creando…" : "Generar código"}
@@ -359,6 +406,13 @@ function InviteTrainerModal({ org, invitedBy, onClose }: { org: OrganizationRow;
             {code}
           </div>
           <p className="note" style={{ wordBreak: "break-all", marginBottom: 16 }}>{link}</p>
+          <div style={{ marginBottom: 10 }}>
+            <WhatsAppButton
+              phone={phone.trim() || null}
+              label="Enviar por WhatsApp"
+              text={`Hola ${fullName.trim().split(" ")[0]}! Te invito a sumarte a ${org.name} en FuerzaLab. Crea tu cuenta acá: ${link}`}
+            />
+          </div>
           <button
             className="btn"
             onClick={() => {
@@ -390,7 +444,7 @@ function OrgBillingCell({ org, plans, onEdit }: { org: OrganizationRow; plans: P
     <div style={{ display: "grid", gap: 4, justifyItems: "start" }}>
       <span style={{ fontSize: 13.5 }}>{org.billing_exempt ? "—" : plan ? plan.name : <span className="note">Sin plan</span>}</span>
       {chip && <Chip tone={chip.tone}>{chip.text}</Chip>}
-      <button className="link-btn" style={{ fontSize: 12.5 }} onClick={onEdit}>Plan y prueba</button>
+      <button className="link-btn" style={{ fontSize: 12.5 }} onClick={onEdit}>Plan, prueba y contacto</button>
     </div>
   );
 }
@@ -410,6 +464,9 @@ function OrgBillingModal({
   const [planId, setPlanId] = useState(org.plan_id ?? "");
   const [trial, setTrial] = useState(org.trial_ends_at ? org.trial_ends_at.slice(0, 10) : "");
   const [exempt, setExempt] = useState(!!org.billing_exempt);
+  const [cName, setCName] = useState(org.contact_name ?? "");
+  const [cEmail, setCEmail] = useState(org.contact_email ?? "");
+  const [cPhone, setCPhone] = useState(org.contact_phone ?? "");
   const [trialFree, setTrialFree] = useState(String((org as any).trial_free_clients ?? 3));
   const [counts, setCounts] = useState<{ active: number; counted: number } | null>(null);
   const [estimate, setEstimate] = useState<number | null>(null);
@@ -436,7 +493,9 @@ function OrgBillingModal({
     };
     try {
       await setOrgBillingSettings(org.id, fields);
-      onSaved(fields);
+      const contactChanged = cName !== (org.contact_name ?? "") || cEmail !== (org.contact_email ?? "") || cPhone !== (org.contact_phone ?? "");
+      if (contactChanged) await setOrganizationContact(org.id, { contact_name: cName, contact_email: cEmail, contact_phone: cPhone });
+      onSaved({ ...fields, contact_name: cName.trim() || null, contact_email: cEmail.trim() || null, contact_phone: cPhone.trim() || null } as any);
     } catch (e: any) {
       setError(e.message);
       setSaving(false);
@@ -444,7 +503,15 @@ function OrgBillingModal({
   };
 
   return (
-    <Modal title={`Cobro — ${org.name}`} onClose={onClose}>
+    <Modal title={`${org.name}: plan, prueba y contacto`} onClose={onClose}>
+      <div className="org-contact">
+        <b style={{ fontSize: 14 }}>Contacto</b>
+        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 10 }}>
+          <input className="input" placeholder="Persona de contacto" value={cName} onChange={(e) => setCName(e.target.value)} aria-label="Persona de contacto" />
+          <input className="input" type="email" placeholder="Correo" value={cEmail} onChange={(e) => setCEmail(e.target.value)} aria-label="Correo" />
+          <input className="input" type="tel" inputMode="tel" placeholder="WhatsApp" value={cPhone} onChange={(e) => setCPhone(e.target.value)} aria-label="WhatsApp" />
+        </div>
+      </div>
       <label style={{ display: "flex", gap: 10, alignItems: "center", marginBottom: 14 }}>
         <input type="checkbox" checked={exempt} onChange={(e) => setExempt(e.target.checked)} />
         <span>Sin cobro (por ejemplo, la demo o tu propia organización)</span>
@@ -479,6 +546,113 @@ function OrgBillingModal({
       )}
       {error && <p className="error-text">{error}</p>}
       <button className="btn" onClick={save} disabled={saving}>{saving ? "Guardando…" : "Guardar"}</button>
+    </Modal>
+  );
+}
+
+/**
+ * Entrenador independiente en un solo paso: crea su organización (con el
+ * nombre de su negocio o el suyo), le deja la prueba gratis como la ofreces
+ * (por defecto, un mes con 5 alumnos) y genera la invitación.
+ */
+function SoloTrainerModal({ invitedBy, onClose, onCreated }: { invitedBy: string; onClose: () => void; onCreated: () => void }) {
+  const { notify } = useToast();
+  const [fullName, setFullName] = useState("");
+  const [email, setEmail] = useState("");
+  const [phone, setPhone] = useState("");
+  const [business, setBusiness] = useState("");
+  const [trialDays, setTrialDays] = useState("30");
+  const [freeClients, setFreeClients] = useState("5");
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState("");
+  const [result, setResult] = useState<{ link: string; org: string } | null>(null);
+
+  const create = async () => {
+    if (!fullName.trim()) return setError("Escribe el nombre del entrenador.");
+    setSaving(true);
+    setError("");
+    try {
+      const orgName = business.trim() || fullName.trim();
+      const org = await createOrganization(orgName);
+      const days = Math.max(0, Number(trialDays) || 0);
+      const end = new Date();
+      end.setDate(end.getDate() + days);
+      end.setHours(23, 59, 0, 0);
+      await setOrgBillingSettings(org.id, {
+        trial_ends_at: days ? end.toISOString() : null,
+        trial_free_clients: Math.max(0, Number(freeClients) || 0),
+      }).catch((e) => notify("La organización se creó, pero no se pudo ajustar la prueba: " + e.message));
+      await setOrganizationContact(org.id, { contact_name: fullName, contact_email: email, contact_phone: phone }).catch(() => {});
+      const code = await inviteTrainer({ organizationId: org.id, invitedBy, fullName: fullName.trim(), email: email.trim(), phone: phone.trim() });
+      setResult({ link: `${window.location.origin}${paths.register}?codigo=${code}`, org: orgName });
+      onCreated();
+    } catch (e: any) {
+      setError(e.message);
+    }
+    setSaving(false);
+  };
+
+  const message = result
+    ? `Hola ${fullName.trim().split(" ")[0]}! Te invito a probar FuerzaLab${Number(trialDays) ? ` gratis durante ${trialDays} días` : ""}. Crea tu cuenta acá: ${result.link}`
+    : "";
+
+  return (
+    <Modal title="Invitar entrenador independiente" onClose={onClose}>
+      {result ? (
+        <div style={{ display: "grid", gap: 12 }}>
+          <p style={{ margin: 0 }}>
+            Listo: se creó la organización <b>{result.org}</b>
+            {Number(trialDays) ? ` con ${trialDays} días de prueba y ${freeClients} alumnos gratis` : ""}, y la invitación.
+          </p>
+          <input className="input" readOnly value={result.link} onFocus={(e) => e.target.select()} />
+          <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+            <WhatsAppButton phone={phone.trim() || null} label="Enviar por WhatsApp" text={message} />
+            <button
+              className="btn ghost"
+              onClick={() => {
+                navigator.clipboard?.writeText(result.link);
+                notify("Enlace copiado.");
+              }}
+            >
+              <Copy size={14} /> Copiar enlace
+            </button>
+          </div>
+        </div>
+      ) : (
+        <>
+          <p className="note" style={{ marginTop: 0 }}>
+            Crea su organización y la invitación en un solo paso. Para un estudio con varios entrenadores, usa "Nueva organización".
+          </p>
+          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12, marginBottom: 12 }}>
+            <div>
+              <label className="field-label">Nombre del entrenador</label>
+              <input className="input" value={fullName} onChange={(e) => setFullName(e.target.value)} />
+            </div>
+            <div>
+              <label className="field-label">Nombre de su negocio (opcional)</label>
+              <input className="input" value={business} onChange={(e) => setBusiness(e.target.value)} placeholder="Si lo dejas vacío, se usa su nombre" />
+            </div>
+            <div>
+              <label className="field-label">Correo (opcional)</label>
+              <input className="input" type="email" value={email} onChange={(e) => setEmail(e.target.value)} />
+            </div>
+            <div>
+              <label className="field-label">WhatsApp (opcional)</label>
+              <input className="input" type="tel" inputMode="tel" value={phone} onChange={(e) => setPhone(e.target.value)} placeholder="Ej. 71234567" />
+            </div>
+            <div>
+              <label className="field-label">Días de prueba gratis</label>
+              <input className="input" inputMode="numeric" value={trialDays} onChange={(e) => setTrialDays(e.target.value.replace(/\D/g, ""))} />
+            </div>
+            <div>
+              <label className="field-label">Alumnos gratis en la prueba</label>
+              <input className="input" inputMode="numeric" value={freeClients} onChange={(e) => setFreeClients(e.target.value.replace(/\D/g, ""))} />
+            </div>
+          </div>
+          {error && <p className="error-text">{error}</p>}
+          <button className="btn" onClick={create} disabled={saving}>{saving ? "Creando…" : "Crear e invitar"}</button>
+        </>
+      )}
     </Modal>
   );
 }

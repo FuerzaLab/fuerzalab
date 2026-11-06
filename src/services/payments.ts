@@ -255,3 +255,35 @@ export function addMonthsClamped(isoDate: string, months: number): string {
   target.setUTCDate(Math.min(d, lastDay));
   return target.toISOString().slice(0, 10);
 }
+
+/**
+ * Red de seguridad: para cada plan mensual o trimestral cuyo último pago está
+ * pagado y que no tiene ningún pendiente, crea el pendiente del período
+ * siguiente. Así nunca queda un alumno "sin próximo cobro" (por ejemplo, si el
+ * pago se pasó a Pagado desde Editar, o se registró antes de que existiera el
+ * cobro automático) y los avisos de vencimiento funcionan.
+ * Devuelve cuántos creó.
+ */
+export async function ensureNextPeriodPayments(payments?: PaymentRow[]): Promise<number> {
+  const list = payments ?? (await listPayments());
+  const byPlan = new Map<string, PaymentRow[]>();
+  for (const p of list) {
+    if (!p.client_plan_id || p.status === "cancelled") continue;
+    if (!byPlan.has(p.client_plan_id)) byPlan.set(p.client_plan_id, []);
+    byPlan.get(p.client_plan_id)!.push(p);
+  }
+  // A los alumnos en pausa o dados de baja no se les crea el próximo cobro.
+  const ids = [...new Set(list.map((p) => p.client_id))];
+  const { data: cs } = ids.length ? await supabase.from("clients").select("id, status").in("id", ids) : { data: [] as any[] };
+  const activeIds = new Set((cs ?? []).filter((c: any) => c.status === "active" || c.status === "prospect").map((c: any) => c.id as string));
+  let created = 0;
+  for (const rows of byPlan.values()) {
+    if (!activeIds.has(rows[0].client_id)) continue;
+    if (rows.some((r) => r.status === "pending")) continue;
+    const last = [...rows].sort((a, b) => b.due_date.localeCompare(a.due_date))[0];
+    if (last?.status !== "paid") continue;
+    const due = await createNextPeriodPayment(last).catch(() => null);
+    if (due) created++;
+  }
+  return created;
+}

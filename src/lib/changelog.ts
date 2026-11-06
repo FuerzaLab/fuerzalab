@@ -22,6 +22,15 @@ export interface ChangelogEntry {
 
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    id: "2026-11-06-studio-invites",
+    date: "2026-11-06",
+    title: "Invita a los entrenadores de tu estudio",
+    body: "Si eres el dueño del estudio, en \"Tu estudio\" → \"Entrenadores de tu estudio\" puedes invitar a tus entrenadores y mandarles el enlace por WhatsApp. Cada uno entra con sus propios alumnos, dentro de tu estudio.",
+    for: ["trainer"],
+    notForStaff: true,
+    link: { label: "Ir a Tu estudio", to: paths.trainerStudio },
+  },
+  {
     id: "2026-11-05-rest-sound",
     date: "2026-11-05",
     title: "El descanso ahora suena al terminar",

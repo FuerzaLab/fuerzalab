@@ -487,3 +487,36 @@ select.input:hover { border-color: var(--pri); }
 .room-sum-row { display: flex; justify-content: space-between; gap: 10px; flex-wrap: wrap; padding: 12px 14px; border-top: 1px solid var(--line); }
 .room-sum-row:first-child { border-top: 0; }
 .room-choose { width: auto; max-width: 190px; padding: 5px 8px; font-size: 13px; }
+/* Tu estudio: invitar entrenadores */
+.studio-inv-ok { display: grid; gap: 8px; background: var(--ok-soft); border-radius: 10px; padding: 12px 14px; }
+.studio-inv-row { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; padding: 8px 0; border-top: 1px solid var(--line); }
+.studio-inv-form { display: grid; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); gap: 10px; }
+
+/* Super Admin → Reportes */
+.pr-filters { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 12px; align-items: end; }
+.pr-check { display: flex; gap: 8px; align-items: center; font-size: 14px; }
+.pr-cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); gap: 12px; margin-bottom: 16px; }
+.pr-cards .bd { display: grid; gap: 2px; }
+.pr-cards b { font-family: 'Barlow Condensed', sans-serif; font-size: 28px; }
+.pr-cards span { font-size: 13px; color: var(--muted); }
+.pr-cards em { font-style: normal; font-size: 12px; color: var(--muted); }
+.pr-table { width: 100%; border-collapse: collapse; font-size: 14px; }
+.pr-table th { text-align: left; font-size: 12.5px; color: var(--muted); padding: 10px 12px; white-space: nowrap; }
+.pr-table td { padding: 10px 12px; border-top: 1px solid var(--line); vertical-align: top; }
+.pr-sub td { background: var(--bg); }
+.pr-inner { width: 100%; border-collapse: collapse; font-size: 13.5px; }
+.pr-inner th { text-align: left; font-size: 12px; color: var(--muted); padding: 4px 8px; }
+.pr-inner td { padding: 6px 8px; border-top: 1px solid var(--line); background: #fff; }
+/* Estado de cuenta (PDF) */
+.statement { background: #fff; color: #14202B; padding: 40px 44px; font-size: 14px; }
+.statement h3 { font-size: 15px; margin: 22px 0 8px; color: #0F1A33; }
+.statement-head { display: flex; justify-content: space-between; align-items: flex-start; border-bottom: 3px solid #1E3FA8; padding-bottom: 14px; }
+.statement-brand { font-family: 'Barlow Condensed', sans-serif; font-weight: 700; font-size: 30px; color: #0F1A33; }
+.statement-brand span { color: #1E3FA8; }
+.statement-table { width: 100%; border-collapse: collapse; }
+.statement-table th { text-align: left; font-size: 12px; color: #5E6A73; padding: 6px 8px; border-bottom: 1px solid #DCE1DA; }
+.statement-table td { padding: 7px 8px; border-bottom: 1px solid #EEF1EC; }
+.statement-table tr.tot td { font-weight: 700; background: #F1F3F0; }
+.statement-table tr.due td { color: #A8341C; }
+.org-contact { display: grid; gap: 8px; background: var(--bg); border-radius: 10px; padding: 12px; margin-bottom: 14px; }
+@media (max-width: 640px) { .org-contact > div { grid-template-columns: 1fr !important; } }
