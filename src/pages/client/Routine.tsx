@@ -46,6 +46,8 @@ import VideoEmbed from "../../components/VideoEmbed";
 import { supabase } from "../../lib/supabase";
 import SessionPreview from "./SessionPreview";
 import { useSearchParams } from "react-router-dom";
+import { playRestEnd, playRestTick, unlockRestSound } from "../../lib/restSound";
+import RestSoundToggle from "../../components/RestSoundToggle";
 
 const STATUS_LABEL: Record<WorkoutLogRow["status"], string> = {
   pending: "Pendiente",
@@ -358,10 +360,17 @@ export function TrainSession({ sessionId, onExit, backLabel = "Volver a mi rutin
       setRestRemaining(0);
       return;
     }
+    let last = -1;
     const tick = () => {
       const remaining = Math.max(0, Math.ceil((restEndsAt - Date.now()) / 1000));
       setRestRemaining(remaining);
-      if (remaining <= 0) setRestEndsAt(null);
+      // Sonido: tic en los últimos 3 segundos y 3 bips al terminar.
+      if (remaining !== last && remaining > 0 && remaining <= 3) playRestTick();
+      last = remaining;
+      if (remaining <= 0) {
+        playRestEnd();
+        setRestEndsAt(null);
+      }
     };
     tick();
     const t = window.setInterval(tick, 1000);
@@ -377,6 +386,8 @@ export function TrainSession({ sessionId, onExit, backLabel = "Volver a mi rutin
 
   const startRest = (seconds: number, anchor: string) => {
     if (!seconds || seconds <= 0) return;
+    unlockRestSound(); // viene de un toque: deja listo el audio para cuando termine
+
     setRestTotal(seconds);
     setRestEndsAt(Date.now() + seconds * 1000);
     setRestAnchor(anchor);
@@ -627,6 +638,7 @@ function RestTimer({ remaining, total, onAddTime, onSkip }: { remaining: number;
           Descanso: {Math.floor(remaining / 60)}:{String(remaining % 60).padStart(2, "0")}
         </span>
         <div style={{ display: "flex", gap: 8 }}>
+          <RestSoundToggle />
           <button className="btn ghost" style={{ padding: "4px 10px", fontSize: 12.5, color: "#fff", borderColor: "rgba(255,255,255,.4)" }} onClick={onAddTime}>
             +15 s
           </button>

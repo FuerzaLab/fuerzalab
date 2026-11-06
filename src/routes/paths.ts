@@ -25,6 +25,7 @@ export const paths = {
   trainerWellness: "/t/bienestar",
   trainerProgressPhotos: "/t/fotos",
   trainerRunSession: "/t/entrenar",
+  trainerRoom: "/t/entrenar/sala",
   trainerBuilder: "/t/constructor",
   trainerTracking: "/t/seguimiento",
   trainerAnalytics: "/t/analytics",

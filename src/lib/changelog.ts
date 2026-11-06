@@ -22,6 +22,29 @@ export interface ChangelogEntry {
 
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    id: "2026-11-05-rest-sound",
+    date: "2026-11-05",
+    title: "El descanso ahora suena al terminar",
+    body: "Cuando termina el descanso entre series, la app suena (y vibra en los celulares Android), con un aviso suave en los últimos 3 segundos. Si prefieres silencio, tócale la campanita 🔔 del cronómetro.",
+    for: ["trainer", "client"],
+  },
+  {
+    id: "2026-11-05-room-group",
+    date: "2026-11-05",
+    title: "Sala: clases grupales con la misma rutina",
+    body: "Al abrir una sala, elige \"Misma rutina para todos\": tomas una rutina de tus Plantillas o la de uno de tus alumnos, y se la asigna a todos para hoy. Cada uno registra sus propias cargas, arrancando con las que usó la última vez, y le queda en su historial.",
+    for: ["trainer"],
+    link: { label: "Abrir una sala", to: paths.trainerRoom },
+  },
+  {
+    id: "2026-11-05-room",
+    date: "2026-11-05",
+    title: "Sala: varios alumnos a la vez",
+    body: "En \"Entrenar con cliente\" → \"Abrir una sala\", eliges a los alumnos que están contigo y los ves a todos en una sola pantalla, cada uno con su rutina de hoy: su serie actual con la carga lista, su propio descanso y su bienestar. Al terminar, cada uno tiene su sesión y sus récords como si hubiera entrenado solo contigo.",
+    for: ["trainer"],
+    link: { label: "Abrir una sala", to: paths.trainerRoom },
+  },
+  {
     id: "2026-11-05-photo-compare",
     date: "2026-11-05",
     title: "Compara tus fotos: antes y después",

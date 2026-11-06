@@ -60,6 +60,9 @@ import FixedRoutinesBuilder from "./FixedRoutinesBuilder";
 import { createFixedProgram } from "../../../services/fixedRoutines";
 import { paths } from "../../../routes/paths";
 
+/** El programa archivado "Clases grupales" (Sala · Misma rutina para todos) no se edita acá. */
+const notGroupArchive = (p: { name: string; status: string }) => !(p.name === "Clases grupales" && p.status === "archived");
+
 export default function BuilderPage() {
   const navigate = useNavigate();
   const { profile: me, actingTrainerId: meActing } = useAuth();
@@ -87,7 +90,7 @@ export default function BuilderPage() {
   const [choosingMode, setChoosingMode] = useState<"fixed" | "weekly">("fixed");
   const [creatingFixed, setCreatingFixed] = useState(false);
   const reloadPrograms = async (selectId?: string) => {
-    const ps = await listPrograms(clientId);
+    const ps = (await listPrograms(clientId)).filter(notGroupArchive);
     setPrograms(ps);
     setProgramId(selectId ?? ps[0]?.id ?? "");
   };
@@ -109,7 +112,8 @@ export default function BuilderPage() {
       setProgramId("");
       return;
     }
-    listPrograms(clientId).then((ps) => {
+    listPrograms(clientId).then((all) => {
+      const ps = all.filter(notGroupArchive);
       setPrograms(ps);
       setProgramId(ps[0]?.id ?? "");
     });

@@ -1,4 +1,6 @@
 import { useEffect, useState } from "react";
+import { useNavigate } from "react-router-dom";
+import { paths } from "../../../routes/paths";
 import { useToast } from "../../../contexts/ToastContext";
 import { listClients, type ClientRow } from "../../../services/clients";
 import { listWeeks, type ProgramRow, type WeekRow } from "../../../services/programs";
@@ -17,6 +19,7 @@ const STATUS_LABEL: Record<WorkoutLogRow["status"], string> = {
 };
 
 export default function RunSessionPage() {
+  const navigate = useNavigate();
   const { notify } = useToast();
   const [clients, setClients] = useState<ClientRow[]>([]);
   const [clientId, setClientId] = useState("");
@@ -102,6 +105,11 @@ export default function RunSessionPage() {
       <p className="note" style={{ marginBottom: 20 }}>
         Para cuando das la asesoría en persona: abre la rutina de tu cliente tú mismo y carga las series mientras lo acompañas. Queda guardado en su historial exactamente igual que si lo hubiera cargado él.
       </p>
+
+      <div className="room-cta">
+        <span>¿Tienes varios alumnos a la vez en la sala?</span>
+        <button className="btn ghost" onClick={() => navigate(paths.trainerRoom)}>👥 Abrir una sala</button>
+      </div>
 
       <div style={{ marginBottom: 20, maxWidth: 320 }}>
         <label className="field-label">Cliente</label>

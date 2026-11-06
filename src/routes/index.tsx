@@ -46,6 +46,7 @@ const SuggestionsPage = lazy(() => import("../pages/trainer/suggestions/Suggesti
 const TemplatesPage = lazy(() => import("../pages/trainer/templates/TemplatesPage"));
 const AgendaPage = lazy(() => import("../pages/trainer/agenda/AgendaPage"));
 const RunSessionPage = lazy(() => import("../pages/trainer/run-session/RunSessionPage"));
+const RoomPage = lazy(() => import("../pages/trainer/run-session/RoomPage"));
 const ClientProgressPhotos = lazy(() => import("../pages/client/ProgressPhotos"));
 const TeamPage = lazy(() => import("../pages/trainer/team/TeamPage"));
 const StudioPage = lazy(() => import("../pages/trainer/studio/StudioPage"));
@@ -109,6 +110,7 @@ export default function AppRoutes() {
             <Route path={paths.trainerWellness} element={<TrainerWellnessPage />} />
             <Route path={paths.trainerProgressPhotos} element={<ProgressPhotosPage />} />
             <Route path={paths.trainerRunSession} element={<RunSessionPage />} />
+            <Route path={paths.trainerRoom} element={<RoomPage />} />
             <Route path={paths.trainerBuilder} element={<BuilderPage />} />
             <Route path={paths.trainerTracking} element={<ComingSoon title="Seguimiento" />} />
             <Route path={paths.trainerAnalytics} element={<ComingSoon title="Analytics" />} />
