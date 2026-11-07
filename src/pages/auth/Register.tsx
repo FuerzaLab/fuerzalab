@@ -18,6 +18,11 @@ export default function Register() {
   const [searchParams] = useSearchParams();
 
   const [code, setCode] = useState(searchParams.get("codigo") ?? "");
+  // Si el código vino en el enlace, no hace falta mostrar el campo (salvo que quiera cambiarlo).
+  const codeFromLink = !!searchParams.get("codigo");
+  const [editingCode, setEditingCode] = useState(false);
+  // Entrenador invitado: días de prueba gratis de su organización (part4g).
+  const [welcome, setWelcome] = useState<{ trial_days: number | null; trial_free_clients: number | null } | null>(null);
   const [fullName, setFullName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -50,6 +55,11 @@ export default function Register() {
         }
         const row = data[0] as InvitePreview;
         setPreview(row);
+        if (row.role === "trainer") {
+          supabase.rpc("invitation_welcome", { p_code: trimmed }).then(({ data: w }) => {
+            if (!cancelled && w && w.length) setWelcome(w[0] as any);
+          });
+        } else setWelcome(null);
         if (row.full_name && !fullName) setFullName(row.full_name);
         if (row.email && !email) setEmail(row.email);
       });
@@ -99,27 +109,67 @@ export default function Register() {
     );
   }
 
+  // Entrenadores y asistentes invitados: bienvenida propia, sin el texto de datos de salud (es para alumnos).
+  const isTeam = !!preview && (preview.role === "trainer" || preview.role === "staff");
+  const firstName = (fullName || preview?.full_name || "").trim().split(" ")[0];
+  const showCodeField = !codeFromLink || editingCode || !preview;
+
   return (
     <form onSubmit={onSubmit}>
-      <h2 style={{ marginBottom: 6 }}>Crear tu cuenta</h2>
-      <p className="note" style={{ marginBottom: 20 }}>
-        Necesitas el código que te compartió tu entrenador o administrador.
-      </p>
+      {isTeam ? (
+        <>
+          <h2 style={{ marginBottom: 6 }}>{firstName ? `¡Hola, ${firstName}!` : "¡Te damos la bienvenida!"}</h2>
+          <p className="note" style={{ marginBottom: welcome?.trial_days ? 12 : 20 }}>
+            Te invitaron a <b style={{ color: "var(--ink)" }}>{preview!.org_name}</b> como {rolLabel(preview!.role)} en FuerzaLab.{" "}
+            {preview!.role === "trainer"
+              ? "Crea tu cuenta para armar los planes de tus alumnos y seguir su progreso."
+              : "Crea tu cuenta para empezar."}
+          </p>
+          {welcome?.trial_days ? (
+            <div className="welcome-trial">
+              🎁 Tienes <b>{welcome.trial_days} {welcome.trial_days === 1 ? "día" : "días"} gratis</b> para probar la app
+              {welcome.trial_free_clients ? ` con hasta ${welcome.trial_free_clients} alumnos` : ""}.
+            </div>
+          ) : null}
+        </>
+      ) : (
+        <>
+          <h2 style={{ marginBottom: 6 }}>Crear tu cuenta</h2>
+          <p className="note" style={{ marginBottom: 20 }}>
+            {preview ? (
+              <>Te unirás a <b style={{ color: "var(--ink)" }}>{preview.org_name}</b>.</>
+            ) : (
+              "Necesitas el código de invitación que te compartieron."
+            )}
+          </p>
+        </>
+      )}
 
-      <label className="field-label" htmlFor="code">Código de invitación</label>
-      <input
-        id="code"
-        className="input"
-        style={{ marginBottom: 6, letterSpacing: 2, textTransform: "uppercase" }}
-        value={code}
-        onChange={(e) => setCode(e.target.value)}
-        placeholder="XXXXXXXXXXXX"
-        autoFocus
-      />
-      {checkingCode && <p className="note" style={{ marginBottom: 10 }}>Comprobando código…</p>}
-      {!checkingCode && preview && (
-        <p className="note" style={{ marginBottom: 10, color: "var(--ok)" }}>
-          Código válido. Te unirás a <b>{preview.org_name}</b> como {rolLabel(preview.role)}.
+      {showCodeField ? (
+        <>
+          <label className="field-label" htmlFor="code">Código de invitación</label>
+          <input
+            id="code"
+            className="input"
+            style={{ marginBottom: 6, letterSpacing: 2, textTransform: "uppercase" }}
+            value={code}
+            onChange={(e) => setCode(e.target.value)}
+            placeholder="XXXXXXXXXXXX"
+            autoFocus={!codeFromLink}
+          />
+          {checkingCode && <p className="note" style={{ marginBottom: 10 }}>Comprobando código…</p>}
+          {!checkingCode && preview && (
+            <p className="note" style={{ marginBottom: 10, color: "var(--ok)" }}>
+              Código válido. Te unirás a <b>{preview.org_name}</b> como {rolLabel(preview.role)}.
+            </p>
+          )}
+        </>
+      ) : (
+        <p className="note" style={{ margin: "0 0 14px", fontSize: 13 }}>
+          ✓ Invitación válida ·{" "}
+          <button type="button" className="link-btn" style={{ fontSize: 13 }} onClick={() => setEditingCode(true)}>
+            Cambiar código
+          </button>
         </p>
       )}
       {!checkingCode && !preview && code.trim().length >= 8 && (
@@ -169,8 +219,8 @@ export default function Register() {
         <span>
           Acepto los{" "}
           <Link to={paths.terms} target="_blank" rel="noreferrer">Términos de uso</Link> y la{" "}
-          <Link to={paths.privacy} target="_blank" rel="noreferrer">Política de privacidad</Link>, incluido el uso de mis
-          datos de salud para planificar mi entrenamiento.
+          <Link to={paths.privacy} target="_blank" rel="noreferrer">Política de privacidad</Link>
+          {isTeam ? "." : ", incluido el uso de mis datos de salud para planificar mi entrenamiento."}
         </span>
       </label>
 

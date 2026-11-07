@@ -520,3 +520,4 @@ select.input:hover { border-color: var(--pri); }
 .statement-table tr.due td { color: #A8341C; }
 .org-contact { display: grid; gap: 8px; background: var(--bg); border-radius: 10px; padding: 12px; margin-bottom: 14px; }
 @media (max-width: 640px) { .org-contact > div { grid-template-columns: 1fr !important; } }
+.welcome-trial { background: var(--ok-soft); color: #1F6B53; border-radius: 10px; padding: 10px 12px; font-size: 14px; margin-bottom: 18px; }
