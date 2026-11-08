@@ -1,5 +1,11 @@
 import { supabase } from "../lib/supabase";
-import { createExercise, listExercises } from "./exercises";
+import type { SupabaseClient } from "@supabase/supabase-js";
+
+/**
+ * Cliente de base de datos con el que se carga: el de la sesión actual, o
+ * (demo de estudio) el de otro entrenador de la demo, iniciado aparte.
+ */
+let db: SupabaseClient = supabase;
 
 /**
  * DEMO DE FUERZALAB
@@ -54,7 +60,7 @@ function atTime(d: Date, h: number, min = 0): Date {
 
 async function insertAll(table: string, rows: Record<string, unknown>[], chunk = 400): Promise<void> {
   for (let i = 0; i < rows.length; i += chunk) {
-    const { error } = await supabase.from(table).insert(rows.slice(i, i + chunk));
+    const { error } = await db.from(table).insert(rows.slice(i, i + chunk));
     if (error) throw new Error(`No se pudieron cargar los datos de ejemplo (${table}): ${error.message}`);
   }
 }
@@ -71,6 +77,14 @@ const CLIENTS = [
   { name: "Sofía Choque", sex: "female", birth: "1985-08-22", height: 158, weight: 70, fat: 31, level: "beginner", squat: 40, goal: "Salud y movilidad" },
   { name: "Javier Flores", sex: "male", birth: "1996-03-30", height: 178, weight: 80, fat: 18, level: "advanced", squat: 110, goal: "Hipertrofia" },
 ] as const;
+
+/** Demo de estudio: otros nombres para los alumnos de cada entrenador (así no se repiten). */
+const TEAM_NAMES: string[][] = [
+  [],
+  ["Paola Rivero", "Rodrigo Salazar", "Daniela Aguilar", "Fernando Cruz", "Natalia Ríos", "Sebastián Torrez", "Gabriela Medina", "Martín Rocha"],
+  ["Mariana Guzmán", "Álvaro Peña", "Carolina Vaca", "Ricardo Suárez", "Andrea Montaño", "Gonzalo Arce", "Ximena Paz", "Hernán Villca"],
+  ["Lorena Justiniano", "Pablo Antezana", "Verónica Soria", "Iván Zeballos", "Claudia Baldivieso", "Óscar Mendoza", "Fabiola Ortiz", "Mauricio Céspedes"],
+];
 
 /** Ejercicios que usa la demo. Se buscan por nombre en la biblioteca; si no están, se crean en la del entrenador demo. */
 const EXERCISES = {
@@ -137,7 +151,7 @@ export async function clearDemoData(trainerId: string): Promise<void> {
     ["dashboard_dismissals", (q) => q.delete().eq("user_id", trainerId)],
   ];
   for (const [table, run] of steps) {
-    const { error } = await run(supabase.from(table));
+    const { error } = await run(db.from(table));
     // La tabla de "atendidas" puede no existir si falta part3r_migration.sql: no importa.
     if (error && table !== "dashboard_dismissals") throw new Error(`No se pudo limpiar la demo (${table}): ${error.message}`);
   }
@@ -145,7 +159,7 @@ export async function clearDemoData(trainerId: string): Promise<void> {
 
 /** ¿Hace falta cargar (o recargar) la demo? Sí si está vacía o si los datos tienen más de ~20 horas. */
 export async function demoNeedsSeed(trainerId: string): Promise<boolean> {
-  const { data, error } = await supabase
+  const { data, error } = await db
     .from("clients")
     .select("created_at")
     .eq("trainer_id", trainerId)
@@ -162,17 +176,34 @@ export async function seedDemo(params: {
   organizationId: string;
   trainerId: string;
   onProgress?: (msg: string) => void;
+  /** Demo de estudio: sesión de otro entrenador (si no, la actual). */
+  client?: SupabaseClient;
+  /** Demo de estudio: 1, 2, 3… para que cada entrenador tenga otros alumnos y otros datos. */
+  variant?: number;
 }): Promise<void> {
+  db = params.client ?? supabase;
+  try {
+    await seedDemoInner(params);
+  } finally {
+    db = supabase;
+  }
+}
+
+async function seedDemoInner(params: { organizationId: string; trainerId: string; onProgress?: (msg: string) => void; variant?: number }): Promise<void> {
   const { organizationId: org, trainerId: trainer } = params;
+  const variant = params.variant ?? 0;
   const say = params.onProgress ?? (() => {});
-  const rand = rng(20261026);
+  const rand = rng(20261026 + variant * 7919);
 
   say("Limpiando datos anteriores…");
   await clearDemoData(trainer);
 
   // Ejercicios ------------------------------------------------------------
   say("Preparando ejercicios…");
-  const library = await listExercises();
+  // Con la sesión de quien carga (en la demo de estudio, cada entrenador ve sus propios ejercicios).
+  const { data: libRows, error: libErr } = await db.from("exercises").select("id, name").eq("is_active", true);
+  if (libErr) throw libErr;
+  const library = (libRows ?? []) as { id: string; name: string }[];
   const norm = (s: string) => s.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().trim();
   const exId = {} as Record<ExKey, string>;
   for (const key of Object.keys(EXERCISES) as ExKey[]) {
@@ -180,23 +211,24 @@ export async function seedDemo(params: {
     const found = library.find((e) => norm(e.name) === norm(def.name));
     if (found) exId[key] = found.id;
     else {
-      const created = await createExercise(
-        {
+      const { data: created, error } = await db
+        .from("exercises")
+        .insert({
+          organization_id: org,
+          owner_id: trainer,
+          scope: "trainer",
           name: def.name,
-          primary_muscle_id: null,
-          movement_pattern_id: null,
           equipment_ids: [],
           difficulty: "intermediate",
           goals: ["Fuerza"],
           instructions: "",
           technical_cues: "",
           common_mistakes: "",
-        },
-        "trainer",
-        org,
-        trainer,
-      );
-      exId[key] = created.id;
+        })
+        .select("id")
+        .single();
+      if (error) throw error;
+      exId[key] = created.id as string;
     }
   }
 
@@ -212,7 +244,10 @@ export async function seedDemo(params: {
 
   // Clientes --------------------------------------------------------------
   say("Creando clientes…");
-  const clients = CLIENTS.map((c, i) => ({ ...c, id: uuid(), idx: i, days: i % 2 === 0 ? [1, 3, 5] : [2, 4, 6] }));
+  const names = TEAM_NAMES[variant] ?? [];
+  // Los demás entrenadores de la demo de estudio tienen menos alumnos (no todos iguales).
+  const roster = variant ? CLIENTS.slice(0, 8 - (variant % 3)) : CLIENTS;
+  const clients = roster.map((c, i) => ({ ...c, name: names[i] ?? c.name, id: uuid(), idx: i, days: i % 2 === 0 ? [1, 3, 5] : [2, 4, 6] }));
   await insertAll(
     "clients",
     clients.map((c) => ({
@@ -432,7 +467,7 @@ export async function seedDemo(params: {
   await insertAll("workout_logs", logs);
   await insertAll("workout_set_logs", setLogs, 500);
   for (let i = 0; i < doneIds.length; i += 200) {
-    const { error } = await supabase.from("workout_logs").update({ status: "completed" }).in("id", doneIds.slice(i, i + 200));
+    const { error } = await db.from("workout_logs").update({ status: "completed" }).in("id", doneIds.slice(i, i + 200));
     if (error) throw error;
   }
 

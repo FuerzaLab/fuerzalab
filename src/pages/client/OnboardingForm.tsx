@@ -11,6 +11,7 @@ import {
 } from "../../services/clients";
 import { parseHeightCm } from "../../services/assessments";
 import { supabase } from "../../lib/supabase";
+import { parseDecimal } from "../../lib/decimal";
 
 export default function OnboardingForm({ clientId, onDone }: { clientId: string; onDone: () => void }) {
   const { profile, signOut } = useAuth();
@@ -79,7 +80,7 @@ export default function OnboardingForm({ clientId, onDone }: { clientId: string;
         birth_date: birthDate || null,
         sex: (sex || null) as any,
         height_cm: heightCm ? parseHeightCm(heightCm) : null, // "1.65" → 165
-        weight_kg: weightKg ? Number(weightKg) : null,
+        weight_kg: parseDecimal(weightKg),
         main_goal: mainGoal,
         secondary_goals: secondaryGoals,
         sports_history: sportsHistory || null,

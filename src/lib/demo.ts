@@ -11,3 +11,31 @@ export const DEMO_ENABLED = !!DEMO_EMAIL && !!DEMO_PASSWORD;
 export function isDemoAccount(email: string | null | undefined): boolean {
   return DEMO_ENABLED && !!email && email.trim().toLowerCase() === DEMO_EMAIL;
 }
+
+/**
+ * Demo de ESTUDIO (opcional): un estudio de ejemplo con varios entrenadores,
+ * para mostrarle a un dueño "Tu estudio" funcionando. Variables de entorno:
+ *  - VITE_DEMO_STUDIO_EMAIL / VITE_DEMO_STUDIO_PASSWORD: la cuenta del DUEÑO
+ *    (entrenador marcado como dueño de esa organización).
+ *  - VITE_DEMO_STUDIO_TEAM: los otros entrenadores de la demo, separados por
+ *    coma, cada uno "correo:contraseña". Al entrar el dueño, la app inicia
+ *    sesión aparte con cada uno y les carga sus datos de ejemplo.
+ * Son cuentas de demostración: sus contraseñas quedan en la app publicada,
+ * igual que la de la demo de un entrenador. No uses cuentas reales.
+ */
+export const DEMO_STUDIO_EMAIL = (import.meta.env.VITE_DEMO_STUDIO_EMAIL ?? "").trim().toLowerCase();
+export const DEMO_STUDIO_PASSWORD = import.meta.env.VITE_DEMO_STUDIO_PASSWORD ?? "";
+export const DEMO_STUDIO_ENABLED = !!DEMO_STUDIO_EMAIL && !!DEMO_STUDIO_PASSWORD;
+export const DEMO_STUDIO_TEAM: { email: string; password: string }[] = (import.meta.env.VITE_DEMO_STUDIO_TEAM ?? "")
+  .split(",")
+  .map((x) => x.trim())
+  .filter(Boolean)
+  .map((x) => {
+    const i = x.indexOf(":");
+    return { email: x.slice(0, i).trim().toLowerCase(), password: x.slice(i + 1) };
+  })
+  .filter((x) => x.email && x.password);
+
+export function isDemoStudioOwner(email: string | null | undefined): boolean {
+  return DEMO_STUDIO_ENABLED && !!email && email.trim().toLowerCase() === DEMO_STUDIO_EMAIL;
+}

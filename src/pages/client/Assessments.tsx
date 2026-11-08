@@ -12,6 +12,7 @@ import {
   listSkinfolds,
   sumSkinfolds8,
   createAssessment,
+  deleteAssessment,
   upsertBodyMeasurement,
   addCircumference,
   TYPE_LABEL,
@@ -25,6 +26,7 @@ import {
   normalizeHeightCm,
 } from "../../services/assessments";
 import Loading from "../../components/ui/Loading";
+import { parseDecimal } from "../../lib/decimal";
 
 const SELF_REPORT_SITES: CircumferenceSite[] = ["neck", "waist", "hip", "arm", "forearm", "thigh", "chest"];
 
@@ -130,6 +132,25 @@ export default function ClientAssessments() {
                   ) : (
                     <p className="note">Sin datos corporales en esta evaluación.</p>
                   )}
+                  {/* Autoevaluación que quedó vacía (por ejemplo, por un error al guardar): se puede borrar. */}
+                  {!body && circs.length === 0 && strength.length === 0 && skinfolds.length === 0 &&
+                    assessments.find((a) => a.id === selectedId)?.type === "self_report" && (
+                      <button
+                        className="link-btn"
+                        style={{ fontSize: 13, marginTop: 8, color: "var(--bad)" }}
+                        onClick={async () => {
+                          try {
+                            await deleteAssessment(selectedId);
+                            if (clientId) await reload(clientId);
+                            notify("Evaluación vacía borrada.");
+                          } catch (e: any) {
+                            notify(e.message);
+                          }
+                        }}
+                      >
+                        Borrar esta evaluación vacía
+                      </button>
+                    )}
                 </div>
               </div>
 
@@ -219,13 +240,30 @@ function SelfReportModal({ clientId, onClose, onSaved }: { clientId: string; onC
   const [saving, setSaving] = useState(false);
 
   const submit = async () => {
-    const anyCirc = SELF_REPORT_SITES.some((s) => values[s]);
-    if (!weight && !anyCirc) {
+    // Primero se valida todo (acepta coma o punto: "82,15"); recién después se guarda.
+    const w = weight.trim() ? parseDecimal(weight) : null;
+    if (weight.trim() && (w == null || w < 20 || w > 400)) {
+      setError("Revisa el peso: escríbelo en kilos, por ejemplo 82,5.");
+      return;
+    }
+    const circs: { site: CircumferenceSite; value: number }[] = [];
+    for (const site of SELF_REPORT_SITES) {
+      const raw = values[site];
+      if (!raw?.trim()) continue;
+      const v = parseDecimal(raw);
+      if (v == null || v < 5 || v > 300) {
+        setError("Revisa las medidas: escríbelas en centímetros, por ejemplo 84,5.");
+        return;
+      }
+      circs.push({ site, value: v });
+    }
+    if (w == null && circs.length === 0) {
       setError("Completa al menos el peso o una medida.");
       return;
     }
     setError("");
     setSaving(true);
+    let createdId: string | null = null;
     try {
       const client = await getClient(clientId);
       const assessment = await createAssessment({
@@ -236,17 +274,19 @@ function SelfReportModal({ clientId, onClose, onSaved }: { clientId: string; onC
         type: "self_report",
         notes: "Registrado por el cliente",
       });
-      if (weight) {
-        await upsertBodyMeasurement(assessment.id, undefined, { weight_kg: Number(weight), height_cm: null, body_fat_pct: null, muscle_mass_kg: null });
+      createdId = assessment.id;
+      if (w != null) {
+        await upsertBodyMeasurement(assessment.id, undefined, { weight_kg: w, height_cm: null, body_fat_pct: null, muscle_mass_kg: null });
       }
-      for (const site of SELF_REPORT_SITES) {
-        if (values[site]) {
-          await addCircumference({ assessmentId: assessment.id, site, customLabel: "", side: "none", valueCm: Number(values[site]) });
-        }
+      for (const c of circs) {
+        await addCircumference({ assessmentId: assessment.id, site: c.site, customLabel: "", side: "none", valueCm: c.value });
       }
       onSaved();
     } catch (e: any) {
-      setError(e.message ?? "No pudimos guardar tus medidas.");
+      // Si algo falla a mitad de camino, no queda una evaluación vacía.
+      if (createdId) await deleteAssessment(createdId).catch(() => {});
+      setError("No pudimos guardar tus medidas. Revisa los datos e inténtalo de nuevo.");
+      console.error(e);
       setSaving(false);
     }
   };

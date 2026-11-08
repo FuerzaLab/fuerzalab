@@ -3,7 +3,8 @@ import { Sparkles } from "lucide-react";
 import { useAuth } from "../contexts/AuthContext";
 import { useToast } from "../contexts/ToastContext";
 import ConfirmModal from "./ui/ConfirmModal";
-import { isDemoAccount } from "../lib/demo";
+import { isDemoAccount, isDemoStudioOwner, DEMO_STUDIO_TEAM } from "../lib/demo";
+import { createClient } from "@supabase/supabase-js";
 import { demoNeedsSeed, seedDemo } from "../services/demoSeed";
 
 /**
@@ -18,7 +19,8 @@ import { demoNeedsSeed, seedDemo } from "../services/demoSeed";
 export default function DemoGate({ children }: { children: ReactNode }) {
   const { profile } = useAuth();
   const { notify } = useToast();
-  const isDemo = profile?.role === "trainer" && isDemoAccount(profile.email);
+  const isStudioDemo = profile?.role === "trainer" && isDemoStudioOwner(profile.email);
+  const isDemo = profile?.role === "trainer" && (isDemoAccount(profile.email) || isStudioDemo);
   const [status, setStatus] = useState<"checking" | "seeding" | "ready">(isDemo ? "checking" : "ready");
   const [message, setMessage] = useState("Preparando la demo…");
   const [confirmReset, setConfirmReset] = useState(false);
@@ -30,6 +32,26 @@ export default function DemoGate({ children }: { children: ReactNode }) {
       if (force || (await demoNeedsSeed(profile.id))) {
         setStatus("seeding");
         await seedDemo({ organizationId: profile.organization_id, trainerId: profile.id, onProgress: setMessage });
+        // Demo de estudio: los demás entrenadores, cada uno con su propia sesión (aparte, sin tocar la del dueño).
+        if (isStudioDemo) {
+          let i = 1;
+          for (const m of DEMO_STUDIO_TEAM) {
+            setMessage(`Preparando al entrenador ${i + 1} del estudio…`);
+            const team = createClient(import.meta.env.VITE_SUPABASE_URL, import.meta.env.VITE_SUPABASE_ANON_KEY, {
+              auth: { persistSession: false, autoRefreshToken: false, storageKey: `fl-demo-team-${i}` },
+            });
+            const { data, error } = await team.auth.signInWithPassword({ email: m.email, password: m.password });
+            if (error || !data.user) {
+              notify(`No se pudo entrar con ${m.email} para cargar su demo.`);
+            } else {
+              await seedDemo({ organizationId: profile.organization_id, trainerId: data.user.id, client: team, variant: i }).catch((e) =>
+                notify(`Demo de ${m.email}: ${e.message}`),
+              );
+              await team.auth.signOut().catch(() => {});
+            }
+            i++;
+          }
+        }
         setVersion((v) => v + 1);
       }
     } catch (e: any) {
@@ -51,7 +73,7 @@ export default function DemoGate({ children }: { children: ReactNode }) {
         <div className="panel" style={{ maxWidth: 460, margin: "40px auto", textAlign: "center" }}>
           <div className="bd" style={{ padding: "30px 22px" }}>
             <Sparkles size={30} style={{ color: "var(--pri)" }} />
-            <h2 style={{ margin: "12px 0 6px" }}>Preparando la demo</h2>
+            <h2 style={{ margin: "12px 0 6px" }}>{isStudioDemo ? "Preparando la demo del estudio" : "Preparando la demo"}</h2>
             <p className="note" style={{ margin: 0 }}>{status === "checking" ? "Un momento…" : message}</p>
             <p className="note" style={{ fontSize: 12.5, marginTop: 12 }}>Estamos cargando clientes y semanas de entrenamientos de ejemplo. Tarda unos segundos.</p>
           </div>

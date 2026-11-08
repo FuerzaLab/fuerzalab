@@ -3,7 +3,7 @@ import { Link, useLocation, useNavigate } from "react-router-dom";
 import { useAuth } from "../../contexts/AuthContext";
 import { paths } from "../../routes/paths";
 import PasswordInput from "../../components/ui/PasswordInput";
-import { DEMO_EMAIL, DEMO_ENABLED, DEMO_PASSWORD } from "../../lib/demo";
+import { DEMO_EMAIL, DEMO_ENABLED, DEMO_PASSWORD, DEMO_STUDIO_EMAIL, DEMO_STUDIO_ENABLED, DEMO_STUDIO_PASSWORD } from "../../lib/demo";
 
 export default function Login() {
   const { signIn } = useAuth();
@@ -15,10 +15,10 @@ export default function Login() {
   const [loading, setLoading] = useState(false);
   const [demoLoading, setDemoLoading] = useState(false);
 
-  const enterDemo = async () => {
+  const enterDemo = async (studio = false) => {
     setError("");
     setDemoLoading(true);
-    const { error: err } = await signIn(DEMO_EMAIL, DEMO_PASSWORD);
+    const { error: err } = await signIn(studio ? DEMO_STUDIO_EMAIL : DEMO_EMAIL, studio ? DEMO_STUDIO_PASSWORD : DEMO_PASSWORD);
     setDemoLoading(false);
     if (err) {
       setError("La demo no está disponible en este momento. Intenta de nuevo en unos minutos.");
@@ -90,9 +90,14 @@ export default function Login() {
           <div className="note" style={{ marginBottom: 10 }}>
             Prueba FuerzaLab como entrenador, con clientes y datos de ejemplo. Sin registrarte.
           </div>
-          <button type="button" className="btn ghost" style={{ width: "100%", justifyContent: "center" }} onClick={enterDemo} disabled={demoLoading}>
+          <button type="button" className="btn ghost" style={{ width: "100%", justifyContent: "center" }} onClick={() => enterDemo(false)} disabled={demoLoading}>
             {demoLoading ? "Entrando a la demo…" : "Probar la demo"}
           </button>
+          {DEMO_STUDIO_ENABLED && (
+            <button type="button" className="btn ghost" style={{ width: "100%", justifyContent: "center", marginTop: 8 }} onClick={() => enterDemo(true)} disabled={demoLoading}>
+              Ver la demo de un estudio
+            </button>
+          )}
         </div>
       )}
 

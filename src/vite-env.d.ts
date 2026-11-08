@@ -6,6 +6,10 @@ interface ImportMetaEnv {
   /** Cuenta del entrenador demo (opcional). Si están las dos, el inicio de sesión muestra "Probar la demo". */
   readonly VITE_DEMO_EMAIL?: string;
   readonly VITE_DEMO_PASSWORD?: string;
+  /** Demo de estudio (opcional): dueño y equipo. VITE_DEMO_STUDIO_TEAM = "correo:clave,correo:clave". */
+  readonly VITE_DEMO_STUDIO_EMAIL?: string;
+  readonly VITE_DEMO_STUDIO_PASSWORD?: string;
+  readonly VITE_DEMO_STUDIO_TEAM?: string;
   /** Contacto en la página de presentación (opcionales). WhatsApp: código de país + número, sin "+". */
   readonly VITE_CONTACT_WHATSAPP?: string;
   readonly VITE_CONTACT_EMAIL?: string;
