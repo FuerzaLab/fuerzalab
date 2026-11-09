@@ -24,7 +24,7 @@ import {
   UserCog,
   Sparkles,
   ChevronDown,
-  Eye, BarChart3 } from "lucide-react";
+  Eye, BarChart3, HelpCircle } from "lucide-react";
 import { useAuth } from "../../contexts/AuthContext";
 import { paths } from "../paths";
 import type { Role, StaffAccess } from "../../types/auth";
@@ -34,6 +34,7 @@ import DemoGate from "../../components/DemoGate";
 import ScreenIntro from "../../components/ScreenIntro";
 import BillingBanner from "../../components/BillingBanner";
 import QuickSearch from "../../components/QuickSearch";
+import HelpButton from "../../components/HelpButton";
 import PageLoading from "../../components/ui/PageLoading";
 import { useIsStudioOwner } from "../../hooks/useIsStudioOwner";
 import { useWhatsNew } from "../../hooks/useWhatsNew";
@@ -80,6 +81,7 @@ const NAV: Record<Role, NavItem[]> = {
     { to: paths.trainerTeam, label: "Equipo", icon: UserCog, group: "Negocio" },
     { to: paths.trainerSettings, label: "Configuración", icon: Settings, group: "Negocio" },
     { to: paths.trainerWhatsNew, label: "Qué hay de nuevo", icon: Sparkles, group: "Negocio" },
+    { to: paths.trainerHelp, label: "Ayuda", icon: HelpCircle, group: "Negocio" },
   ],
   // El menú del staff se arma a partir del del entrenador, filtrado según
   // los permisos que le dio (ver staffNav más abajo).
@@ -94,6 +96,7 @@ const NAV: Record<Role, NavItem[]> = {
     { to: paths.clientPayments, label: "Pagos", icon: CreditCard },
     { to: paths.clientMessages, label: "Mensajes", icon: MessageSquare },
     { to: paths.clientWhatsNew, label: "Qué hay de nuevo", icon: Sparkles },
+    { to: paths.clientHelp, label: "Ayuda", icon: HelpCircle },
   ],
 };
 
@@ -195,6 +198,7 @@ export default function AppLayout() {
           <span className="note">
             {profile.full_name} · {roleLabel(profile.role)}
           </span>
+          <HelpButton />
         </header>
         <ScreenIntro />
         <Suspense fallback={<PageLoading />}>
@@ -277,6 +281,7 @@ function TrainerLauncherShell({
       <header className="launcher-topbar">
         <Brand />
         <QuickSearch sections={items.map((i) => ({ to: i.to, label: i.label }))} />
+        <HelpButton />
         <button className="menu-trigger" aria-expanded={open} onClick={() => setOpen((o) => !o)}>
           <Menu size={17} /> Menú
           {unseenCount > 0 && <span className="wn-dot" aria-label="Hay novedades en Qué hay de nuevo" />}

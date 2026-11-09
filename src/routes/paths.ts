@@ -39,6 +39,8 @@ export const paths = {
   trainerStudio: "/t/estudio",
   trainerWhatsNew: "/t/que-hay-de-nuevo",
   clientWhatsNew: "/c/que-hay-de-nuevo",
+  trainerHelp: "/t/ayuda",
+  clientHelp: "/c/ayuda",
   privacy: "/privacidad",
   terms: "/terminos",
 

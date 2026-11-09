@@ -59,6 +59,7 @@ import { paths } from "./paths";
 // inicio de sesión y registro quedan incluidas desde el principio.
 const PrivacyPage = lazy(() => import("../pages/public/Legal").then((m) => ({ default: m.PrivacyPage })));
 const WhatsNew = lazy(() => import("../pages/shared/WhatsNew"));
+const HelpCenter = lazy(() => import("../pages/shared/HelpCenter"));
 const TermsPage = lazy(() => import("../pages/public/Legal").then((m) => ({ default: m.TermsPage })));
 
 export default function AppRoutes() {
@@ -124,6 +125,7 @@ export default function AppRoutes() {
             <Route path={paths.trainerTeam} element={<TeamPage />} />
             <Route path={paths.trainerStudio} element={<StudioPage />} />
             <Route path={paths.trainerWhatsNew} element={<WhatsNew />} />
+            <Route path={paths.trainerHelp} element={<HelpCenter />} />
           </Route>
           </Route>
         </Route>
@@ -143,6 +145,7 @@ export default function AppRoutes() {
             <Route path={paths.clientWellness} element={<ClientWellness />} />
             <Route path={paths.clientReports} element={<ClientReports />} />
             <Route path={paths.clientWhatsNew} element={<WhatsNew />} />
+            <Route path={paths.clientHelp} element={<HelpCenter />} />
           </Route>
           </Route>
         </Route>

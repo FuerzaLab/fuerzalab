@@ -22,6 +22,13 @@ export interface ChangelogEntry {
 
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    id: "2026-11-09-help-center",
+    date: "2026-11-09",
+    title: "Ayuda dentro de la app",
+    body: "Nueva sección Ayuda, con un buscador: escribe lo que necesitas (por ejemplo \"cobro\" o \"descanso\") y te muestra para qué sirve cada pantalla y qué hace cada botón, con imágenes. Y en cada pantalla, el botón \"?\" de arriba abre directo su explicación. También puedes descargar el manual en PDF.",
+    for: ["trainer", "client"],
+  },
+  {
     id: "2026-11-06-studio-invites",
     date: "2026-11-06",
     title: "Invita a los entrenadores de tu estudio",
