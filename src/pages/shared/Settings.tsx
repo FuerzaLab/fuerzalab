@@ -3,7 +3,7 @@ import { useAuth } from "../../contexts/AuthContext";
 import { useToast } from "../../contexts/ToastContext";
 import { supabase } from "../../lib/supabase";
 import PasswordInput from "../../components/ui/PasswordInput";
-import { isDemoAccount } from "../../lib/demo";
+import { isDemoAccount, isDemoClient } from "../../lib/demo";
 import BrandSettingsPanel from "../../components/BrandSettingsPanel";
 import { DefaultGymUnitsPanel } from "../../components/GymUnitsSettings";
 import MenuSectionsPanel from "../../components/MenuSectionsPanel";
@@ -81,7 +81,7 @@ export default function Settings() {
       </div>
 
       {/* En la demo no se deja cambiar la contraseña: todos los visitantes comparten la misma cuenta. */}
-      {isDemoAccount(profile?.email) ? (
+      {isDemoAccount(profile?.email) || isDemoClient(profile?.email) ? (
         <div className="panel" style={{ maxWidth: 420 }}>
           <div className="bd">
             <p className="note" style={{ margin: 0 }}>Estás en la cuenta demo: la contraseña no se puede cambiar.</p>

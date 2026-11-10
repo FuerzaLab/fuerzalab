@@ -3,9 +3,9 @@ import { Sparkles } from "lucide-react";
 import { useAuth } from "../contexts/AuthContext";
 import { useToast } from "../contexts/ToastContext";
 import ConfirmModal from "./ui/ConfirmModal";
-import { isDemoAccount, isDemoStudioOwner, DEMO_STUDIO_TEAM } from "../lib/demo";
+import { isDemoAccount, isDemoStudioOwner, DEMO_STUDIO_TEAM, DEMO_CLIENT_ENABLED, DEMO_CLIENT_EMAIL } from "../lib/demo";
 import { createClient } from "@supabase/supabase-js";
-import { demoNeedsSeed, seedDemo } from "../services/demoSeed";
+import { demoNeedsSeed, linkDemoStudent, seedDemo } from "../services/demoSeed";
 
 /**
  * Envuelve las pantallas del entrenador. Si la cuenta es la demo:
@@ -32,6 +32,8 @@ export default function DemoGate({ children }: { children: ReactNode }) {
       if (force || (await demoNeedsSeed(profile.id))) {
         setStatus("seeding");
         await seedDemo({ organizationId: profile.organization_id, trainerId: profile.id, onProgress: setMessage });
+        // Demo como alumno: la alumna de ejemplo se volvió a crear; se reconecta su cuenta.
+        if (!isStudioDemo && DEMO_CLIENT_ENABLED) await linkDemoStudent(profile.id, DEMO_CLIENT_EMAIL).catch(() => false);
         // Demo de estudio: los demás entrenadores, cada uno con su propia sesión (aparte, sin tocar la del dueño).
         if (isStudioDemo) {
           let i = 1;

@@ -10,6 +10,9 @@ interface ImportMetaEnv {
   readonly VITE_DEMO_STUDIO_EMAIL?: string;
   readonly VITE_DEMO_STUDIO_PASSWORD?: string;
   readonly VITE_DEMO_STUDIO_TEAM?: string;
+  /** Demo como alumno (opcional). */
+  readonly VITE_DEMO_CLIENT_EMAIL?: string;
+  readonly VITE_DEMO_CLIENT_PASSWORD?: string;
   /** Contacto en la página de presentación (opcionales). WhatsApp: código de país + número, sin "+". */
   readonly VITE_CONTACT_WHATSAPP?: string;
   readonly VITE_CONTACT_EMAIL?: string;

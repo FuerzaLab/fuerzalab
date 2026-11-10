@@ -158,8 +158,8 @@ export async function clearDemoData(trainerId: string): Promise<void> {
 }
 
 /** ¿Hace falta cargar (o recargar) la demo? Sí si está vacía o si los datos tienen más de ~20 horas. */
-export async function demoNeedsSeed(trainerId: string): Promise<boolean> {
-  const { data, error } = await db
+export async function demoNeedsSeed(trainerId: string, client?: SupabaseClient): Promise<boolean> {
+  const { data, error } = await (client ?? db)
     .from("clients")
     .select("created_at")
     .eq("trainer_id", trainerId)
@@ -275,6 +275,8 @@ async function seedDemoInner(params: { organizationId: string; trainerId: string
       weight_kg: c.weight,
       consent_accepted: true,
       submitted_at: addDays(week1, -3).toISOString(),
+      // Aprobado: así la cuenta "demo como alumno" entra directo a su app.
+      reviewed_at: addDays(week1, -2).toISOString(),
     })),
   );
 
@@ -611,4 +613,19 @@ async function seedDemoInner(params: { organizationId: string; trainerId: string
   ]);
 
   say("¡Listo!");
+}
+
+/** Demo como alumno: el alumno de ejemplo al que se conecta esa cuenta. */
+export const DEMO_STUDENT_NAME = "Valeria Rojas";
+
+/**
+ * Conecta la cuenta "demo como alumno" con el alumno de ejemplo (se vuelve a
+ * crear cada día al recargar la demo). La hace la sesión del entrenador demo.
+ */
+export async function linkDemoStudent(trainerId: string, email: string, client?: SupabaseClient): Promise<boolean> {
+  const c = client ?? supabase;
+  const { data: row } = await c.from("clients").select("id").eq("trainer_id", trainerId).eq("full_name", DEMO_STUDENT_NAME).limit(1).maybeSingle();
+  if (!row?.id) return false;
+  const { data, error } = await c.rpc("demo_link_client", { p_client: row.id, p_email: email });
+  return !error && data === true;
 }

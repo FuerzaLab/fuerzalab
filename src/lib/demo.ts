@@ -39,3 +39,17 @@ export const DEMO_STUDIO_TEAM: { email: string; password: string }[] = (import.m
 export function isDemoStudioOwner(email: string | null | undefined): boolean {
   return DEMO_STUDIO_ENABLED && !!email && email.trim().toLowerCase() === DEMO_STUDIO_EMAIL;
 }
+
+/**
+ * Demo como ALUMNO (opcional): una cuenta de alumno de la organización demo,
+ * que se conecta cada vez con "Valeria Rojas" (alumna de ejemplo).
+ * VITE_DEMO_CLIENT_EMAIL / VITE_DEMO_CLIENT_PASSWORD. Requiere la demo del
+ * entrenador (VITE_DEMO_EMAIL / VITE_DEMO_PASSWORD) y part4h_migration.sql.
+ */
+export const DEMO_CLIENT_EMAIL = (import.meta.env.VITE_DEMO_CLIENT_EMAIL ?? "").trim().toLowerCase();
+export const DEMO_CLIENT_PASSWORD = import.meta.env.VITE_DEMO_CLIENT_PASSWORD ?? "";
+export const DEMO_CLIENT_ENABLED = DEMO_ENABLED && !!DEMO_CLIENT_EMAIL && !!DEMO_CLIENT_PASSWORD;
+
+export function isDemoClient(email: string | null | undefined): boolean {
+  return DEMO_CLIENT_ENABLED && !!email && email.trim().toLowerCase() === DEMO_CLIENT_EMAIL;
+}

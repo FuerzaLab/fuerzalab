@@ -3,7 +3,8 @@ import { Link, useLocation, useNavigate } from "react-router-dom";
 import { useAuth } from "../../contexts/AuthContext";
 import { paths } from "../../routes/paths";
 import PasswordInput from "../../components/ui/PasswordInput";
-import { DEMO_EMAIL, DEMO_ENABLED, DEMO_PASSWORD, DEMO_STUDIO_EMAIL, DEMO_STUDIO_ENABLED, DEMO_STUDIO_PASSWORD } from "../../lib/demo";
+import { DEMO_EMAIL, DEMO_ENABLED, DEMO_PASSWORD, DEMO_STUDIO_EMAIL, DEMO_STUDIO_ENABLED, DEMO_STUDIO_PASSWORD, DEMO_CLIENT_EMAIL, DEMO_CLIENT_ENABLED, DEMO_CLIENT_PASSWORD } from "../../lib/demo";
+import { prepareStudentDemo } from "../../services/demoStudent";
 
 export default function Login() {
   const { signIn } = useAuth();
@@ -14,6 +15,23 @@ export default function Login() {
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
   const [demoLoading, setDemoLoading] = useState(false);
+
+  const [demoMsg, setDemoMsg] = useState("");
+  const enterStudentDemo = async () => {
+    setError("");
+    setDemoLoading(true);
+    try {
+      setDemoMsg("Preparando la demo del alumno…");
+      await prepareStudentDemo(setDemoMsg);
+      const { error: err } = await signIn(DEMO_CLIENT_EMAIL, DEMO_CLIENT_PASSWORD);
+      if (err) throw err;
+      navigate("/", { replace: true });
+    } catch (e: any) {
+      setError(e?.message?.startsWith("La demo") ? e.message : "La demo del alumno no está disponible en este momento. Intenta de nuevo en unos minutos.");
+    }
+    setDemoMsg("");
+    setDemoLoading(false);
+  };
 
   const enterDemo = async (studio = false) => {
     setError("");
@@ -93,6 +111,11 @@ export default function Login() {
           <button type="button" className="btn ghost" style={{ width: "100%", justifyContent: "center" }} onClick={() => enterDemo(false)} disabled={demoLoading}>
             {demoLoading ? "Entrando a la demo…" : "Probar la demo"}
           </button>
+          {DEMO_CLIENT_ENABLED && (
+            <button type="button" className="btn ghost" style={{ width: "100%", justifyContent: "center", marginTop: 8 }} onClick={enterStudentDemo} disabled={demoLoading}>
+              {demoMsg || "Ver la demo como alumno"}
+            </button>
+          )}
           {DEMO_STUDIO_ENABLED && (
             <button type="button" className="btn ghost" style={{ width: "100%", justifyContent: "center", marginTop: 8 }} onClick={() => enterDemo(true)} disabled={demoLoading}>
               Ver la demo de un estudio
