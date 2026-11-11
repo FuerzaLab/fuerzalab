@@ -167,6 +167,15 @@ export async function getTodaysSessionForClient(clientId: string): Promise<Today
   if (daysSince < 0) return null;
   const currentWeekNumber = Math.floor(daysSince / 7) + 1;
 
+  // Plan por semanas: si todavía no terminó una semana anterior, lo de hoy es
+  // terminar esa (la semana de hoy sigue bloqueada para el alumno).
+  const unlocked = await unlockedWeekNumber(program.id, (program as any).plan_mode);
+  if (currentWeekNumber > unlocked) {
+    const lockedFrom = weeks.find((w) => w.week_number === unlocked);
+    const pending = lockedFrom ? await firstPendingOfWeek(lockedFrom.id) : null;
+    return pending ? { clientId, session: pending.session, status: pending.status } : null;
+  }
+
   const currentWeek = weeks.find((w) => w.week_number === currentWeekNumber);
   if (!currentWeek) return null;
 
@@ -176,6 +185,39 @@ export async function getTodaysSessionForClient(clientId: string): Promise<Today
 
   const statuses = await getSessionStatuses([todaysSession.id]);
   return { clientId, session: todaysSession, status: statuses[todaysSession.id] ?? "pending" };
+}
+
+/**
+ * Plan por semanas: hasta qué semana puede ver y entrenar el alumno. La
+ * semana siguiente se habilita recién cuando todas las rutinas de la
+ * anterior están hechas o marcadas como saltadas (una semana sin rutinas
+ * no frena). En rutinas fijas no hay bloqueo (devuelve Infinity).
+ */
+export async function unlockedWeekNumber(programId: string, planMode?: string | null): Promise<number> {
+  if (planMode === "fixed") return Infinity;
+  const weeks = (await listWeeks(programId)).sort((a, b) => a.week_number - b.week_number);
+  if (!weeks.length) return 1;
+  const { data, error } = await supabase.from("sessions").select("id, week_id").eq("program_id", programId);
+  if (error) return Infinity; // ante la duda, no se bloquea nada
+  const all = (data ?? []) as { id: string; week_id: string }[];
+  const st = await getSessionStatuses(all.map((x) => x.id));
+  let unlocked = weeks[0].week_number;
+  for (const w of weeks) {
+    if (w.week_number > unlocked) break;
+    const ids = all.filter((x) => x.week_id === w.id).map((x) => x.id);
+    const done = ids.every((id) => st[id] === "completed" || st[id] === "skipped");
+    if (!done) break;
+    unlocked = w.week_number + 1;
+  }
+  return Math.min(unlocked, weeks[weeks.length - 1].week_number);
+}
+
+/** La primera rutina sin hacer de una semana (por orden). */
+async function firstPendingOfWeek(weekId: string): Promise<{ session: SessionRow; status: TodaysSession["status"] } | null> {
+  const ss = await listSessions(weekId);
+  const st = await getSessionStatuses(ss.map((x) => x.id));
+  const s = ss.find((x) => st[x.id] !== "completed" && st[x.id] !== "skipped");
+  return s ? { session: s, status: (st[s.id] ?? "pending") as TodaysSession["status"] } : null;
 }
 
 export interface NextSession {
@@ -207,6 +249,12 @@ export async function getNextScheduledSessionForClient(clientId: string): Promis
   if (daysSince < 0) return null;
   const currentWeekNumber = Math.floor(daysSince / 7) + 1;
   const todayDow = todayDayOfWeek();
+  const unlocked = await unlockedWeekNumber(program.id, (program as any).plan_mode);
+  if (currentWeekNumber > unlocked) {
+    const lockedFrom = weeks.find((w) => w.week_number === unlocked);
+    const pending = lockedFrom ? await firstPendingOfWeek(lockedFrom.id) : null;
+    return pending ? { session: pending.session, dayLabel: `pendiente de la semana ${unlocked}`, isToday: false } : null;
+  }
 
   const currentWeek = weeks.find((w) => w.week_number === currentWeekNumber);
   if (currentWeek) {
@@ -216,7 +264,7 @@ export async function getNextScheduledSessionForClient(clientId: string): Promis
   }
 
   const nextWeek = weeks.find((w) => w.week_number === currentWeekNumber + 1);
-  if (nextWeek) {
+  if (nextWeek && nextWeek.week_number <= unlocked) {
     const sessions = await listSessions(nextWeek.id);
     const first = sessions.filter((s) => s.day_of_week != null).sort((a, b) => (a.day_of_week ?? 0) - (b.day_of_week ?? 0))[0];
     if (first) return { session: first, dayLabel: DAY_OF_WEEK_LABEL[first.day_of_week!], isToday: false };

@@ -73,6 +73,7 @@ import SearchSelect from "../../../components/ui/SearchSelect";
 import AssessmentPhotosSection from "./AssessmentPhotosSection";
 import { movePhotosDate, listPhotosOnDate } from "../../../services/progressPhotos";
 import EmptyState from "../../../components/ui/EmptyState";
+import PerformanceSection from "./PerformanceSection";
 
 const CATEGORY_ORDER: AssessmentCategory[] = ["body", "circumferences", "skinfolds", "strength", "power", "endurance", "mobility", "flexibility"];
 
@@ -290,7 +291,7 @@ function AssessmentDetail({
   const { can } = useAuth();
   // "photos" no es una categoría de la base de datos: son las fotos de
   // progreso del cliente con la fecha de esta evaluación.
-  const [active, setActive] = useState<AssessmentCategory | "photos">(suggestedCategories?.[0] ?? "body");
+  const [active, setActive] = useState<AssessmentCategory | "photos" | "performance">(suggestedCategories?.[0] ?? "body");
   const [photoCount, setPhotoCount] = useState(0);
   const [savedDate, setSavedDate] = useState(assessment.assessed_at.slice(0, 10));
 
@@ -432,7 +433,7 @@ function AssessmentDetail({
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-end", gap: 12, marginBottom: 18, flexWrap: "wrap" }}>
         <div>
           <label className="field-label">Qué evaluación quieres registrar</label>
-          <select className="input" style={{ minWidth: 240 }} value={active} onChange={(e) => setActive(e.target.value as AssessmentCategory | "photos")}>
+          <select className="input" style={{ minWidth: 240 }} value={active} onChange={(e) => setActive(e.target.value as AssessmentCategory | "photos" | "performance")}>
             {CATEGORY_ORDER.map((c) => (
               <option key={c} value={c}>
                 {CATEGORY_LABEL[c]}
@@ -440,6 +441,7 @@ function AssessmentDetail({
                 {suggestedCategories?.includes(c) ? " — sugerida" : ""}
               </option>
             ))}
+            <option value="performance">Rendimiento: potencia, velocidad y funcionales</option>
             {can("files") && <option value="photos">Fotos de progreso{photoCount > 0 ? ` (${photoCount})` : ""}</option>}
           </select>
         </div>
@@ -468,6 +470,9 @@ function AssessmentDetail({
       {active === "endurance" && <EnduranceSection assessmentId={assessment.id} rows={endurance} setRows={setEndurance} />}
       {active === "mobility" && <MobilitySection assessmentId={assessment.id} rows={mobility} setRows={setMobility} />}
       {active === "flexibility" && <FlexibilitySection assessmentId={assessment.id} rows={flexibility} setRows={setFlexibility} />}
+      {active === "performance" && (
+        <PerformanceSection assessmentId={assessment.id} assessedAt={savedDate} clientId={assessment.client_id} bodyKg={body?.weight_kg ?? null} />
+      )}
       {active === "photos" && <AssessmentPhotosSection clientId={assessment.client_id} date={savedDate} onCountChange={setPhotoCount} />}
     </div>
   );

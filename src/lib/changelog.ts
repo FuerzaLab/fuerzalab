@@ -22,6 +22,46 @@ export interface ChangelogEntry {
 
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    id: "2026-11-10-performance-tests",
+    date: "2026-11-10",
+    title: "Nuevas pruebas: potencia, velocidad y funcionales",
+    body: "En Evaluaciones → «Rendimiento»: saltos (CMJ, squat jump, drop jump), balón medicinal, sprints con parciales, sprint lanzado, 505 y 5-10-5, dinamometría de mano, sentarse y levantarse, y velocidad de marcha. Cada una con su protocolo y sus cálculos (potencia estimada, RSI, velocidad, asimetría entre lados), y te dice si el cambio contra la evaluación anterior es una mejora real o solo variación normal.",
+    for: ["trainer"],
+    link: { label: "Ir a Evaluaciones", to: paths.trainerAssessments },
+  },
+  {
+    id: "2026-11-10-plan-chips",
+    date: "2026-11-10",
+    title: "Ves a quién se le termina el plan",
+    body: "En Clientes, al lado de cada alumno: «Plan por terminar» (está en su última semana con rutinas), «Terminó su plan» (ya hizo todo y espera lo que sigue) o «Sin plan». Además, como hasta ahora, te avisa en Novedades.",
+    for: ["trainer"],
+    link: { label: "Ir a Clientes", to: paths.trainerClients },
+  },
+  {
+    id: "2026-11-10-week-unlock",
+    date: "2026-11-10",
+    title: "Tus alumnos avanzan semana por semana",
+    body: "En los planes por semanas, el alumno ve la semana en curso y las anteriores; la siguiente se le habilita recién cuando termina todas las rutinas de la anterior. Si faltó a alguna, márcala como saltada en «Entrenar con cliente» y se le abre la semana siguiente. Tú sigues viendo y editando todas.",
+    for: ["trainer"],
+    link: { label: "Ir a Entrenar con cliente", to: paths.trainerRunSession },
+  },
+  {
+    id: "2026-11-10-fixed-copy-swap",
+    date: "2026-11-10",
+    title: "Rutinas fijas: copiar y cambiar de lugar",
+    body: "En Rutinas fijas, cada rutina se puede copiar con todos sus ejercicios, moverla con las flechas ◀ ▶ (o arrastrándola en la computadora) y quitarla. Y ya no se les asigna un día de la semana solo: tu alumno ve todas y elige cuál hacer, o le asignas un día cuando quieras.",
+    for: ["trainer"],
+    link: { label: "Ir al Constructor", to: paths.trainerBuilder },
+  },
+  {
+    id: "2026-11-10-block-weeks",
+    date: "2026-11-10",
+    title: "Duración de los bloques, sin sustos",
+    body: "En Planificación, la duración de un bloque se guarda al salir del campo (antes, con cada tecla: un «44» por error creaba 44 semanas). Si pones más de 12 semanas, te pide confirmar. Y si sobran semanas vacías, las borras todas de una vez con un botón.",
+    for: ["trainer"],
+    link: { label: "Ir a Planificación", to: paths.trainerPrograms },
+  },
+  {
     id: "2026-11-09-help-center",
     date: "2026-11-09",
     title: "Ayuda dentro de la app",

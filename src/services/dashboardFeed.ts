@@ -1,5 +1,6 @@
 import { supabase } from "../lib/supabase";
 import { ensureNextPeriodPayments } from "./payments";
+import { planStatusByClient } from "./planStatus";
 import { formatLoad } from "../lib/units";
 import type { ClientRow } from "./clients";
 import { wellnessScore, lowFields, WELLNESS_FIELD_LABEL, type WellnessLogRow } from "./wellness";
@@ -14,7 +15,7 @@ import { wellnessScore, lowFields, WELLNESS_FIELD_LABEL, type WellnessLogRow } f
  * lo que se guarda al marcarla como atendida.
  */
 
-export type FeedKind = "joined" | "intake" | "record" | "measure" | "note" | "skip" | "wellness" | "photos" | "payment" | "video" | "suggestion";
+export type FeedKind = "joined" | "intake" | "plan" | "record" | "measure" | "note" | "skip" | "wellness" | "photos" | "payment" | "video" | "suggestion";
 
 export interface FeedItem {
   key: string;
@@ -39,6 +40,7 @@ export const FEED_KIND_LABEL: Record<FeedKind, string> = {
   wellness: "Bienestar",
   photos: "Fotos",
   joined: "Alumno nuevo",
+  plan: "Plan",
   intake: "Formulario",
   payment: "Pago",
   video: "Video",
@@ -361,6 +363,42 @@ async function photoItems(clients: ClientRow[]): Promise<FeedItem[]> {
 
 // --- Pagos vencidos o por vencer -----------------------------------------
 
+// --- Planes que se terminan ---------------------------------------------
+
+async function planItems(clients: ClientRow[]): Promise<FeedItem[]> {
+  const active = clients.filter((c) => c.status === "active");
+  const map = await planStatusByClient(active.map((c) => c.id));
+  const items: FeedItem[] = [];
+  for (const c of active) {
+    const p = map[c.id];
+    if (!p || !p.programId) continue;
+    const first = c.full_name.split(" ")[0];
+    if (p.state === "ending") {
+      items.push({
+        // La clave incluye la última semana: si le agregas semanas y se vuelve a acercar el final, avisa de nuevo.
+        key: `plan-ending:${p.programId}:${p.lastWeek}`,
+        kind: "plan",
+        clientId: c.id,
+        at: new Date().toISOString(),
+        title: "Al plan le queda 1 semana",
+        detail: `${first} está en la última semana con rutinas de «${p.programName}». Revisa cómo le fue y arma lo que sigue.`,
+        tone: "warn",
+      });
+    } else if (p.state === "done") {
+      items.push({
+        key: `plan-done:${p.programId}:${p.lastWeek}`,
+        kind: "plan",
+        clientId: c.id,
+        at: new Date().toISOString(),
+        title: "Terminó su plan",
+        detail: `${first} ya hizo todas las rutinas de «${p.programName}» y no tiene más por delante: está esperando su nuevo plan.`,
+        tone: "bad",
+      });
+    }
+  }
+  return items;
+}
+
 async function paymentItems(): Promise<FeedItem[]> {
   // Si a algún plan le falta el cobro del próximo período, se crea antes de revisar vencimientos.
   await ensureNextPeriodPayments().catch(() => 0);
@@ -463,6 +501,7 @@ export async function loadFeed(
     allow.files ? safe(photoItems(clients)) : Promise.resolve([] as FeedItem[]),
     allow.payments ? safe(paymentItems()) : Promise.resolve([] as FeedItem[]),
     safe(joinedItems()),
+    allow.logs ? safe(planItems(clients)) : Promise.resolve([] as FeedItem[]),
     allow.health ? safe(intakeItems()) : Promise.resolve([] as FeedItem[]),
     allow.videosFor ? safe(videoItems(allow.videosFor)) : Promise.resolve([] as FeedItem[]),
     allow.suggestions ? safe(suggestionItems()) : Promise.resolve([] as FeedItem[]),

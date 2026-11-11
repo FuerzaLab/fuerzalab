@@ -1,5 +1,5 @@
 import { supabase } from "../lib/supabase";
-import { createSession, listSessions, updateSessionDay, type SessionRow } from "./sessions";
+import { createSession, listSessions, type SessionRow } from "./sessions";
 import { createWeek, listWeeks, updateWeekStartDate } from "./programs";
 import { listDoneSessions } from "./sessions";
 
@@ -40,8 +40,8 @@ export async function createFixedProgram(params: { organizationId: string; train
   }
   const week = await createWeek(program.id, 1);
   await updateWeekStartDate(week.id, mondayOfThisWeek());
-  const day = await createSession(week.id, "Día A", 0);
-  await updateSessionDay(day.id, 1);
+  // Sin día de la semana asignado: el alumno ve todas sus rutinas y elige (se puede asignar después).
+  await createSession(week.id, "Día A", 0);
   await extendFixedProgram(program.id);
   return program.id as string;
 }
@@ -50,9 +50,26 @@ export async function extendFixedProgram(programId: string): Promise<void> {
   await supabase.rpc("fixed_extend", { p_program: programId, p_weeks_ahead: 8 });
 }
 
-export async function addFixedDay(programId: string, name: string, dayOfWeek: number): Promise<void> {
-  const { error } = await supabase.rpc("fixed_add_day", { p_program: programId, p_name: name, p_day: dayOfWeek });
+/** Agrega una rutina (desde esta semana). Devuelve la de esta semana. Día de la semana opcional. */
+export async function addFixedDay(programId: string, name: string, dayOfWeek: number | null): Promise<string | null> {
+  const { data, error } = await supabase.rpc("fixed_add_day", { p_program: programId, p_name: name, p_day: dayOfWeek });
   if (error) throw error;
+  return (data as string) ?? null;
+}
+
+/** Copia una rutina con todos sus ejercicios, como una rutina nueva (sin día asignado). */
+export async function duplicateFixedDay(programId: string, source: SessionRow, name: string): Promise<void> {
+  const newId = await addFixedDay(programId, name, null);
+  if (!newId) throw new Error("No se pudo crear la copia.");
+  // Copia el contenido a la nueva; el cambio se copia solo a sus próximas semanas.
+  const { error } = await supabase.rpc("fixed_copy_session_content", { p_from: source.id, p_to: newId });
+  if (error) throw new Error(/fixed_copy_session_content|permission/i.test(error.message) ? "Falta correr part4i_migration.sql en Supabase." : error.message);
+}
+
+/** Intercambia el lugar de dos rutinas, desde esta semana (lo ya entrenado no se toca). */
+export async function swapFixedDays(programId: string, sortA: number, sortB: number): Promise<void> {
+  const { error } = await supabase.rpc("fixed_swap_days", { p_program: programId, p_sort_a: sortA, p_sort_b: sortB });
+  if (error) throw new Error(/fixed_swap_days/.test(error.message) ? "Falta correr part4i_migration.sql en Supabase." : error.message);
 }
 
 export async function deleteFixedDay(programId: string, sortOrder: number): Promise<void> {

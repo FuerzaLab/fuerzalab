@@ -22,6 +22,7 @@ import WhatsAppButton from "../../../components/WhatsAppButton";
 import { inviteMessage } from "../../../lib/whatsapp";
 import BulkInviteModal from "./BulkInviteModal";
 import { firstName } from "../../../lib/whatsapp";
+import { planStatusByClient, type PlanStatus } from "../../../services/planStatus";
 
 const STATUS_LABEL: Record<ClientStatus, string> = {
   prospect: "Prospecto",
@@ -42,6 +43,8 @@ export default function ClientsList() {
   const navigate = useNavigate();
 
   const [clients, setClients] = useState<ClientRow[]>([]);
+  // Estado del plan de cada alumno activo (por terminar, terminado, sin plan).
+  const [plans, setPlans] = useState<Record<string, PlanStatus>>({});
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState("");
   const [query, setQuery] = useState("");
@@ -59,6 +62,7 @@ export default function ClientsList() {
       setClients(cs);
       const profileIds = cs.map((c) => c.profile_id).filter((id): id is string => !!id);
       setLastSignIn(await getLastSignInByProfileId(profileIds));
+      planStatusByClient(cs.filter((c) => c.status === "active").map((c) => c.id)).then(setPlans).catch(() => {});
     } catch (err: any) {
       setLoadError(err.message ?? "No pudimos cargar tus clientes.");
     }
@@ -179,6 +183,17 @@ export default function ClientsList() {
                           </div>
                         )}
                         {!c.profile_id && <Chip tone="warn">Sin aceptar invitación</Chip>}
+                        {c.status === "active" && plans[c.id]?.state === "ending" && (
+                          <span title="Está en la última semana con rutinas armadas: arma lo que sigue">
+                            <Chip tone="warn">Plan por terminar</Chip>
+                          </span>
+                        )}
+                        {c.status === "active" && plans[c.id]?.state === "done" && (
+                          <span title="Ya hizo todas sus rutinas: está esperando su nuevo plan">
+                            <Chip tone="bad">Terminó su plan</Chip>
+                          </span>
+                        )}
+                        {c.status === "active" && plans[c.id]?.state === "none" && <Chip tone="">Sin plan</Chip>}
                       </div>
                       {c.profile_id && (
                         <div className="note" style={{ marginTop: 3 }}>

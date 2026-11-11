@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
+import { useSearchParams } from "react-router-dom";
 import { Plus, Copy, X } from "lucide-react";
 import { useAuth } from "../../../contexts/AuthContext";
 import { useToast } from "../../../contexts/ToastContext";
@@ -47,7 +48,9 @@ export default function ProgramsPage() {
   const { notify, flashSaved } = useToast();
 
   const [clients, setClients] = useState<ClientRow[]>([]);
-  const [clientId, setClientId] = useState("");
+  // "?cliente=<id>" (desde Novedades: "terminó su plan"): abre con ese alumno elegido.
+  const [searchParams] = useSearchParams();
+  const [clientId, setClientId] = useState(searchParams.get("cliente") ?? "");
   const [programs, setPrograms] = useState<ProgramRow[]>([]);
   const [programId, setProgramId] = useState("");
   const [mesos, setMesos] = useState<MesocycleRow[]>([]);
@@ -442,12 +445,10 @@ export default function ProgramsPage() {
                 <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(180px,1fr))", gap: 14, marginBottom: 14 }}>
                   <div>
                     <label className="field-label">{program.method === "atr" ? "Duración de la fase (semanas)" : "Duración (semanas)"}</label>
-                    <input
-                      className="input"
-                      style={{ maxWidth: 100 }}
-                      inputMode="numeric"
-                      value={meso.duration_weeks ?? ""}
-                      onChange={(e) => patchMeso("duration_weeks", Math.max(1, Number(e.target.value.replace(/\D/g, "")) || 1))}
+                    <DurationInput
+                      key={meso.id}
+                      value={meso.duration_weeks ?? 1}
+                      onCommit={(v) => patchMeso("duration_weeks", v)}
                     />
                   </div>
                   <div>
@@ -622,6 +623,32 @@ function UnclaimedWeeksPanel({ weeks, onChanged }: { weeks: WeekRow[]; onChanged
             {pending.length} semana{pending.length === 1 ? "" : "s"} ya existe{pending.length === 1 ? "" : "n"} (de un bloque que acortaste antes) pero ningún bloque actual {pending.length === 1 ? "la reclama" : "las reclama"} — aparecen en gris en el gráfico de abajo.
           </p>
         )}
+        {pending.filter((w) => !hasContent[w.id]).length > 1 && (
+          <button
+            className="btn ghost"
+            style={{ marginBottom: 10, padding: "6px 12px", fontSize: 13, color: "var(--bad)", borderColor: "var(--bad)" }}
+            disabled={busy !== null}
+            onClick={async () => {
+              const empty = pending.filter((w) => !hasContent[w.id]);
+              if (!window.confirm(`¿Borrar las ${empty.length} semanas vacías que sobran? Las que tienen rutinas armadas no se tocan.`)) return;
+              setBusy("all");
+              try {
+                // De la última a la primera, para no dejar huecos en la numeración.
+                for (const w of [...empty].sort((a, b) => b.week_number - a.week_number)) {
+                  if (await weekHasSessions(w.id)) continue;
+                  await deleteWeek(w.id);
+                }
+                notify(`Listo: se borraron las semanas vacías que sobraban.`);
+                onChanged();
+              } catch (e: any) {
+                notify(e.message);
+              }
+              setBusy(null);
+            }}
+          >
+            {busy === "all" ? "Borrando…" : `Borrar las ${pending.filter((w) => !hasContent[w.id]).length} semanas vacías`}
+          </button>
+        )}
         {pending.map((w) => (
           <div key={w.id} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "6px 0", borderBottom: "1px solid var(--line)" }}>
             <span>
@@ -700,4 +727,41 @@ function buildWeekSeries(segments: MesocycleRow[], realTotal?: number) {
     out.push({ n: wn, segIndex: -1, vol: 0, int: 0 });
   }
   return out;
+}
+
+/**
+ * Duración de un bloque, en semanas. Guarda al salir del campo o con Enter
+ * (no con cada tecla: un "44" por error creaba 44 semanas al instante), entre
+ * 1 y 52, y si son más de 12 pide confirmación antes de crearlas.
+ */
+function DurationInput({ value, onCommit }: { value: number; onCommit: (v: number) => void }) {
+  const [draft, setDraft] = useState(String(value));
+  useEffect(() => setDraft(String(value)), [value]);
+  const commit = () => {
+    const n = Math.min(52, Math.max(1, Number(draft.replace(/\D/g, "")) || 0));
+    if (!n || n === value) {
+      setDraft(String(value));
+      return;
+    }
+    if (n > 12 && n > value && !window.confirm(`¿Este bloque dura ${n} semanas? Se van a crear las semanas que falten.`)) {
+      setDraft(String(value));
+      return;
+    }
+    setDraft(String(n));
+    onCommit(n);
+  };
+  return (
+    <input
+      className="input"
+      style={{ maxWidth: 100 }}
+      inputMode="numeric"
+      value={draft}
+      onChange={(e) => setDraft(e.target.value.replace(/\D/g, "").slice(0, 2))}
+      onBlur={commit}
+      onKeyDown={(e) => {
+        if (e.key === "Enter") (e.target as HTMLInputElement).blur();
+      }}
+      aria-label="Duración en semanas"
+    />
+  );
 }

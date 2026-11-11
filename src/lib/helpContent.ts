@@ -135,6 +135,7 @@ export const HELP_TOPICS: HelpTopic[] = [
       { label: "WhatsApp (en cada alumno)", desc: "Le escribes directo." },
       { label: "Pausar / Dar de baja / Reactivar", desc: "Pausado o dado de baja no entra a la app ni se cobra; su historial se conserva." },
       { label: "Etiqueta «Esperando pago del cupo»", desc: "Alumno nuevo por encima de tu plan: entra apenas se pague su cupo." },
+      { label: "Etiquetas «Plan por terminar» y «Terminó su plan»", desc: "Está en la última semana con rutinas, o ya las hizo todas: es momento de armarle lo que sigue (también te avisa en Novedades)." },
     ],
     keywords: "alumnos lista invitar invitación registrar",
     capture: 4,
@@ -244,9 +245,10 @@ export const HELP_TOPICS: HelpTopic[] = [
     buttons: [
       { label: "Nueva evaluación", desc: "Elige el tipo y completa lo que midas." },
       { label: "Calcular % de grasa y masa libre de grasa", desc: "Con el método Naval o Jackson-Pollock." },
+      { label: "Rendimiento: potencia, velocidad y funcionales", desc: "Saltos (CMJ, SJ, drop jump), balón medicinal, sprints con parciales, sprint lanzado, 505, 5-10-5, dinamometría de mano, silla (30 s y 5 rep.) y velocidad de marcha. Cada prueba trae su protocolo; cargas los intentos y calcula la potencia, el RSI, las velocidades y las asimetrías, y te dice si el cambio contra la evaluación anterior es real o está dentro del error del test." },
     ],
     tips: ["Acepta coma o punto: 82,5 y 82.5 valen igual. La estatura en metros (1,70) se pasa sola a centímetros."],
-    keywords: "medidas peso grasa pliegues fuerza movilidad",
+    keywords: "medidas peso grasa pliegues fuerza movilidad salto cmj sprint velocidad potencia agilidad dinamometro prension silla marcha rsi",
     capture: 8,
   },
   {

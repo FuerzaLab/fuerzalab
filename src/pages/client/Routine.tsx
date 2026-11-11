@@ -22,6 +22,7 @@ import {
   type SessionBlockRow,
   type WorkoutExerciseRow,
   type WeekStatus,
+  unlockedWeekNumber,
 } from "../../services/sessions";
 import {
   getActiveProgramForClient,
@@ -61,6 +62,9 @@ export default function ClientRoutine() {
   const [clientId, setClientId] = useState<string | null>(null);
   const [program, setProgram] = useState<ProgramRow | null>(null);
   const [weeks, setWeeks] = useState<WeekRow[]>([]);
+  // Plan por semanas: última semana habilitada (la siguiente se abre al terminar la anterior).
+  const [unlocked, setUnlocked] = useState<number>(Infinity);
+  const [hiddenWeeks, setHiddenWeeks] = useState(0);
   const [weekStatus, setWeekStatus] = useState<Record<string, WeekStatus>>({});
   const [weekId, setWeekId] = useState("");
   const [sessions, setSessions] = useState<SessionRow[]>([]);
@@ -150,12 +154,17 @@ export default function ClientRoutine() {
       const prog = await getActiveProgramForClient(cId);
       setProgram(prog);
       if (prog) {
-        const ws = await listWeeks(prog.id);
-        setWeeks(ws);
-        computeWeekStatuses(ws.map((w) => w.id)).then(setWeekStatus).catch(() => {});
-        const firstWeek = ws[0]?.id ?? "";
-        setWeekId(firstWeek);
-        if (firstWeek) await loadSessions(firstWeek);
+        const ws = (await listWeeks(prog.id)).sort((a, b) => a.week_number - b.week_number);
+        const upTo = await unlockedWeekNumber(prog.id, (prog as any).plan_mode).catch(() => Infinity);
+        setUnlocked(upTo);
+        const visible = ws.filter((w) => w.week_number <= upTo);
+        setWeeks(visible);
+        computeWeekStatuses(visible.map((w) => w.id)).then(setWeekStatus).catch(() => {});
+        // Se abre en la última semana habilitada (la que está en curso), no en la primera.
+        const startWeek = visible[visible.length - 1]?.id ?? "";
+        setWeekId(startWeek);
+        if (startWeek) await loadSessions(startWeek);
+        setHiddenWeeks(ws.length - visible.length);
       }
     } catch (e: any) {
       notify(e.message);
@@ -216,7 +225,8 @@ export default function ClientRoutine() {
         sessionId={activeSessionId}
         onExit={async () => {
           setActiveSessionId(null);
-          await loadSessions(weekId);
+          // Al terminar, puede habilitarse la semana siguiente: se recalcula todo.
+          await init();
         }}
       />
     );
@@ -251,6 +261,11 @@ export default function ClientRoutine() {
                 );
               })}
             </div>
+          )}
+          {hiddenWeeks > 0 && Number.isFinite(unlocked) && (
+            <p className="note week-lock">
+              🔒 La semana {unlocked + 1} se habilita cuando termines todas las rutinas de la semana {unlocked}.
+            </p>
           )}
 
           <div style={{ display: "grid", gap: 12 }}>

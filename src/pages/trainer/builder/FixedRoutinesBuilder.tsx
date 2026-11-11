@@ -1,10 +1,10 @@
 import { useEffect, useState } from "react";
-import { X } from "lucide-react";
+import { X, Copy, ChevronLeft, ChevronRight } from "lucide-react";
 import { useToast } from "../../../contexts/ToastContext";
 import Loading from "../../../components/ui/Loading";
 import ConfirmModal from "../../../components/ui/ConfirmModal";
 import { DAY_OF_WEEK_LABEL, type SessionRow } from "../../../services/sessions";
-import { addFixedDay, deleteFixedDay, extendFixedProgram, listFixedSlots, setPlanMode } from "../../../services/fixedRoutines";
+import { addFixedDay, deleteFixedDay, duplicateFixedDay, extendFixedProgram, listFixedSlots, setPlanMode, swapFixedDays } from "../../../services/fixedRoutines";
 import type { CatalogItem, ExerciseRow } from "../../../services/exercises";
 
 /**
@@ -32,7 +32,11 @@ export default function FixedRoutinesBuilder({
   const [activeSort, setActiveSort] = useState<number | null>(null);
   const [adding, setAdding] = useState(false);
   const [newName, setNewName] = useState("");
-  const [newDay, setNewDay] = useState(3);
+  // 0 = sin día fijo (el alumno elige cuál hacer).
+  const [newDay, setNewDay] = useState(0);
+  const [busy, setBusy] = useState(false);
+  const [dragSort, setDragSort] = useState<number | null>(null);
+  const [overSort, setOverSort] = useState<number | null>(null);
   const [toDelete, setToDelete] = useState<SessionRow | null>(null);
   const [switching, setSwitching] = useState(false);
 
@@ -53,12 +57,73 @@ export default function FixedRoutinesBuilder({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [programId]);
 
+  const nextLetterName = () => {
+    const used = new Set((slots ?? []).map((s) => s.name.trim().toLowerCase()));
+    for (let i = 0; i < 26; i++) {
+      const n = `Día ${String.fromCharCode(65 + i)}`;
+      if (!used.has(n.toLowerCase())) return n;
+    }
+    return `Día ${(slots?.length ?? 0) + 1}`;
+  };
+
   const openAdd = () => {
-    const used = new Set((slots ?? []).map((s) => s.day_of_week));
-    const nextLetter = String.fromCharCode(65 + (slots?.length ?? 0));
-    setNewName(`Día ${nextLetter}`);
-    setNewDay([1, 3, 5, 2, 4, 6, 7].find((d) => !used.has(d)) ?? 1);
+    setNewName(nextLetterName());
+    setNewDay(0);
     setAdding(true);
+  };
+
+  /** Recarga y deja elegida la rutina de ese lugar. */
+  const reloadAndSelect = async (sort: number | null) => {
+    const ss = await listFixedSlots(programId);
+    setSlots(ss);
+    setActiveSort(sort !== null && ss.some((x) => x.sort_order === sort) ? sort : ss[0]?.sort_order ?? null);
+  };
+
+  const swap = async (a: number, b: number, keep: number) => {
+    setBusy(true);
+    try {
+      await swapFixedDays(programId, a, b);
+      await reloadAndSelect(keep);
+    } catch (e: any) {
+      notify(e.message);
+    }
+    setBusy(false);
+  };
+
+  /** Mueve la rutina de un lugar a otro: intercambia de a pares hasta llegar. */
+  const moveTo = async (fromSort: number, toSort: number) => {
+    if (!slots || fromSort === toSort) return;
+    const order = slots.map((x) => x.sort_order);
+    let i = order.indexOf(fromSort);
+    const j = order.indexOf(toSort);
+    if (i < 0 || j < 0) return;
+    setBusy(true);
+    try {
+      while (i !== j) {
+        const k = i < j ? i + 1 : i - 1;
+        await swapFixedDays(programId, order[i], order[k]);
+        i = k;
+      }
+      await reloadAndSelect(toSort);
+    } catch (e: any) {
+      notify(e.message);
+    }
+    setBusy(false);
+  };
+
+  const duplicate = async (s0: SessionRow) => {
+    setBusy(true);
+    try {
+      const before = new Set((slots ?? []).map((x) => x.sort_order));
+      await duplicateFixedDay(programId, s0, `${s0.name} (copia)`);
+      const ss = await listFixedSlots(programId);
+      setSlots(ss);
+      setActiveSort(ss.find((x) => !before.has(x.sort_order))?.sort_order ?? activeSort);
+      notify(`Copiaste ${s0.name}. Cámbiale el nombre en la rutina de abajo.`);
+    } catch (e: any) {
+      notify(e.message);
+    }
+    setBusy(false);
   };
 
   const active = slots?.find((s) => s.sort_order === activeSort) ?? null;
@@ -69,8 +134,8 @@ export default function FixedRoutinesBuilder({
     <>
       <div className="fixed-mode-bar">
         <span>
-          🔁 <b>Rutinas fijas</b> — se repiten cada semana. Lo que cambies aplica desde la próxima vez; lo ya entrenado queda en el
-          historial de {clientName.split(" ")[0]}.
+          🔁 <b>Rutinas fijas</b> — se repiten cada semana. {clientName.split(" ")[0]} las ve todas y elige cuál hacer (o asígnale un día
+          a cada una). Lo que cambies aplica desde la próxima vez; lo ya entrenado queda en su historial.
         </span>
         <button className="link-btn" style={{ fontSize: 13.5 }} onClick={() => setSwitching(true)}>
           Pasar a plan por semanas
@@ -78,14 +143,53 @@ export default function FixedRoutinesBuilder({
       </div>
 
       <div style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center", marginBottom: 16 }}>
-        {slots.map((s) => (
-          <span key={s.id} className={`fixed-day${s.sort_order === activeSort ? " on" : ""}`}>
+        {slots.map((s, idx) => (
+          <span
+            key={s.id}
+            className={`fixed-day${s.sort_order === activeSort ? " on" : ""}${overSort === s.sort_order ? " drag-over" : ""}`}
+            draggable={!busy}
+            onDragStart={(e) => {
+              setDragSort(s.sort_order);
+              e.dataTransfer.effectAllowed = "move";
+            }}
+            onDragOver={(e) => {
+              if (dragSort === null) return;
+              e.preventDefault();
+              setOverSort(s.sort_order);
+            }}
+            onDragLeave={() => setOverSort((x) => (x === s.sort_order ? null : x))}
+            onDrop={(e) => {
+              e.preventDefault();
+              const from = dragSort;
+              setDragSort(null);
+              setOverSort(null);
+              if (from !== null) moveTo(from, s.sort_order);
+            }}
+            onDragEnd={() => {
+              setDragSort(null);
+              setOverSort(null);
+            }}
+            title="Arrastra para cambiarla de lugar"
+          >
+            {idx > 0 && (
+              <button className="x" aria-label={`Mover ${s.name} a la izquierda`} disabled={busy} onClick={() => swap(slots[idx - 1].sort_order, s.sort_order, s.sort_order === activeSort ? slots[idx - 1].sort_order : activeSort ?? s.sort_order)}>
+                <ChevronLeft size={14} />
+              </button>
+            )}
             <button onClick={() => setActiveSort(s.sort_order)}>
               {s.name}
               {s.day_of_week ? ` · ${DAY_OF_WEEK_LABEL[s.day_of_week].slice(0, 3)}` : ""}
             </button>
+            {idx < slots.length - 1 && (
+              <button className="x" aria-label={`Mover ${s.name} a la derecha`} disabled={busy} onClick={() => swap(s.sort_order, slots[idx + 1].sort_order, s.sort_order === activeSort ? slots[idx + 1].sort_order : activeSort ?? s.sort_order)}>
+                <ChevronRight size={14} />
+              </button>
+            )}
+            <button className="x" aria-label={`Copiar ${s.name}`} title="Copiar esta rutina" disabled={busy} onClick={() => duplicate(s)}>
+              <Copy size={13} />
+            </button>
             {slots.length > 1 && (
-              <button aria-label={`Quitar ${s.name}`} className="x" onClick={() => setToDelete(s)}>
+              <button aria-label={`Quitar ${s.name}`} title="Quitar esta rutina" className="x" disabled={busy} onClick={() => setToDelete(s)}>
                 <X size={13} />
               </button>
             )}
@@ -100,6 +204,7 @@ export default function FixedRoutinesBuilder({
           <span className="fixed-add-form">
             <input className="input" value={newName} onChange={(e) => setNewName(e.target.value)} style={{ width: 150, padding: "6px 8px" }} aria-label="Nombre del día" />
             <select className="input" value={newDay} onChange={(e) => setNewDay(Number(e.target.value))} style={{ width: "auto", padding: "6px 8px" }} aria-label="Día de la semana">
+              <option value={0}>Sin día fijo</option>
               {[1, 2, 3, 4, 5, 6, 7].map((d) => (
                 <option key={d} value={d}>{DAY_OF_WEEK_LABEL[d]}</option>
               ))}
@@ -110,7 +215,7 @@ export default function FixedRoutinesBuilder({
               disabled={!newName.trim()}
               onClick={async () => {
                 try {
-                  await addFixedDay(programId, newName.trim(), newDay);
+                  await addFixedDay(programId, newName.trim(), newDay || null);
                   setAdding(false);
                   const before = new Set(slots.map((s) => s.sort_order));
                   const ss = await listFixedSlots(programId);

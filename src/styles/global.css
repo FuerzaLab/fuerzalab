@@ -543,3 +543,21 @@ select.input:hover { border-color: var(--pri); }
 .help-steps { margin: 0; padding-left: 20px; display: grid; gap: 4px; font-size: 14.5px; }
 .help-tip { margin: 0; background: var(--ok-soft); color: #1F6B53; border-radius: 8px; padding: 8px 12px; font-size: 14px; }
 @media (max-width: 640px) { .help-table td.b { width: 44%; } }
+.fixed-day.drag-over { box-shadow: -3px 0 0 var(--pri); }
+.fixed-day[draggable="true"] { cursor: grab; }
+.fixed-day > button:disabled { opacity: .45; cursor: default; }
+.week-lock { background: var(--bg); border: 1px dashed var(--line); border-radius: 10px; padding: 10px 14px; margin: -6px 0 16px; }
+
+/* Evaluaciones → Rendimiento */
+.perf-card { border: 1px solid var(--line); border-radius: 12px; padding: 12px 14px; display: grid; gap: 6px; }
+.perf-card-h { display: flex; justify-content: space-between; align-items: center; gap: 8px; }
+.perf-best b { font-size: 18px; color: var(--nav); }
+.perf-metrics { display: flex; flex-wrap: wrap; gap: 4px 16px; font-size: 13.5px; }
+.perf-cmp { font-size: 13.5px; background: var(--bg); border-radius: 8px; padding: 7px 10px; }
+.perf-cmp.up { background: var(--ok-soft); color: #1F6B53; }
+.perf-cmp.down { background: var(--bad-soft); color: #A8341C; }
+.perf-add { border-top: 1px solid var(--line); padding-top: 12px; display: grid; gap: 10px; }
+.perf-form { display: grid; gap: 12px; background: var(--bg); border-radius: 12px; padding: 12px; }
+.perf-grid { display: grid; gap: 8px; align-items: center; grid-template-columns: 90px repeat(var(--n, 3), minmax(0, 1fr)); }
+.perf-grid .input { padding: 8px; }
+@media (max-width: 640px) { .perf-grid { grid-template-columns: 70px repeat(var(--n, 3), minmax(0, 1fr)); } }

@@ -103,7 +103,7 @@ export default function TrainerDashboard() {
 
 // --- Novedades ------------------------------------------------------------
 
-const KIND_ORDER: FeedKind[] = ["intake", "joined", "payment", "record", "measure", "note", "wellness", "skip", "suggestion", "photos", "video"];
+const KIND_ORDER: FeedKind[] = ["intake", "joined", "plan", "payment", "record", "measure", "note", "wellness", "skip", "suggestion", "photos", "video"];
 
 function relDay(iso: string): string {
   const d = new Date(iso);
@@ -150,6 +150,7 @@ function FeedPanel({ clients, onCount }: { clients: ClientRow[]; onCount: (n: nu
     if (i.kind === "photos" && can("files")) return paths.trainerProgressPhotos;
     if (i.kind === "payment" && can("payments")) return paths.trainerPayments;
     if (i.kind === "intake" || i.kind === "joined") return paths.trainerClientDetail(i.clientId);
+    if (i.kind === "plan") return `${paths.trainerPrograms}?cliente=${i.clientId}`;
     if (i.kind === "video") return `${paths.trainerExercises}?videos=rotos`;
     if (i.kind === "suggestion") {
       if (i.suggestionType === "assessment_due" && can("assessments")) return paths.trainerAssessments;
