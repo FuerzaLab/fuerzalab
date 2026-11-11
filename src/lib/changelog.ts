@@ -22,6 +22,22 @@ export interface ChangelogEntry {
 
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    id: "2026-11-11-health-tests",
+    date: "2026-11-11",
+    title: "Nueva sección: Salud y funcionalidad",
+    body: "Para tus alumnos que no buscan rendimiento: en Evaluaciones → «Salud y funcionalidad» tienes prensión, silla, flexiones de codo, flexiones de brazos, sentarse y levantarse del suelo, Timed Up and Go, equilibrio en una pierna, marcha (4 m y 6 minutos), step de 2 minutos y flexibilidad (alcanzar los pies y rascarse la espalda). Cada una con su protocolo y la comparación con la evaluación anterior. Te la sugiere sola si el objetivo es salud o condición física, o si el alumno tiene 60 años o más.",
+    for: ["trainer"],
+    link: { label: "Ir a Evaluaciones", to: paths.trainerAssessments },
+  },
+  {
+    id: "2026-11-11-performance-unified",
+    date: "2026-11-11",
+    title: "Todas las pruebas de potencia, en un solo lugar",
+    body: "Las pruebas de potencia se cargan ahora solo en Evaluaciones → «Rendimiento», que suma el salto horizontal, el triple salto a una pierna y «Otra prueba» (con el nombre y la unidad que quieras). Así cada prueba se compara siempre con la evaluación anterior. Lo que ya habías cargado en la sección anterior de potencia sigue a la vista.",
+    for: ["trainer"],
+    link: { label: "Ir a Evaluaciones", to: paths.trainerAssessments },
+  },
+  {
     id: "2026-11-10-performance-tests",
     date: "2026-11-10",
     title: "Nuevas pruebas: potencia, velocidad y funcionales",

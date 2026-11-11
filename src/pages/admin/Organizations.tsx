@@ -436,9 +436,15 @@ function OrgBillingCell({ org, plans, onEdit }: { org: OrganizationRow; plans: P
   const plan = plans.find((p) => p.id === org.plan_id);
   const today = new Date().toISOString().slice(0, 10);
   let chip: { tone: "ok" | "warn" | "bad" | "pri"; text: string } | null = null;
-  if (org.billing_exempt) chip = { tone: "pri", text: "Sin cobro" };
+  if (org.billing_exempt) {
+    // "Sin cobro" con fecha de prueba: solo recordatorio.
+    if (org.trial_ends_at && org.trial_ends_at.slice(0, 10) >= today) chip = { tone: "pri", text: `Sin cobro · prueba hasta ${fmtD(org.trial_ends_at)}` };
+    else if (org.trial_ends_at) chip = { tone: "bad", text: `Sin cobro · la prueba terminó el ${fmtD(org.trial_ends_at)}` };
+    else chip = { tone: "pri", text: "Sin cobro" };
+  }
   else if (org.billing_blocked_since && org.billing_blocked_since <= today) chip = { tone: "bad", text: `Bloqueada desde ${fmtD(org.billing_blocked_since)}` };
   else if (org.trial_ends_at && org.trial_ends_at.slice(0, 10) >= today) chip = { tone: "warn", text: `Prueba hasta ${fmtD(org.trial_ends_at)}` };
+  else if (org.trial_ends_at && !org.plan_id) chip = { tone: "bad", text: `La prueba terminó el ${fmtD(org.trial_ends_at)}` };
   else if (org.limit_exceeded_since) chip = { tone: "warn", text: "Superó el tope" };
   return (
     <div style={{ display: "grid", gap: 4, justifyItems: "start" }}>
@@ -516,6 +522,16 @@ function OrgBillingModal({
         <input type="checkbox" checked={exempt} onChange={(e) => setExempt(e.target.checked)} />
         <span>Sin cobro (por ejemplo, la demo o tu propia organización)</span>
       </label>
+      {exempt && (
+        <>
+          <label className="field-label">Fin de la prueba (solo recordatorio, opcional)</label>
+          <input className="input" type="date" style={{ maxWidth: 220, marginBottom: 6 }} value={trial} onChange={(e) => setTrial(e.target.value)} />
+          <p className="note" style={{ fontSize: 12.5, margin: "0 0 14px" }}>
+            Con "Sin cobro" no hay límite de alumnos ni suspensión. Esta fecha solo sirve para que te avise en tu Panel cuando termine
+            la prueba, así hablas con el entrenador para pasarlo a pago. Para sacarlo del aviso, borra la fecha o ponle otra.
+          </p>
+        </>
+      )}
       {!exempt && (
         <>
           <label className="field-label">Plan</label>

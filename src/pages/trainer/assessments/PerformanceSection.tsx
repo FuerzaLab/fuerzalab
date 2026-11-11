@@ -10,7 +10,12 @@ import {
   bestOf,
   compareWithPrevious,
   computeMetrics,
+  effectiveDef,
+  errorLabel,
   fmtNum,
+  SECTION_OF_GROUP,
+  SECTION_TITLE,
+  type PerfSection,
   perfTest,
   type PerfTestDef,
 } from "../../../lib/performanceTests";
@@ -27,9 +32,11 @@ import {
  * valor, lo calculado (potencia, RSI, velocidad, asimetrías, déficit de
  * cambio de dirección) y la comparación con la evaluación anterior.
  */
-const num = (s: string) => {
-  const n = Number(String(s).trim().replace(",", "."));
-  return Number.isFinite(n) && n > 0 ? n : null;
+const num = (s: string, allowNonPositive = false) => {
+  const t = String(s).trim().replace(",", ".").replace("−", "-");
+  if (!t) return null;
+  const n = Number(t);
+  return Number.isFinite(n) && (allowNonPositive || n > 0) ? n : null;
 };
 const SIDE_LABEL = { left: "Izquierda", right: "Derecha" } as const;
 
@@ -38,11 +45,14 @@ export default function PerformanceSection({
   assessedAt,
   clientId,
   bodyKg,
+  section = "performance",
 }: {
   assessmentId: string;
   assessedAt: string;
   clientId: string;
   bodyKg: number | null;
+  /** Rendimiento deportivo, o Salud y funcionalidad. */
+  section?: PerfSection;
 }) {
   const { notify } = useToast();
   const [history, setHistory] = useState<PerformanceTestRow[] | null>(null);
@@ -61,29 +71,49 @@ export default function PerformanceSection({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [clientId, assessmentId]);
 
-  const rows = useMemo(() => (history ?? []).filter((r) => r.assessment_id === assessmentId), [history, assessmentId]);
+  const inSection = (key: string) => {
+    const d = perfTest(key);
+    return !!d && SECTION_OF_GROUP[d.group] === section;
+  };
+  const rows = useMemo(
+    () => (history ?? []).filter((r) => r.assessment_id === assessmentId && inSection(r.test_key)),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [history, assessmentId, section],
+  );
   /** El valor de la evaluación anterior más cercana, de la misma prueba y lado. */
   const previous = (r: PerformanceTestRow) =>
     (history ?? [])
-      .filter((h) => h.test_key === r.test_key && h.side === r.side && h.assessment_id !== assessmentId && (h.assessed_at ?? "") < assessedAt && h.value != null)
+      .filter(
+        (h) =>
+          h.test_key === r.test_key &&
+          h.side === r.side &&
+          (perfTest(r.test_key)?.kind !== "custom" || String(h.details?.name ?? "").trim().toLowerCase() === String(r.details?.name ?? "").trim().toLowerCase()) &&
+          h.assessment_id !== assessmentId &&
+          (h.assessed_at ?? "") < assessedAt &&
+          h.value != null,
+      )
       .sort((a, b) => (b.assessed_at ?? "").localeCompare(a.assessed_at ?? ""))[0];
 
   if (history === null) return <Loading />;
 
-  const groups = [...new Set(PERF_TESTS.map((t) => t.group))];
+  const groups = [...new Set(PERF_TESTS.filter((t) => SECTION_OF_GROUP[t.group] === section).map((t) => t.group))];
   const def = testKey ? perfTest(testKey) : undefined;
   const sprint10 = rows.find((r) => r.test_key === "sprint")?.computed?.best_10;
 
   return (
     <div className="panel">
-      <div className="hd"><h3>Rendimiento: potencia, velocidad y funcionales</h3></div>
+      <div className="hd"><h3>{SECTION_TITLE[section]}</h3></div>
       <div className="bd" style={{ display: "grid", gap: 14 }}>
         {error && <p className="error-text" style={{ margin: 0 }}>{error}</p>}
 
-        {rows.length === 0 && <p className="note" style={{ margin: 0 }}>Todavía no cargaste pruebas de rendimiento en esta evaluación.</p>}
+        {rows.length === 0 && (
+          <p className="note" style={{ margin: 0 }}>
+            Todavía no cargaste pruebas de {section === "health" ? "salud y funcionalidad" : "rendimiento"} en esta evaluación.
+          </p>
+        )}
 
         {rows.map((r) => {
-          const d = perfTest(r.test_key);
+          const d = effectiveDef(r.test_key, r.details);
           if (!d) return null;
           const prev = previous(r);
           const cmp = prev && r.value != null && prev.value ? compareWithPrevious(d, r.value, prev.value) : null;
@@ -109,7 +139,7 @@ export default function PerformanceSection({
                 </button>
               </div>
               <div className="perf-best">
-                {r.value != null ? (
+                {r.value != null && Number.isFinite(r.value) ? (
                   <>
                     <b>{fmtNum(r.value)} {d.unit}</b> <span className="note">{d.kind === "sprint" ? "en el tramo más largo" : "mejor intento"}</span>
                   </>
@@ -150,15 +180,15 @@ export default function PerformanceSection({
                   Antes ({new Date((prev.assessed_at ?? "") + "T12:00:00").toLocaleDateString("es")}): {fmtNum(prev.value!)} {d.unit} →{" "}
                   <b>
                     {cmp.diff > 0 ? "+" : ""}
-                    {fmtNum(cmp.diff)} {d.unit} ({cmp.pct > 0 ? "+" : ""}
-                    {fmtNum(cmp.pct)} %)
+                    {fmtNum(cmp.diff)} {d.unit}
+                    {cmp.pct != null && d.typicalErrorAbs == null ? ` (${cmp.pct > 0 ? "+" : ""}${fmtNum(cmp.pct)} %)` : ""}
                   </b>
                   {" · "}
                   {cmp.real
                     ? cmp.improved
                       ? "mejora real"
                       : "empeoró de verdad"
-                    : `dentro del error del test (~${d.typicalErrorPct} %): puede ser variación normal`}
+                    : `dentro del error del test (${errorLabel(d)}): puede ser variación normal`}
                 </div>
               )}
               {r.notes && <div className="note" style={{ fontSize: 13 }}>{r.notes}</div>}
@@ -198,9 +228,9 @@ export default function PerformanceSection({
           )}
         </div>
         <p className="note" style={{ margin: 0, fontSize: 12.5 }}>
-          Para comparar en el tiempo: mismo calentamiento, horario, calzado y superficie. El error de cada test es una referencia
-          aproximada; un cambio menor a ese porcentaje puede ser solo variación normal.
-          {!bodyKg && " Para calcular la potencia y la fuerza relativa, carga el peso en Datos corporales de esta evaluación."}
+          Para comparar en el tiempo: {section === "health" ? "misma silla, mismo recorrido, mismo horario y mismo calzado" : "mismo calentamiento, horario, calzado y superficie"}. El error de cada test es una referencia
+          aproximada; un cambio menor a ese error puede ser solo variación normal.
+          {!bodyKg && (section === "health" ? " Para calcular la fuerza de prensión relativa al peso, carga el peso en Datos corporales de esta evaluación." : " Para calcular la potencia, carga el peso en Datos corporales de esta evaluación.")}
         </p>
       </div>
     </div>
@@ -224,6 +254,9 @@ function PerfForm({ def, bodyKg, onSave, onCancel }: { def: PerfTestDef; bodyKg:
   const [contact, setContact] = useState<string[]>(blank());
   const [splits, setSplits] = useState<Record<string, string[]>>(() => Object.fromEntries(SPRINT_SPLITS.map((d) => [String(d), blank()])));
   const [extra, setExtra] = useState(""); // peso del balón o altura del cajón
+  const [cName, setCName] = useState("");
+  const [cUnit, setCUnit] = useState("");
+  const [cBetter, setCBetter] = useState<"higher" | "lower">("higher");
   const [notes, setNotes] = useState("");
   const [saving, setSaving] = useState(false);
 
@@ -238,14 +271,18 @@ function PerfForm({ def, bodyKg, onSave, onCancel }: { def: PerfTestDef; bodyKg:
       const computed = computeMetrics(def, value, { splits: sp }, bodyKg);
       return [{ testKey: def.key, side: null, trials, value, details: { splits: sp, longest_m: longest }, computed, notes }];
     }
+    if (def.kind === "custom" && !cName.trim()) return "Escribe el nombre de la prueba.";
     const out: Payload[] = [];
     for (const s of sides) {
       const raw = vals[s ?? "x"];
-      const trials = raw.map((x) => num(x) ?? 0);
-      const valid = trials.filter((x) => x > 0);
+      const np = !!def.allowNonPositive;
+      const parsed = raw.map((x) => num(x, np));
+      const valid = parsed.filter((x): x is number => x != null);
+      const trials = parsed.map((x) => x ?? 0);
       if (!valid.length) continue;
-      const value = bestOf(valid, def.better);
+      const value = bestOf(valid, def.kind === "custom" ? cBetter : def.better, np);
       const details: Record<string, any> = {};
+      if (def.kind === "custom") Object.assign(details, { name: cName.trim(), unit: cUnit.trim(), better: cBetter });
       if (def.kind === "dropjump") {
         details.contact_ms = contact.map((x) => num(x) ?? 0);
         if (num(extra)) details.box_cm = num(extra);
@@ -260,6 +297,26 @@ function PerfForm({ def, bodyKg, onSave, onCancel }: { def: PerfTestDef; bodyKg:
   return (
     <div className="perf-form">
       <p className="note" style={{ margin: 0 }}>{def.protocol}</p>
+
+      {def.kind === "custom" && (
+        <div style={{ display: "grid", gridTemplateColumns: "2fr 1fr 1.4fr", gap: 8 }}>
+          <div>
+            <label className="field-label">Nombre de la prueba</label>
+            <input className="input" value={cName} onChange={(e) => setCName(e.target.value)} placeholder="Ej. Potencia en sentadilla (encóder)" />
+          </div>
+          <div>
+            <label className="field-label">Unidad</label>
+            <input className="input" value={cUnit} onChange={(e) => setCUnit(e.target.value)} placeholder="W, cm, s…" />
+          </div>
+          <div>
+            <label className="field-label">Es mejor un valor…</label>
+            <select className="input" value={cBetter} onChange={(e) => setCBetter(e.target.value as "higher" | "lower")}>
+              <option value="higher">más alto</option>
+              <option value="lower">más bajo (tiempos)</option>
+            </select>
+          </div>
+        </div>
+      )}
 
       {def.kind === "sprint" ? (
         <div className="perf-grid" style={{ ["--n" as any]: def.trials }}>
@@ -276,13 +333,13 @@ function PerfForm({ def, bodyKg, onSave, onCancel }: { def: PerfTestDef; bodyKg:
       ) : (
         sides.map((s) => (
           <div key={s ?? "x"} className="perf-grid" style={{ ["--n" as any]: def.trials }}>
-            <span className="note" style={{ alignSelf: "center" }}>{s ? SIDE_LABEL[s] : `${def.unit === "rep" ? "Repeticiones" : `Valor (${def.unit})`}`}</span>
+            <span className="note" style={{ alignSelf: "center" }}>{s ? SIDE_LABEL[s] : def.kind === "custom" ? `Valor${cUnit ? ` (${cUnit})` : ""}` : `${def.unit === "rep" ? "Repeticiones" : `Valor (${def.unit})`}`}</span>
             {vals[s ?? "x"].map((v, i) => (
               <input
                 key={i}
                 className="input"
-                inputMode="decimal"
-                placeholder={`Intento ${i + 1}`}
+                inputMode={def.allowNonPositive ? "text" : "decimal"}
+                placeholder={def.allowNonPositive ? `Intento ${i + 1} (ej. −5)` : `Intento ${i + 1}`}
                 value={v}
                 onChange={(e) => setVals((m) => ({ ...m, [s ?? "x"]: m[s ?? "x"].map((x, j) => (j === i ? e.target.value : x)) }))}
               />

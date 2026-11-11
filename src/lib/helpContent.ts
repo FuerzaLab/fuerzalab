@@ -245,10 +245,11 @@ export const HELP_TOPICS: HelpTopic[] = [
     buttons: [
       { label: "Nueva evaluación", desc: "Elige el tipo y completa lo que midas." },
       { label: "Calcular % de grasa y masa libre de grasa", desc: "Con el método Naval o Jackson-Pollock." },
-      { label: "Rendimiento: potencia, velocidad y funcionales", desc: "Saltos (CMJ, SJ, drop jump), balón medicinal, sprints con parciales, sprint lanzado, 505, 5-10-5, dinamometría de mano, silla (30 s y 5 rep.) y velocidad de marcha. Cada prueba trae su protocolo; cargas los intentos y calcula la potencia, el RSI, las velocidades y las asimetrías, y te dice si el cambio contra la evaluación anterior es real o está dentro del error del test." },
+      { label: "Salud y funcionalidad", desc: "Para quien no busca rendimiento: dinamometría de mano, silla (30 s y 5 rep.), flexiones de codo en 30 s, flexiones de brazos, sentarse y levantarse del suelo, levantarse y caminar (Timed Up and Go), equilibrio en una pierna, velocidad de marcha, marcha de 6 minutos, step de 2 minutos, alcanzar los pies y rascarse la espalda. Cada una con su protocolo y la comparación con la evaluación anterior." },
+      { label: "Rendimiento deportivo: potencia y velocidad", desc: "Saltos (CMJ, SJ, drop jump, horizontal, triple a una pierna), balón medicinal, sprints con parciales, sprint lanzado, 505, 5-10-5 y «Otra prueba». Calcula la potencia, el RSI, las velocidades y las asimetrías, y te dice si el cambio contra la evaluación anterior es real o está dentro del error del test." },
     ],
     tips: ["Acepta coma o punto: 82,5 y 82.5 valen igual. La estatura en metros (1,70) se pasa sola a centímetros."],
-    keywords: "medidas peso grasa pliegues fuerza movilidad salto cmj sprint velocidad potencia agilidad dinamometro prension silla marcha rsi",
+    keywords: "medidas peso grasa pliegues fuerza movilidad salto cmj horizontal largo triple pliometria sprint velocidad potencia agilidad dinamometro prension silla marcha rsi equilibrio caidas timed up and go adulto mayor funcional flexibilidad 6 minutos step flexiones",
     capture: 8,
   },
   {

@@ -608,7 +608,7 @@ export const CATEGORY_LABEL: Record<AssessmentCategory, string> = {
   circumferences: "Circunferencias",
   skinfolds: "Pliegues cutáneos",
   strength: "Pruebas de fuerza",
-  power: "Pruebas de potencia",
+  power: "Rendimiento deportivo",
   endurance: "Pruebas de resistencia",
   mobility: "Movilidad",
   flexibility: "Flexibilidad",

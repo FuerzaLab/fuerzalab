@@ -5,6 +5,8 @@ import { useNavigate } from "react-router-dom";
 import Chip from "../../components/ui/Chip";
 import { paths } from "../../routes/paths";
 import { listPlatformEvents, markPlatformEventsSeen, refreshAllOrgBilling, type PlatformEvent } from "../../services/orgBilling";
+import WhatsAppButton from "../../components/WhatsAppButton";
+import { listOrganizations, listUsers, type OrganizationRow, type UserRow } from "../../services/admin";
 
 export default function AdminDashboard() {
   const { profile } = useAuth();
@@ -64,6 +66,7 @@ export default function AdminDashboard() {
         </div>
       </div>
 
+      <TrialsPanel />
       <PlatformFeed />
     </div>
   );
@@ -168,6 +171,60 @@ function PlatformFeed() {
             );
           })
         )}
+      </div>
+    </div>
+  );
+}
+
+/**
+ * Pruebas gratis que terminan en los próximos 7 días o que ya terminaron
+ * (hasta 30 días atrás): las normales sin plan asignado y las "Sin cobro"
+ * con fecha de prueba (en esas es solo un recordatorio; no se suspende nada).
+ */
+function TrialsPanel() {
+  const [rows, setRows] = useState<{ org: OrganizationRow; days: number; phone: string | null; contact: string }[] | null>(null);
+  useEffect(() => {
+    (async () => {
+      const [orgs, users] = await Promise.all([listOrganizations(), listUsers().catch((): UserRow[] => [])]);
+      const now = Date.now();
+      const out = orgs
+        .filter((o) => o.trial_ends_at && (o.billing_exempt || !o.plan_id))
+        .map((o) => {
+          const days = Math.ceil((new Date(o.trial_ends_at!).getTime() - now) / 86400000);
+          const trainer = users.find((u) => u.organization_id === o.id && u.role === "trainer" && (o.owner_id ? u.id === o.owner_id : true));
+          return { org: o, days, phone: o.contact_phone || trainer?.phone || null, contact: o.contact_name || trainer?.full_name || o.name };
+        })
+        .filter((r) => r.days <= 7 && r.days >= -30)
+        .sort((a, b) => a.days - b.days);
+      setRows(out);
+    })().catch(() => setRows([]));
+  }, []);
+  if (!rows || rows.length === 0) return null;
+  const when = (d: number) => (d < 0 ? `terminó hace ${-d} ${d === -1 ? "día" : "días"}` : d === 0 ? "termina hoy" : `termina en ${d} ${d === 1 ? "día" : "días"}`);
+  return (
+    <div className="panel" style={{ marginTop: 20, borderLeft: "4px solid var(--warn)" }}>
+      <div className="hd"><h3>Pruebas gratis</h3></div>
+      <div className="bd" style={{ display: "grid", gap: 10 }}>
+        {rows.map((r) => (
+          <div key={r.org.id} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
+            <span>
+              <b>{r.org.name}</b>{" "}
+              <span style={{ color: r.days < 0 ? "var(--bad)" : "var(--warn)", fontWeight: 600 }}>· la prueba {when(r.days)}</span>
+              <div className="note" style={{ fontSize: 12.5 }}>
+                {r.org.billing_exempt ? "Sin cobro: es solo un recordatorio, no se suspende." : "Sin plan asignado: al terminar, se suspende si no registras un cobro."}
+              </div>
+            </span>
+            <WhatsAppButton
+              phone={r.phone}
+              small
+              label="Escribirle"
+              text={`¡Hola ${r.contact.split(" ")[0]}! ${r.days < 0 ? "Terminó" : "Está por terminar"} tu prueba gratis de FuerzaLab. ¿Cómo te fue? Me encantaría saber qué te pareció y contarte cómo seguir.`}
+            />
+          </div>
+        ))}
+        <p className="note" style={{ margin: 0, fontSize: 12.5 }}>
+          Para sacar una de la lista: asígnale un plan, o en Organizaciones → «Plan, prueba y contacto» borra la fecha o ponle otra.
+        </p>
       </div>
     </div>
   );

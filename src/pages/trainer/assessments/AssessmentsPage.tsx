@@ -113,6 +113,16 @@ export default function AssessmentsPage() {
 
   const selected = assessments.find((a) => a.id === selectedId) ?? null;
 
+  // "Salud y funcionalidad" sugerida: objetivo de salud general o condición física, o 60 años o más.
+  const suggestHealth = (() => {
+    if (!clientProfile?.submitted_at) return false;
+    const goals = [clientProfile.main_goal, ...(clientProfile.secondary_goals ?? [])].filter(Boolean).map((g) => String(g).toLowerCase());
+    const byGoal = goals.some((g) => g.includes("salud") || g.includes("condici"));
+    const bd = clientProfile.birth_date ? new Date(clientProfile.birth_date + "T12:00:00") : null;
+    const age = bd ? Math.floor((Date.now() - bd.getTime()) / (365.25 * 86400000)) : null;
+    return byGoal || (age != null && age >= 60);
+  })();
+
   const suggestion =
     clientProfile?.submitted_at
       ? suggestAssessmentCategories({
@@ -151,7 +161,7 @@ export default function AssessmentsPage() {
         <div className="panel" style={{ marginBottom: 18, borderLeft: "4px solid var(--pri)" }}>
           <div className="bd">
             <b>Evaluaciones sugeridas para este cliente:</b>{" "}
-            {suggestion.categories.map((c) => CATEGORY_LABEL[c]).join(", ")}.{" "}
+            {[...suggestion.categories.map((c) => CATEGORY_LABEL[c]), ...(suggestHealth ? ["Salud y funcionalidad"] : [])].join(", ")}.{" "}
             <span className="note">{suggestion.reason}</span>
           </div>
         </div>
@@ -190,6 +200,7 @@ export default function AssessmentsPage() {
           assessment={selected}
           clientProfile={clientProfile}
           suggestedCategories={suggestion?.categories ?? null}
+          suggestHealth={suggestHealth}
           onDelete={() => setToDelete(selected)}
         />
       )}
@@ -280,18 +291,22 @@ function AssessmentDetail({
   assessment,
   clientProfile,
   suggestedCategories,
+  suggestHealth,
   onDelete,
 }: {
   assessment: AssessmentRow;
   clientProfile: ClientProfileRow | null;
   suggestedCategories: AssessmentCategory[] | null;
+  suggestHealth?: boolean;
   onDelete: () => void;
 }) {
   const { notify } = useToast();
   const { can } = useAuth();
   // "photos" no es una categoría de la base de datos: son las fotos de
   // progreso del cliente con la fecha de esta evaluación.
-  const [active, setActive] = useState<AssessmentCategory | "photos" | "performance">(suggestedCategories?.[0] ?? "body");
+  // "Pruebas de potencia" (la sección vieja) se reemplazó por "Rendimiento".
+  const firstSuggested = suggestedCategories?.[0] ?? "body";
+  const [active, setActive] = useState<AssessmentCategory | "photos" | "performance" | "health">(firstSuggested === "power" ? "performance" : firstSuggested);
   const [photoCount, setPhotoCount] = useState(0);
   const [savedDate, setSavedDate] = useState(assessment.assessed_at.slice(0, 10));
 
@@ -433,15 +448,16 @@ function AssessmentDetail({
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-end", gap: 12, marginBottom: 18, flexWrap: "wrap" }}>
         <div>
           <label className="field-label">Qué evaluación quieres registrar</label>
-          <select className="input" style={{ minWidth: 240 }} value={active} onChange={(e) => setActive(e.target.value as AssessmentCategory | "photos" | "performance")}>
-            {CATEGORY_ORDER.map((c) => (
+          <select className="input" style={{ minWidth: 240 }} value={active} onChange={(e) => setActive(e.target.value as AssessmentCategory | "photos" | "performance" | "health")}>
+            {CATEGORY_ORDER.filter((c) => c !== "power" || counts.power > 0).map((c) => (
               <option key={c} value={c}>
-                {CATEGORY_LABEL[c]}
+                {c === "power" ? "Pruebas de potencia (anteriores)" : CATEGORY_LABEL[c]}
                 {counts[c] > 0 ? ` (${counts[c]})` : ""}
-                {suggestedCategories?.includes(c) ? " — sugerida" : ""}
+                {c !== "power" && suggestedCategories?.includes(c) ? " — sugerida" : ""}
               </option>
             ))}
-            <option value="performance">Rendimiento: potencia, velocidad y funcionales</option>
+            <option value="health">Salud y funcionalidad{suggestHealth ? " — sugerida" : ""}</option>
+            <option value="performance">Rendimiento deportivo: potencia y velocidad{suggestedCategories?.includes("power") ? " — sugerida" : ""}</option>
             {can("files") && <option value="photos">Fotos de progreso{photoCount > 0 ? ` (${photoCount})` : ""}</option>}
           </select>
         </div>
@@ -470,8 +486,15 @@ function AssessmentDetail({
       {active === "endurance" && <EnduranceSection assessmentId={assessment.id} rows={endurance} setRows={setEndurance} />}
       {active === "mobility" && <MobilitySection assessmentId={assessment.id} rows={mobility} setRows={setMobility} />}
       {active === "flexibility" && <FlexibilitySection assessmentId={assessment.id} rows={flexibility} setRows={setFlexibility} />}
-      {active === "performance" && (
-        <PerformanceSection assessmentId={assessment.id} assessedAt={savedDate} clientId={assessment.client_id} bodyKg={body?.weight_kg ?? null} />
+      {(active === "performance" || active === "health") && (
+        <PerformanceSection
+          key={active}
+          section={active}
+          assessmentId={assessment.id}
+          assessedAt={savedDate}
+          clientId={assessment.client_id}
+          bodyKg={body?.weight_kg ?? null}
+        />
       )}
       {active === "photos" && <AssessmentPhotosSection clientId={assessment.client_id} date={savedDate} onCountChange={setPhotoCount} />}
     </div>
@@ -1045,18 +1068,11 @@ function PowerSection({ assessmentId, rows, setRows }: { assessmentId: string; r
             </tbody>
           </table>
         )}
-        <div className="assess-add" style={{ display: "flex", flexWrap: "wrap", gap: 10, alignItems: "flex-end" }}>
-          <div>
-            <label className="field-label">Tipo de prueba</label>
-            <select className="input" value={testType} onChange={(e) => setTestType(e.target.value as PowerTestType)}>
-              {Object.entries(POWER_TEST_LABEL).map(([k, l]) => <option key={k} value={k}>{l}</option>)}
-            </select>
-          </div>
-          <div><label className="field-label">Resultado</label><input className="input" inputMode="decimal" style={{ maxWidth: 100 }} value={value} onChange={(e) => setValue(e.target.value)} /></div>
-          <div><label className="field-label">Unidad</label><input className="input" style={{ maxWidth: 80 }} value={unit} onChange={(e) => setUnit(e.target.value)} placeholder="cm, W, m…" /></div>
-          <div><label className="field-label">Peso del implemento (kg, opcional)</label><input className="input" inputMode="decimal" style={{ maxWidth: 120 }} value={implementWeight} onChange={(e) => setImplementWeight(e.target.value)} /></div>
-          <button className="btn ghost" onClick={add}><Plus size={14} /> Añadir</button>
-        </div>
+        {/* Sección anterior: queda para ver y corregir lo ya cargado. Las pruebas nuevas van en "Rendimiento". */}
+        <p className="note" style={{ margin: 0 }}>
+          Estas son pruebas cargadas antes de la sección <b>Rendimiento</b>. Para cargar pruebas nuevas de potencia (con protocolo y
+          comparación con la evaluación anterior), elige «Rendimiento deportivo» o «Salud y funcionalidad» arriba.
+        </p>
       </div>
     </div>
   );
