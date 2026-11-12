@@ -62,7 +62,11 @@ export async function uploadProgressPhoto(params: {
     })
     .select("id, client_id, storage_path, taken_at, visibility, notes, angle, created_at")
     .single();
-  if (error) throw error;
+  if (error) {
+    // Rechazada (por ejemplo, alumno menor sin fotos autorizadas): no deja el archivo suelto.
+    await supabase.storage.from("client-files").remove([path]).catch(() => {});
+    throw error;
+  }
   return data as ProgressPhotoRow;
 }
 

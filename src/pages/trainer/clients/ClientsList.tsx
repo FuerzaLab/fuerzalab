@@ -23,6 +23,8 @@ import { inviteMessage } from "../../../lib/whatsapp";
 import BulkInviteModal from "./BulkInviteModal";
 import { firstName } from "../../../lib/whatsapp";
 import { planStatusByClient, type PlanStatus } from "../../../services/planStatus";
+import { isMinor } from "../../../lib/minors";
+import { supabase } from "../../../lib/supabase";
 
 const STATUS_LABEL: Record<ClientStatus, string> = {
   prospect: "Prospecto",
@@ -45,6 +47,8 @@ export default function ClientsList() {
   const [clients, setClients] = useState<ClientRow[]>([]);
   // Estado del plan de cada alumno activo (por terminar, terminado, sin plan).
   const [plans, setPlans] = useState<Record<string, PlanStatus>>({});
+  // Menores de edad (por la fecha de nacimiento del formulario de ingreso).
+  const [minors, setMinors] = useState<Set<string>>(new Set());
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState("");
   const [query, setQuery] = useState("");
@@ -63,6 +67,11 @@ export default function ClientsList() {
       const profileIds = cs.map((c) => c.profile_id).filter((id): id is string => !!id);
       setLastSignIn(await getLastSignInByProfileId(profileIds));
       planStatusByClient(cs.filter((c) => c.status === "active").map((c) => c.id)).then(setPlans).catch(() => {});
+      supabase
+        .from("client_profiles")
+        .select("client_id, birth_date")
+        .in("client_id", cs.map((c) => c.id))
+        .then(({ data }) => setMinors(new Set((data ?? []).filter((r: any) => isMinor(r.birth_date)).map((r: any) => r.client_id as string))));
     } catch (err: any) {
       setLoadError(err.message ?? "No pudimos cargar tus clientes.");
     }
@@ -183,6 +192,7 @@ export default function ClientsList() {
                           </div>
                         )}
                         {!c.profile_id && <Chip tone="warn">Sin aceptar invitación</Chip>}
+                        {minors.has(c.id) && (c.guardian_consent_at ? <Chip tone="pri">Menor de edad</Chip> : <Chip tone="warn">Menor · falta autorización</Chip>)}
                         {c.status === "active" && plans[c.id]?.state === "ending" && (
                           <span title="Está en la última semana con rutinas armadas: arma lo que sigue">
                             <Chip tone="warn">Plan por terminar</Chip>

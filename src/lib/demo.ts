@@ -53,3 +53,8 @@ export const DEMO_CLIENT_ENABLED = DEMO_ENABLED && !!DEMO_CLIENT_EMAIL && !!DEMO
 export function isDemoClient(email: string | null | undefined): boolean {
   return DEMO_CLIENT_ENABLED && !!email && email.trim().toLowerCase() === DEMO_CLIENT_EMAIL;
 }
+
+/** Cualquiera de las cuentas de demostración (entrenador, estudio o alumno). */
+export function isAnyDemo(email: string | null | undefined): boolean {
+  return isDemoAccount(email) || isDemoStudioOwner(email) || isDemoClient(email);
+}

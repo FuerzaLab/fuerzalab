@@ -22,6 +22,31 @@ export interface ChangelogEntry {
 
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    id: "2026-11-12-minors",
+    date: "2026-11-12",
+    title: "Alumnos menores de edad: autorización del tutor",
+    body: "Si un alumno tiene menos de 18 años, su formulario de ingreso pide los datos de su madre, padre o tutor, y en su ficha aparece «Menor de edad»: descargas la autorización en PDF, la firma su tutor y subes la foto. Hasta entonces el alumno no puede usar la app, y te lo recuerda en Novedades y en Clientes. Si el tutor no autoriza las fotos de progreso, quedan desactivadas para ese alumno.",
+    for: ["trainer"],
+    notForStaff: true,
+    link: { label: "Ir a Clientes", to: paths.trainerClients },
+  },
+  {
+    id: "2026-11-12-export-routines",
+    date: "2026-11-12",
+    title: "Exporta las rutinas en PDF o Excel",
+    body: "En el Constructor, «Exportar»: una rutina, la semana completa o todas las rutinas fijas, en PDF con tu logo (para imprimir o mandar por WhatsApp) o en Excel con el formato de «Importar rutina», para editarla o pasársela a otro alumno.",
+    for: ["trainer"],
+    notForStaff: false,
+    link: { label: "Ir al Constructor", to: paths.trainerBuilder },
+  },
+  {
+    id: "2026-11-12-download-routine",
+    date: "2026-11-12",
+    title: "Descarga tu rutina en PDF",
+    body: "En «Mi rutina», arriba, «Descargar en PDF»: tu rutina de la semana con ejercicios, series, repeticiones, carga y descanso, para tenerla a mano o imprimirla.",
+    for: ["client"],
+  },
+  {
     id: "2026-11-11-health-tests",
     date: "2026-11-11",
     title: "Nueva sección: Salud y funcionalidad",

@@ -35,6 +35,8 @@ import { ClientGymUnitsField } from "../../../components/GymUnitsSettings";
 import WhatsAppButton from "../../../components/WhatsAppButton";
 import { firstName } from "../../../lib/whatsapp";
 import { supabase } from "../../../lib/supabase";
+import MinorConsentPanel from "../../../components/MinorConsentPanel";
+import { isMinor } from "../../../lib/minors";
 
 const STATUS_LABEL: Record<ClientStatus, string> = {
   prospect: "Prospecto",
@@ -189,6 +191,8 @@ export default function ClientDetail() {
           )}
         </div>
       </div>
+
+      {client && intake && isMinor(intake.birth_date) && <MinorConsentPanel client={client} intake={intake} onChange={setClient} />}
 
       {!intake?.submitted_at ? (
         <div className="panel" style={{ marginBottom: 18 }}>

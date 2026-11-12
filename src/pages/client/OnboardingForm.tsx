@@ -12,6 +12,7 @@ import {
 import { parseHeightCm } from "../../services/assessments";
 import { supabase } from "../../lib/supabase";
 import { parseDecimal } from "../../lib/decimal";
+import { isMinor, GUARDIAN_RELATIONSHIPS } from "../../lib/minors";
 
 export default function OnboardingForm({ clientId, onDone }: { clientId: string; onDone: () => void }) {
   const { profile, signOut } = useAuth();
@@ -58,6 +59,12 @@ export default function OnboardingForm({ clientId, onDone }: { clientId: string;
     });
   }, [clientId]);
   const [emergencyName, setEmergencyName] = useState("");
+  // Menores de 18: datos de la madre, padre o tutor.
+  const [gName, setGName] = useState("");
+  const [gCi, setGCi] = useState("");
+  const [gRel, setGRel] = useState("");
+  const [gPhone, setGPhone] = useState("");
+  const minor = isMinor(birthDate);
   const [emergencyPhone, setEmergencyPhone] = useState("");
   const [emergencyRelationship, setEmergencyRelationship] = useState("");
   const [consent, setConsent] = useState(false);
@@ -69,6 +76,9 @@ export default function OnboardingForm({ clientId, onDone }: { clientId: string;
 
   const submit = async () => {
     if (!myPhone.trim()) return setError("Escribe tu número de celular, para que tu entrenador pueda contactarte.");
+    if (!birthDate) return setError("Escribe tu fecha de nacimiento.");
+    if (minor && (!gName.trim() || !gCi.trim() || !gRel || !gPhone.trim()))
+      return setError("Como eres menor de 18 años, completa los datos de tu madre, padre o tutor.");
     if (!mainGoal) return setError("Elige tu objetivo principal.");
     if (!consent) return setError("Necesitamos que aceptes el consentimiento para continuar.");
     setError("");
@@ -89,7 +99,12 @@ export default function OnboardingForm({ clientId, onDone }: { clientId: string;
         par_q: parQ,
         habits: { sleepHours, activityLevel, nutritionQuality, stressLevel },
         preferences: { trainingDays, sessionDuration, equipmentAccess, preferredTime },
-        emergency_contact: emergencyName ? { name: emergencyName, phone: emergencyPhone, relationship: emergencyRelationship } : null,
+        emergency_contact: emergencyName
+          ? { name: emergencyName, phone: emergencyPhone, relationship: emergencyRelationship }
+          : minor
+            ? { name: gName.trim(), phone: gPhone.trim(), relationship: gRel }
+            : null,
+        ...(minor ? { guardian: { name: gName.trim(), ci: gCi.trim(), relationship: gRel, phone: gPhone.trim() } } : {}),
       });
       notify("¡Listo! Ya puedes ver el resto de la app.");
       onDone();
@@ -259,6 +274,37 @@ export default function OnboardingForm({ clientId, onDone }: { clientId: string;
           </div>
         </div>
 
+        {minor && (
+          <div className="guardian-box">
+            <h3 style={{ margin: "0 0 6px" }}>Datos de tu madre, padre o tutor</h3>
+            <p className="note" style={{ margin: "0 0 12px" }}>
+              Como eres menor de 18 años, tu entrenador necesita la autorización firmada de tu madre, padre o tutor. Él se la va a
+              pedir; acá solo carga sus datos.
+            </p>
+            <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(150px,1fr))", gap: 12 }}>
+              <div>
+                <label className="field-label">Nombre completo</label>
+                <input className="input" value={gName} onChange={(e) => setGName(e.target.value)} />
+              </div>
+              <div>
+                <label className="field-label">Carnet de identidad</label>
+                <input className="input" value={gCi} onChange={(e) => setGCi(e.target.value)} />
+              </div>
+              <div>
+                <label className="field-label">Parentesco</label>
+                <select className="input" value={gRel} onChange={(e) => setGRel(e.target.value)}>
+                  <option value="">Elige…</option>
+                  {GUARDIAN_RELATIONSHIPS.map((r) => <option key={r} value={r}>{r}</option>)}
+                </select>
+              </div>
+              <div>
+                <label className="field-label">Celular (WhatsApp)</label>
+                <input className="input" type="tel" inputMode="tel" value={gPhone} onChange={(e) => setGPhone(e.target.value)} />
+              </div>
+            </div>
+          </div>
+        )}
+
         <h3 style={{ marginBottom: 10 }}>Contacto de emergencia</h3>
         <p className="note" style={{ marginBottom: 12 }}>Opcional, pero recomendado para entrenar con mayor seguridad.</p>
         <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(150px,1fr))", gap: 12, marginBottom: 20 }}>
@@ -281,6 +327,7 @@ export default function OnboardingForm({ clientId, onDone }: { clientId: string;
           <span>
             Confirmo que la información que di es verdadera a mi leal saber y entender, y acepto que mi entrenador la
             use para diseñar mi plan de entrenamiento.
+            {minor && " Mi madre, padre o tutor está al tanto, y mi entrenador le va a pedir su autorización firmada."}
           </span>
         </label>
 

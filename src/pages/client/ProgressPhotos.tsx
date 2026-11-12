@@ -19,11 +19,15 @@ import {
 } from "../../services/progressPhotos";
 import Loading from "../../components/ui/Loading";
 import PhotoComparator from "../../components/PhotoComparator";
+import { getClient, getClientProfile } from "../../services/clients";
+import { isMinor } from "../../lib/minors";
 
 export default function ClientProgressPhotos() {
   const { profile } = useAuth();
   const { notify } = useToast();
   const [clientId, setClientId] = useState<string | null>(null);
+  // Menor de edad sin fotos autorizadas por su tutor (part4l).
+  const [photosBlocked, setPhotosBlocked] = useState(false);
   const [photos, setPhotos] = useState<ProgressPhotoRow[]>([]);
   const [urls, setUrls] = useState<Record<string, string>>({});
   const [loading, setLoading] = useState(true);
@@ -38,6 +42,9 @@ export default function ClientProgressPhotos() {
       const id = await getMyClientId();
       setClientId(id);
       if (id) {
+        Promise.all([getClient(id), getClientProfile(id)])
+          .then(([c, p]) => setPhotosBlocked(isMinor(p?.birth_date) && !c.guardian_photos_ok))
+          .catch(() => {});
         const list = await listProgressPhotos(id);
         setPhotos(list);
         const entries = await Promise.all(list.map(async (p) => [p.id, await getPhotoUrl(p.storage_path)] as const));
@@ -63,11 +70,18 @@ export default function ClientProgressPhotos() {
           <h1 style={{ marginBottom: 4 }}>Mi progreso</h1>
           <p className="note">Fotos para ver tu propio cambio en el tiempo. Solo tú y tu entrenador las ven.</p>
         </div>
-        {clientId && (
+        {clientId && !photosBlocked && (
           <button className="btn" onClick={() => setShowUpload(true)}>
             <Plus size={16} /> Subir fotos
           </button>
         )}
+      </div>
+      {photosBlocked && (
+        <p className="note week-lock" style={{ marginTop: 0 }}>
+          🔒 Las fotos de progreso no están disponibles: tu madre, padre o tutor no las autorizó. Si quieren cambiarlo, avísale a tu entrenador.
+        </p>
+      )}
+      <div style={{ display: "none" }}>
       </div>
 
       {loading ? (

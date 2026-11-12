@@ -16,6 +16,11 @@ export interface ClientRow {
   updated_at: string;
   /** Alumno nuevo que espera el pago de su cupo (part4a). */
   seat_pending?: boolean;
+  /** Menores de 18: autorización firmada del tutor recibida por el entrenador (part4k). */
+  guardian_consent_at?: string | null;
+  guardian_consent_path?: string | null;
+  /** Menores: el tutor autorizó las fotos de progreso (part4l). */
+  guardian_photos_ok?: boolean;
 }
 
 export interface ParQAnswers {
@@ -45,6 +50,8 @@ export interface ClientProfileRow {
   habits: { sleepHours: string; activityLevel: string; nutritionQuality: string; stressLevel: string } | null;
   preferences: { trainingDays: string; sessionDuration: string; equipmentAccess: string; preferredTime: string } | null;
   emergency_contact: { name: string; phone: string; relationship: string } | null;
+  /** Menores de 18: datos de la madre, padre o tutor (part4k). */
+  guardian?: { name: string; ci: string; relationship: string; phone: string } | null;
   consent_accepted: boolean;
   submitted_at: string | null;
   reviewed_at: string | null;
@@ -107,10 +114,13 @@ export async function submitOnboarding(
   clientId: string,
   fields: Omit<Partial<ClientProfileRow>, "client_id" | "submitted_at">
 ): Promise<void> {
-  const { error } = await supabase
-    .from("client_profiles")
-    .update({ ...fields, consent_accepted: true, submitted_at: new Date().toISOString() })
-    .eq("client_id", clientId);
+  const row: Record<string, unknown> = { ...fields, consent_accepted: true, submitted_at: new Date().toISOString() };
+  let { error } = await supabase.from("client_profiles").update(row).eq("client_id", clientId);
+  // Sin part4k_migration.sql no existe "guardian": se guarda igual, sin esos datos (y el tutor queda como contacto de emergencia).
+  if (error && /guardian/.test(error.message)) {
+    delete row.guardian;
+    ({ error } = await supabase.from("client_profiles").update(row).eq("client_id", clientId));
+  }
   if (error) throw error;
 }
 

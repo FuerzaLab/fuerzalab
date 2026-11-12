@@ -59,6 +59,7 @@ import { supabase } from "../../../lib/supabase";
 import FixedRoutinesBuilder from "./FixedRoutinesBuilder";
 import { createFixedProgram } from "../../../services/fixedRoutines";
 import { paths } from "../../../routes/paths";
+import ExportRoutineButton from "../../../components/ExportRoutineButton";
 
 /** El programa archivado "Clases grupales" (Sala · Misma rutina para todos) no se edita acá. */
 const notGroupArchive = (p: { name: string; status: string }) => !(p.name === "Clases grupales" && p.status === "archived");
@@ -1111,6 +1112,7 @@ function SessionEditor({
             <button className="btn ghost" onClick={() => setShowSaveAsTemplate(true)}>
               <FileUp size={15} /> Guardar como plantilla
             </button>
+            <ExportRoutineButton session={session ?? initialSession} fixedMode={fixedMode} />
           </div>
         </div>
         <div className="bd">

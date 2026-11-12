@@ -4,6 +4,7 @@ import { planStatusByClient } from "./planStatus";
 import { formatLoad } from "../lib/units";
 import type { ClientRow } from "./clients";
 import { wellnessScore, lowFields, WELLNESS_FIELD_LABEL, type WellnessLogRow } from "./wellness";
+import { isMinor } from "../lib/minors";
 
 /**
  * "Novedades" de Inicio: lo que hicieron los clientes y merece la atención
@@ -365,6 +366,34 @@ async function photoItems(clients: ClientRow[]): Promise<FeedItem[]> {
 
 // --- Planes que se terminan ---------------------------------------------
 
+/**
+ * Menores de edad sin la autorización firmada de su tutor (part4k). Se usa
+ * la fecha de nacimiento del formulario de ingreso. Si se marca "Atendida" y
+ * sigue faltando, vuelve a aparecer a la semana.
+ */
+async function minorItems(clients: ClientRow[]): Promise<FeedItem[]> {
+  const pending = clients.filter((c) => (c.status === "active" || c.status === "prospect") && !c.guardian_consent_at);
+  if (!pending.length) return [];
+  const { data } = await supabase.from("client_profiles").select("client_id, birth_date").in("client_id", pending.map((c) => c.id));
+  const week = Math.floor(Date.now() / (7 * 86400000));
+  const items: FeedItem[] = [];
+  for (const r of (data ?? []) as { client_id: string; birth_date: string | null }[]) {
+    if (!isMinor(r.birth_date)) continue;
+    const c = pending.find((x) => x.id === r.client_id);
+    if (!c) continue;
+    items.push({
+      key: `minor-consent:${c.id}:${week}`,
+      kind: "intake",
+      clientId: c.id,
+      at: new Date().toISOString(),
+      title: "Falta la autorización del tutor",
+      detail: `${c.full_name.split(" ")[0]} es menor de edad. Descarga la autorización desde su ficha, que la firme su madre, padre o tutor, y sube la foto.`,
+      tone: "warn",
+    });
+  }
+  return items;
+}
+
 async function planItems(clients: ClientRow[]): Promise<FeedItem[]> {
   const active = clients.filter((c) => c.status === "active");
   const map = await planStatusByClient(active.map((c) => c.id));
@@ -503,6 +532,7 @@ export async function loadFeed(
     safe(joinedItems()),
     allow.logs ? safe(planItems(clients)) : Promise.resolve([] as FeedItem[]),
     allow.health ? safe(intakeItems()) : Promise.resolve([] as FeedItem[]),
+    allow.health ? safe(minorItems(clients)) : Promise.resolve([] as FeedItem[]),
     allow.videosFor ? safe(videoItems(allow.videosFor)) : Promise.resolve([] as FeedItem[]),
     allow.suggestions ? safe(suggestionItems()) : Promise.resolve([] as FeedItem[]),
   ]);

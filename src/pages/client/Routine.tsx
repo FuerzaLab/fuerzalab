@@ -49,6 +49,7 @@ import SessionPreview from "./SessionPreview";
 import { useSearchParams } from "react-router-dom";
 import { playRestEnd, playRestTick, unlockRestSound } from "../../lib/restSound";
 import RestSoundToggle from "../../components/RestSoundToggle";
+import ExportRoutineButton from "../../components/ExportRoutineButton";
 
 const STATUS_LABEL: Record<WorkoutLogRow["status"], string> = {
   pending: "Pendiente",
@@ -234,7 +235,15 @@ export default function ClientRoutine() {
 
   return (
     <div className="page">
-      <h1 style={{ marginBottom: 20 }}>Mi rutina</h1>
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 10, flexWrap: "wrap", marginBottom: 20 }}>
+        <h1 style={{ margin: 0 }}>Mi rutina</h1>
+        <ExportRoutineButton
+          session={sessions[0] ?? null}
+          fixedMode={(program as any)?.plan_mode === "fixed"}
+          clientOnly
+          label="Descargar en PDF"
+        />
+      </div>
 
       {loading ? (
         <Loading />
