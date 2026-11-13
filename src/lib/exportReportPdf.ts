@@ -32,3 +32,27 @@ export async function exportReportPdf(element: HTMLElement, fileName: string): P
 
   pdf.save(fileName);
 }
+
+/**
+ * PDF de hojas fijas: cada elemento es UNA hoja A4 (se escala para entrar
+ * entera, sin cortar texto entre hojas). Para documentos para imprimir y
+ * firmar, como la autorización de tutores.
+ */
+export async function exportPagesPdf(pages: HTMLElement[], fileName: string): Promise<void> {
+  const pdf = new jsPDF({ orientation: "portrait", unit: "pt", format: "a4" });
+  const pw = pdf.internal.pageSize.getWidth();
+  const ph = pdf.internal.pageSize.getHeight();
+  for (let i = 0; i < pages.length; i++) {
+    const canvas = await html2canvas(pages[i], { scale: 2, backgroundColor: "#ffffff", useCORS: true });
+    // Entra a lo ancho; si es más alta que la hoja, se achica para que entre entera.
+    let w = pw;
+    let h = (canvas.height * w) / canvas.width;
+    if (h > ph) {
+      h = ph;
+      w = (canvas.width * h) / canvas.height;
+    }
+    if (i > 0) pdf.addPage();
+    pdf.addImage(canvas.toDataURL("image/png"), "PNG", (pw - w) / 2, 0, w, h);
+  }
+  pdf.save(fileName);
+}

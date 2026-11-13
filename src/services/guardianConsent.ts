@@ -1,5 +1,5 @@
 import { supabase } from "../lib/supabase";
-import { exportReportPdf } from "../lib/exportReportPdf";
+import { exportPagesPdf } from "../lib/exportReportPdf";
 import { ageFrom, LEGAL_PROVIDER, type Guardian } from "../lib/minors";
 import type { ClientRow } from "./clients";
 
@@ -81,7 +81,9 @@ export async function downloadGuardianConsentPdf(params: {
   const el = document.createElement("div");
   el.style.cssText = "position:fixed;left:-10000px;top:0;width:794px;background:#fff";
   el.innerHTML = `<style>
-    .gc{font-family:Arial,sans-serif;color:#14202B;padding:38px 44px;font-size:12.3px;line-height:1.5}
+    .gc{font-family:Arial,sans-serif;color:#14202B;padding:44px 50px;font-size:12.6px;line-height:1.55;width:794px;min-height:1123px;box-sizing:border-box;background:#fff}
+    .gc .pgn{position:absolute;right:50px;bottom:30px;font-size:10px;color:#8B93A7}
+    .gc{position:relative}
     .gc .hd{display:flex;justify-content:space-between;align-items:center;border-bottom:3px solid #1E3FA8;padding-bottom:10px;margin-bottom:8px}
     .gc .hd h1{font-size:19px;margin:0;color:#0F1A33}
     .gc .brand{display:flex;align-items:center;gap:8px;font-weight:700;font-size:17px;color:#0F1A33}.gc .brand span{color:#1E3FA8}.gc .brand img{height:32px;border-radius:7px}
@@ -89,7 +91,7 @@ export async function downloadGuardianConsentPdf(params: {
     .gc h2{font-size:13px;color:#1E3FA8;margin:14px 0 4px}
     .gc table{border-collapse:collapse;width:100%}.gc td{padding:6px 7px;border-bottom:1px solid #DCE1DA;color:#5E6A73}.gc td.v{width:60%;color:#14202B}
     .gc p{margin:0 0 7px}.gc .box{font-size:15px}
-    .gc .sign{display:grid;grid-template-columns:1fr 1fr;gap:36px;margin-top:38px}.gc .sign div{border-top:1px solid #14202B;padding-top:5px;font-size:11px}
+    .gc .sign{display:grid;grid-template-columns:1fr 1fr;gap:40px;margin-top:64px}.gc .sign div{border-top:1px solid #14202B;padding-top:5px;font-size:11px}
     .gc .small{font-size:10px;color:#5E6A73;margin-top:16px}
   </style>
   <div class="gc">
@@ -108,6 +110,11 @@ export async function downloadGuardianConsentPdf(params: {
     <p><b>3. Datos de salud.</b> Sé que los datos de salud son datos sensibles. Autorizo de forma expresa que se registren las respuestas al cuestionario PAR-Q+, lesiones o molestias, medicamentos, alergias, condiciones médicas y registros de sueño, fatiga, estrés y dolor. Estos datos se usarán únicamente para que el entrenamiento sea seguro y adecuado.</p>
     <p><b>4. Datos registrados con anterioridad.</b> Autorizo también el uso de los datos del alumno o alumna que ya fueron registrados en FuerzaLab antes de la fecha de este documento.</p>
     <p><b>5. Quién ve los datos y dónde se guardan.</b> Los datos los ve su entrenador y, si los tiene, los asistentes a quienes él les dé permiso. FuerzaLab accede a ellos solo cuando hace falta para dar soporte técnico. Autorizo que los datos se guarden en los servidores de Supabase y Netlify, ubicados fuera de Bolivia (${esc(P.servers)}). Los datos no se venden ni se usan para publicidad.</p>
+    <div class="pgn">Página 1 de 2</div>
+  </div>
+  <div class="gc">
+    <div class="hd"><h1>Autorización de madre, padre o tutor</h1><div class="brand"><img src="/logo.png"><b>Fuerza<span>Lab</span></b></div></div>
+    <p class="prov">Alumno o alumna: ${v(params.clientName)}${g?.name ? ` · Madre, padre o tutor: ${v(g.name)}` : ""}</p>
     <p><b>6. Fotos de progreso.</b> <span class="box">☐</span> Autorizo &nbsp; <span class="box">☐</span> No autorizo que se tomen y guarden fotos del progreso físico del alumno o alumna. Las fotos solo las verá su entrenador y no se publicarán en redes sociales, publicidad ni ningún otro medio sin otra autorización escrita. Si no marco ninguna opción, se entiende que no autorizo.</p>
     <p><b>7. Mis derechos.</b> En cualquier momento puedo pedir acceso a los datos, su corrección o su eliminación, o retirar esta autorización. Puedo hacerlo ante el entrenador o escribiendo a ${esc(P.email)}. Recibiré respuesta en un plazo de 15 días hábiles. Si retiro la autorización, los datos se eliminarán en un plazo de 15 días hábiles.</p>
     <p><b>8. Términos y Política de privacidad.</b> Declaro haber leído y aceptado los Términos de uso y la Política de privacidad de FuerzaLab, disponibles en ${esc(P.termsUrl)} y ${esc(P.privacyUrl)}, en su versión vigente a la fecha de este documento.</p>
@@ -117,11 +124,12 @@ export async function downloadGuardianConsentPdf(params: {
     <div class="sign"><div>Firma de la madre, padre o tutor</div><div>Aclaración y CI Nº</div></div>
     <div class="sign" style="margin-top:30px"><div>Firma del alumno o alumna</div><div>Lugar y fecha</div></div>
     <p class="small">El entrenador guarda una copia de este documento firmado en la ficha del alumno en FuerzaLab, en una sección a la que solo él tiene acceso, y entrega una copia a la madre, padre o tutor.</p>
+    <div class="pgn">Página 2 de 2</div>
   </div>`;
   document.body.appendChild(el);
   try {
     await new Promise((r) => setTimeout(r, 250));
-    await exportReportPdf(el.lastElementChild as HTMLElement, `Autorizacion-tutor-${params.clientName.replace(/\s+/g, "-")}`);
+    await exportPagesPdf(Array.from(el.querySelectorAll<HTMLElement>(".gc")), `Autorizacion-tutor-${params.clientName.replace(/\s+/g, "-")}`);
   } finally {
     el.remove();
   }
