@@ -23,6 +23,7 @@ import {
   type WorkoutExerciseRow,
   type WeekStatus,
   unlockedWeekNumber,
+  nextAllowedSession,
 } from "../../services/sessions";
 import {
   getActiveProgramForClient,
@@ -66,6 +67,8 @@ export default function ClientRoutine() {
   // Plan por semanas: última semana habilitada (la siguiente se abre al terminar la anterior).
   const [unlocked, setUnlocked] = useState<number>(Infinity);
   const [hiddenWeeks, setHiddenWeeks] = useState(0);
+  // Orden obligatorio (part4o): la única rutina que se puede empezar ahora.
+  const [allowed, setAllowed] = useState<SessionRow | null>(null);
   const [weekStatus, setWeekStatus] = useState<Record<string, WeekStatus>>({});
   const [weekId, setWeekId] = useState("");
   const [sessions, setSessions] = useState<SessionRow[]>([]);
@@ -157,6 +160,7 @@ export default function ClientRoutine() {
       if (prog) {
         const ws = (await listWeeks(prog.id)).sort((a, b) => a.week_number - b.week_number);
         const upTo = await unlockedWeekNumber(prog.id, (prog as any).plan_mode).catch(() => Infinity);
+        setAllowed(await nextAllowedSession(prog as any).catch(() => null));
         setUnlocked(upTo);
         const visible = ws.filter((w) => w.week_number <= upTo);
         setWeeks(visible);
@@ -298,6 +302,10 @@ export default function ClientRoutine() {
                       <button className="btn" onClick={() => startSession(s.id)}>Continuar</button>
                     ) : status === "completed" ? (
                       <button className="btn ghost" onClick={() => setPreviewSessionId(s.id)}>Completada · Ver</button>
+                    ) : status !== "skipped" && allowed && allowed.id !== s.id ? (
+                      <span className="order-lock" title="Tu entrenador armó tus rutinas en un orden: hazlas una por una.">
+                        🔒 Primero: {allowed.name}
+                      </span>
                     ) : (
                       <button className="btn" onClick={() => setPreviewSessionId(s.id)}>Ver y entrenar</button>
                     )}

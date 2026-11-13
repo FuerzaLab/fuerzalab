@@ -6,6 +6,8 @@ import ConfirmModal from "../../../components/ui/ConfirmModal";
 import { DAY_OF_WEEK_LABEL, type SessionRow } from "../../../services/sessions";
 import { addFixedDay, deleteFixedDay, duplicateFixedDay, extendFixedProgram, listFixedSlots, setPlanMode, swapFixedDays } from "../../../services/fixedRoutines";
 import type { CatalogItem, ExerciseRow } from "../../../services/exercises";
+import { supabase } from "../../../lib/supabase";
+import { setStrictOrder } from "../../../services/programs";
 
 /**
  * Constructor en modo "Rutinas fijas": solo los días (Día A, B, C…), sin
@@ -35,6 +37,13 @@ export default function FixedRoutinesBuilder({
   // 0 = sin día fijo (el alumno elige cuál hacer).
   const [newDay, setNewDay] = useState(0);
   const [busy, setBusy] = useState(false);
+  // Rutinas en orden (rotación A → B → C → A…), por defecto activado (part4o).
+  const [strict, setStrict] = useState(true);
+  useEffect(() => {
+    supabase.from("programs").select("strict_order").eq("id", programId).maybeSingle().then(({ data }) => {
+      if (data && (data as any).strict_order === false) setStrict(false);
+    });
+  }, [programId]);
   const [dragSort, setDragSort] = useState<number | null>(null);
   const [overSort, setOverSort] = useState<number | null>(null);
   const [toDelete, setToDelete] = useState<SessionRow | null>(null);
@@ -134,12 +143,32 @@ export default function FixedRoutinesBuilder({
     <>
       <div className="fixed-mode-bar">
         <span>
-          🔁 <b>Rutinas fijas</b> — se repiten cada semana. {clientName.split(" ")[0]} las ve todas y elige cuál hacer (o asígnale un día
-          a cada una). Lo que cambies aplica desde la próxima vez; lo ya entrenado queda en su historial.
+          🔁 <b>Rutinas fijas</b> — se repiten cada semana.{" "}
+          {strict
+            ? `${clientName.split(" ")[0]} las hace en orden: después de la última, vuelve a la primera.`
+            : `${clientName.split(" ")[0]} las ve todas y elige cuál hacer (o asígnale un día a cada una).`}{" "}
+          Lo que cambies aplica desde la próxima vez; lo ya entrenado queda en su historial.
         </span>
         <button className="link-btn" style={{ fontSize: 13.5 }} onClick={() => setSwitching(true)}>
           Pasar a plan por semanas
         </button>
+        <label className="fixed-order">
+            <input
+              type="checkbox"
+              checked={strict}
+              onChange={async (e) => {
+                const v = e.target.checked;
+                setStrict(v);
+                try {
+                  await setStrictOrder(programId, v);
+                } catch (err: any) {
+                  notify(err.message);
+                  setStrict(!v);
+                }
+              }}
+            />
+          Rutinas en orden: las hace una tras otra (después de la última, vuelve a la primera)
+        </label>
       </div>
 
       <div style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center", marginBottom: 16 }}>

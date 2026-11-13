@@ -206,7 +206,10 @@ export const HELP_TOPICS: HelpTopic[] = [
     buttons: [
       { label: "Nuevo programa", desc: "Elige alumno, cantidad de semanas y fecha de inicio." },
     ],
-    tips: ["Las semanas se arman en el Constructor: «Copiar a la semana siguiente» duplica una semana con una progresión de carga sugerida."],
+    tips: [
+      "Las semanas se arman en el Constructor: «Copiar a la semana siguiente» duplica una semana con una progresión de carga sugerida.",
+      "«Rutinas en orden» (activado por defecto): el alumno solo puede empezar la siguiente en el orden en que las armaste. Si no va a hacer una, márcala como saltada en «Entrenar con cliente».",
+    ],
     keywords: "programa macrociclo mesociclo semanas periodización",
   },
   {
@@ -403,7 +406,7 @@ export const HELP_TOPICS: HelpTopic[] = [
       "En cada serie: repeticiones y carga (ya vienen cargadas), y ✓. Arranca el descanso, que suena al terminar (🔔 para silenciarlo).",
       "Al terminar, «Terminar»: ves cuánto duró, cuánto levantaste y cómo te fue comparado con la vez anterior. Si batiste un récord, se celebra.",
     ],
-    tips: ["«Última vez» te muestra lo que hiciste la sesión anterior en ese ejercicio.", "«Descargar en PDF», arriba en Mi rutina, te deja tu rutina de la semana para tenerla a mano o imprimirla."],
+    tips: ["Si tu entrenador lo activó, haces tus rutinas en orden: la siguiente se habilita cuando terminas la anterior (las demás aparecen con un candado).", "«Última vez» te muestra lo que hiciste la sesión anterior en ese ejercicio.", "«Descargar en PDF», arriba en Mi rutina, te deja tu rutina de la semana para tenerla a mano o imprimirla."],
     keywords: "entrenar series registrar descanso récord",
     capture: 12,
   },

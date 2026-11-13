@@ -22,6 +22,21 @@ export interface ChangelogEntry {
 
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    id: "2026-11-13-strict-order",
+    date: "2026-11-13",
+    title: "Tus alumnos hacen las rutinas en orden",
+    body: "Por defecto, tus alumnos solo pueden empezar la siguiente rutina en el orden en que las armaste, sin saltarse ninguna (en Rutinas fijas siguen la rotación: después de la última, vuelven a la primera). Si no va a hacer una, márcala como saltada en «Entrenar con cliente». Lo puedes desactivar en cada programa, en Planificación o en Rutinas fijas.",
+    for: ["trainer"],
+    link: { label: "Ir a Planificación", to: paths.trainerPrograms },
+  },
+  {
+    id: "2026-11-13-strict-order-client",
+    date: "2026-11-13",
+    title: "Tus rutinas, en orden",
+    body: "Tu entrenador armó tus rutinas en un orden: ahora se habilitan una por una. «Entrenar ahora» te lleva siempre a la que te toca.",
+    for: ["client"],
+  },
+  {
     id: "2026-11-12-muscle-volume",
     date: "2026-11-12",
     title: "Volumen por grupo muscular",

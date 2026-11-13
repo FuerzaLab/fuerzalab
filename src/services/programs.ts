@@ -14,6 +14,10 @@ export interface ProgramRow {
   is_template: boolean;
   allow_multiple_sessions_per_day: boolean;
   created_at: string;
+  /** Rutinas fijas o plan por semanas (part4d). */
+  plan_mode?: "fixed" | "weekly" | null;
+  /** El alumno hace las rutinas en orden, sin saltearse (part4o; true por defecto). */
+  strict_order?: boolean;
 }
 
 export interface MesocycleRow {
@@ -256,6 +260,12 @@ export async function updateProgramName(id: string, name: string): Promise<void>
 export async function setAllowMultipleSessionsPerDay(id: string, allow: boolean): Promise<void> {
   const { error } = await supabase.from("programs").update({ allow_multiple_sessions_per_day: allow }).eq("id", id);
   if (error) throw error;
+}
+
+/** Orden obligatorio: el alumno hace las rutinas en el orden del programa (part4o). */
+export async function setStrictOrder(id: string, strict: boolean): Promise<void> {
+  const { error } = await supabase.from("programs").update({ strict_order: strict }).eq("id", id);
+  if (error) throw /strict_order/.test(error.message) ? new Error("Falta correr part4o_migration.sql en Supabase.") : error;
 }
 
 /**

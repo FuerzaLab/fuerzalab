@@ -156,6 +156,10 @@ export async function getTodaysSessionForClient(clientId: string): Promise<Today
   // Rutinas fijas: que siempre haya semanas por delante (las crea la base de datos).
   if ((program as any).plan_mode === "fixed") await supabase.rpc("fixed_extend", { p_program: program.id, p_weeks_ahead: 8 }).then(() => null, () => null);
 
+  // Orden obligatorio: lo de hoy es la rutina que sigue en el programa, sea cual sea el día.
+  const strict = await strictNextSession(program as any);
+  if (strict !== undefined) return strict ? { clientId, session: strict.session, status: strict.status } : null;
+
   const weeks = await listWeeks(program.id);
   const week1 = weeks.find((w) => w.week_number === 1);
   if (!week1?.start_date) return null;
@@ -212,12 +216,53 @@ export async function unlockedWeekNumber(programId: string, planMode?: string | 
   return Math.min(unlocked, weeks[weeks.length - 1].week_number);
 }
 
+/** La rutina que le toca al alumno con orden obligatorio (null si el programa no lo exige). Misma regla que strictNextSession. */
+export async function nextAllowedSession(program: { id: string; plan_mode?: string | null; strict_order?: boolean | null }): Promise<SessionRow | null> {
+  const r = await strictNextSession({ ...program, strict_order: program.strict_order ?? undefined });
+  return r ? r.session : null;
+}
+
 /** La primera rutina sin hacer de una semana (por orden). */
 async function firstPendingOfWeek(weekId: string): Promise<{ session: SessionRow; status: TodaysSession["status"] } | null> {
   const ss = await listSessions(weekId);
   const st = await getSessionStatuses(ss.map((x) => x.id));
   const s = ss.find((x) => st[x.id] !== "completed" && st[x.id] !== "skipped");
   return s ? { session: s, status: (st[s.id] ?? "pending") as TodaysSession["status"] } : null;
+}
+
+/**
+ * Orden obligatorio (programs.strict_order, part4o; activado por defecto):
+ * la única rutina que el alumno puede hacer ahora. Plan por semanas: la
+ * primera sin hacer ni saltar, en el orden del programa (semana y lugar).
+ * Rutinas fijas: la que sigue en la rotación a la última hecha o saltada
+ * (después del último día, vuelve al primero).
+ * Devuelve undefined si el programa no tiene el orden obligatorio.
+ */
+export async function strictNextSession(program: { id: string; plan_mode?: string | null; strict_order?: boolean }): Promise<{ session: SessionRow; status: TodaysSession["status"] } | null | undefined> {
+  if (program.strict_order === false) return undefined;
+  const [weeks, sres] = await Promise.all([listWeeks(program.id), supabase.from("sessions").select("*").eq("program_id", program.id)]);
+  if (sres.error) return undefined; // ante la duda, sin bloqueo
+  const weekNum = new Map(weeks.map((w) => [w.id, w.week_number]));
+  const all = ((sres.data ?? []) as SessionRow[])
+    .filter((s) => weekNum.has(s.week_id))
+    .sort((a, b) => weekNum.get(a.week_id)! - weekNum.get(b.week_id)! || a.sort_order - b.sort_order);
+  if (!all.length) return null;
+  const st = await getSessionStatuses(all.map((s) => s.id));
+  const done = (s: SessionRow) => st[s.id] === "completed" || st[s.id] === "skipped";
+  const pick = (s: SessionRow | undefined) => (s ? { session: s, status: (st[s.id] ?? "pending") as TodaysSession["status"] } : null);
+
+  if (program.plan_mode !== "fixed") return pick(all.find((s) => !done(s)));
+
+  // Rutinas fijas: rotación.
+  let lastIdx = -1;
+  all.forEach((s, i) => {
+    if (done(s)) lastIdx = i;
+  });
+  if (lastIdx < 0) return pick(all.find((s) => !done(s)));
+  const slots = [...new Set(all.map((s) => s.sort_order))].sort((a, b) => a - b);
+  const next = slots[(slots.indexOf(all[lastIdx].sort_order) + 1) % slots.length];
+  const after = all.slice(lastIdx + 1);
+  return pick(after.find((s) => s.sort_order === next && !done(s)) ?? after.find((s) => !done(s)) ?? all.find((s) => !done(s)));
 }
 
 export interface NextSession {
@@ -237,6 +282,8 @@ export async function getNextScheduledSessionForClient(clientId: string): Promis
   const program = await getActiveProgramForClient(clientId);
   if (!program) return null;
   if ((program as any).plan_mode === "fixed") await supabase.rpc("fixed_extend", { p_program: program.id, p_weeks_ahead: 8 }).then(() => null, () => null);
+  // Con orden obligatorio, la que sigue ya es "la de hoy": no hay otra próxima que mostrar.
+  if ((program as any).strict_order !== false && (await strictNextSession(program as any)) !== undefined) return null;
 
   const weeks = await listWeeks(program.id);
   const week1 = weeks.find((w) => w.week_number === 1);

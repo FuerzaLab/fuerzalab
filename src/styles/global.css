@@ -577,3 +577,5 @@ select.input:hover { border-color: var(--pri); }
 .vol-bar { height: 6px; background: var(--bg); border-radius: 99px; overflow: hidden; margin-bottom: 4px; }
 .vol-bar span { display: block; height: 100%; background: var(--pri); border-radius: 99px; }
 .vol-bar.done span { background: var(--ok); }
+.order-lock { font-size: 13.5px; color: var(--muted); background: var(--bg); border: 1px dashed var(--line); border-radius: 10px; padding: 8px 12px; }
+.fixed-order { flex-basis: 100%; display: flex; gap: 8px; align-items: center; margin-top: 8px; font-size: 13.5px; color: var(--ink); cursor: pointer; }

@@ -18,6 +18,7 @@ import {
   createProgram,
   updateProgramName,
   setAllowMultipleSessionsPerDay,
+  setStrictOrder,
   updateMesocycle,
   addMesocycle,
   removeMesocycle,
@@ -272,6 +273,28 @@ export default function ProgramsPage() {
                 <span>Permitir más de una rutina por día (ej. doble turno)</span>
               </label>
               <p className="note" style={{ marginBottom: 14 }}>Por defecto, el cliente solo puede completar una rutina por día en este programa.</p>
+
+              <label style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 4 }}>
+                <input
+                  type="checkbox"
+                  checked={program.strict_order !== false}
+                  onChange={async (e) => {
+                    const strict = e.target.checked;
+                    setPrograms((ps) => ps.map((p) => (p.id === program.id ? { ...p, strict_order: strict } : p)));
+                    try {
+                      await setStrictOrder(program.id, strict);
+                      flashSaved();
+                    } catch (err: any) {
+                      alert(err.message);
+                    }
+                  }}
+                />
+                <span>Rutinas en orden: el alumno no puede saltarse ninguna</span>
+              </label>
+              <p className="note" style={{ marginBottom: 14 }}>
+                Solo puede empezar la siguiente en el orden en que las armaste. Si no va a hacer una, márcala como saltada en «Entrenar con
+                cliente».
+              </p>
 
               <label className="field-label">Fecha de inicio real (opcional)</label>
               <input
