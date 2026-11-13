@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { useSearchParams } from "react-router-dom";
 import { useAuth } from "../../contexts/AuthContext";
-import { HELP_MARKED, HELP_PDF, HELP_TOPICS, helpImage, searchHelp, type HelpRole, type HelpTopic } from "../../lib/helpContent";
+import { HELP_MARKED, HELP_PDF, helpImage, searchHelp, type HelpRole, type HelpTopic } from "../../lib/helpContent";
 
 /**
  * Centro de ayuda: buscador + temas por pantalla, con su captura (números
@@ -112,10 +112,4 @@ export default function HelpCenter() {
       ))}
     </div>
   );
-}
-
-/** El tema de ayuda de la pantalla actual (o ninguno). */
-export function helpTopicIdFor(pathname: string, role: HelpRole): string | null {
-  const t = HELP_TOPICS.filter((x) => x.role === role && x.path).sort((a, b) => b.path!.length - a.path!.length).find((x) => pathname === x.path || pathname.startsWith(x.path + "/"));
-  return t?.id ?? null;
 }

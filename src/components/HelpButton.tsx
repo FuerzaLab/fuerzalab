@@ -1,7 +1,7 @@
 import { Link, useLocation } from "react-router-dom";
 import { useAuth } from "../contexts/AuthContext";
 import { paths } from "../routes/paths";
-import { helpTopicIdFor } from "../pages/shared/HelpCenter";
+import { helpTopicIdFor } from "../lib/helpContent";
 
 /** Botón "?" de la barra de arriba: abre la ayuda de la pantalla en la que estás. */
 export default function HelpButton() {

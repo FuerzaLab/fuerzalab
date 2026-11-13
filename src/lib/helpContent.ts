@@ -497,3 +497,11 @@ export function searchHelp(query: string, role: HelpRole): HelpTopic[] {
 export function helpForPath(path: string, role: HelpRole): HelpTopic | undefined {
   return HELP_TOPICS.find((t) => t.role === role && t.path && (path === t.path || path.startsWith(t.path + "/")));
 }
+
+/** El id del tema de ayuda de la pantalla actual (o ninguno), para el botón "?". */
+export function helpTopicIdFor(pathname: string, role: HelpRole): string | null {
+  const t = HELP_TOPICS.filter((x) => x.role === role && x.path)
+    .sort((a, b) => b.path!.length - a.path!.length)
+    .find((x) => pathname === x.path || pathname.startsWith(x.path + "/"));
+  return t?.id ?? null;
+}
