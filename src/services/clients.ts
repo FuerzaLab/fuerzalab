@@ -51,7 +51,7 @@ export interface ClientProfileRow {
   preferences: { trainingDays: string; sessionDuration: string; equipmentAccess: string; preferredTime: string } | null;
   emergency_contact: { name: string; phone: string; relationship: string } | null;
   /** Menores de 18: datos de la madre, padre o tutor (part4k). */
-  guardian?: { name: string; ci: string; relationship: string; phone: string } | null;
+  guardian?: { name: string; ci: string; relationship: string; phone: string; email?: string; student_ci?: string } | null;
   consent_accepted: boolean;
   submitted_at: string | null;
   reviewed_at: string | null;
@@ -194,9 +194,53 @@ export async function getClientDeleteBlockers(clientId: string): Promise<{ progr
   return { programs: programs ?? 0, plans: plans ?? 0 };
 }
 
-export async function deleteClient(id: string): Promise<void> {
-  const { error } = await supabase.from("clients").delete().eq("id", id);
-  if (error) throw error;
+/** Todos los archivos guardados de un alumno (fotos, comprobantes, autorizaciones…). */
+async function clientStoragePaths(client: Pick<ClientRow, "id" | "organization_id">): Promise<string[]> {
+  const paths = new Set<string>();
+  const bucket = supabase.storage.from("client-files");
+  // Carpeta del alumno: <org>/<alumno>/<tipo>/<archivo> (se recorre hasta 3 niveles).
+  const walk = async (prefix: string, depth: number) => {
+    const { data } = await bucket.list(prefix, { limit: 1000 });
+    for (const it of data ?? []) {
+      const full = `${prefix}/${it.name}`;
+      if ((it as any).id) paths.add(full);
+      else if (depth < 3) await walk(full, depth + 1);
+    }
+  };
+  await walk(`${client.organization_id}/${client.id}`, 0).catch(() => {});
+  // Por si alguno quedó en otra ruta: los que la base de datos tiene anotados.
+  const [{ data: files }, { data: pays }, { data: cl }] = await Promise.all([
+    supabase.from("client_files").select("storage_path").eq("client_id", client.id),
+    supabase.from("payments").select("receipt_path").eq("client_id", client.id),
+    supabase.from("clients").select("guardian_consent_path").eq("id", client.id).maybeSingle(),
+  ]);
+  for (const f of files ?? []) if ((f as any).storage_path) paths.add((f as any).storage_path);
+  for (const p of pays ?? []) if ((p as any).receipt_path) paths.add((p as any).receipt_path);
+  if ((cl as any)?.guardian_consent_path) paths.add((cl as any).guardian_consent_path);
+  return [...paths];
+}
+
+/**
+ * Eliminar un alumno POR COMPLETO (part4n_migration.sql): primero sus
+ * archivos guardados (fotos, comprobantes, autorizaciones), después todos
+ * sus datos —programas, rutinas ya entrenadas, planes, pagos, evaluaciones,
+ * mensajes, citas— y su cuenta de acceso. No se puede deshacer.
+ */
+export async function deleteClient(client: Pick<ClientRow, "id" | "organization_id">): Promise<void> {
+  const paths = await clientStoragePaths(client);
+  for (let i = 0; i < paths.length; i += 100) {
+    await supabase.storage.from("client-files").remove(paths.slice(i, i + 100)).catch(() => {});
+  }
+  const { error } = await supabase.rpc("delete_client_fully", { p_client: client.id });
+  if (error) {
+    // Sin part4n_migration.sql: el borrado anterior (requiere borrar antes programas y planes).
+    if (/delete_client_fully/.test(error.message)) {
+      const { error: e2 } = await supabase.from("clients").delete().eq("id", client.id);
+      if (e2) throw e2;
+      return;
+    }
+    throw error;
+  }
 }
 
 export async function createClientWithInvite(params: {

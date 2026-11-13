@@ -134,6 +134,7 @@ export const HELP_TOPICS: HelpTopic[] = [
       { label: "Cargar varios", desc: "Pega una lista o sube un Excel (nombre, WhatsApp, correo) y crea a todos de una vez." },
       { label: "WhatsApp (en cada alumno)", desc: "Le escribes directo." },
       { label: "Pausar / Dar de baja / Reactivar", desc: "Pausado o dado de baja no entra a la app ni se cobra; su historial se conserva." },
+      { label: "Eliminar (en su ficha)", desc: "Borra todo, para siempre: programas y rutinas, evaluaciones, fotos, comprobantes, pagos, mensajes, citas y su cuenta de acceso. Úsalo cuando el alumno o su tutor piden que se borren sus datos; si solo deja de entrenar, mejor «Dar de baja»." },
       { label: "Etiqueta «Esperando pago del cupo»", desc: "Alumno nuevo por encima de tu plan: entra apenas se pague su cupo." },
       { label: "Etiquetas «Plan por terminar» y «Terminó su plan»", desc: "Está en la última semana con rutinas, o ya las hizo todas: es momento de armarle lo que sigue (también te avisa en Novedades)." },
     ],
@@ -188,10 +189,11 @@ export const HELP_TOPICS: HelpTopic[] = [
       { label: "Exportar", desc: "Descarga esta rutina, la semana completa o todas las rutinas fijas: en PDF con tu logo (para imprimir o mandar por WhatsApp) o en Excel, con el formato de «Importar rutina», para editarla o importarla a otro alumno. No disponible en la demo." },
       { label: "⋮⋮ (en cada ejercicio)", desc: "Arrastra para reordenar (en la computadora)." },
       { label: "Biserie", desc: "Agrupa ejercicios que se hacen alternados (A1, A2)." },
+      { label: "Volumen de la semana por grupo muscular", desc: "Abajo del editor: series por grupo muscular (las directas cuentan 1 y las de los músculos secundarios 0,5, como el metaanálisis de Pelland y col., 2026), en cuántas rutinas se trabaja cada uno y el tonelaje; lo planificado al lado de lo realizado. Para que cuente bien, carga los músculos secundarios de cada ejercicio." },
       { label: "🔒 Rutina realizada", desc: "Ya la hizo el alumno: queda como historial y no se modifica. Duplícala para cambiarla." },
     ],
     tips: ["En Rutinas fijas, lo que cambies aplica desde la próxima vez; lo ya entrenado no se toca."],
-    keywords: "rutina armar crear plan ejercicios series repeticiones exportar pdf excel imprimir descargar",
+    keywords: "rutina armar crear plan ejercicios series repeticiones exportar pdf excel imprimir descargar volumen grupo muscular series semanales tonelaje frecuencia",
     capture: 6,
   },
   {
@@ -230,6 +232,7 @@ export const HELP_TOPICS: HelpTopic[] = [
     summary: "Tu biblioteca de ejercicios: los globales de FuerzaLab y los tuyos.",
     buttons: [
       { label: "Nuevo ejercicio", desc: "Nombre, grupo muscular, región (tren superior, inferior o full body), patrón y equipamiento." },
+      { label: "Músculos secundarios", desc: "Los que el ejercicio también trabaja (por ejemplo, el press de banca: tríceps y hombros). Cuentan media serie en el volumen semanal del Constructor." },
       { label: "Subir foto de demostración", desc: "Una foto (se comprime sola)." },
       { label: "Video de YouTube o Vimeo", desc: "Pega el enlace: el alumno lo ve dentro de la app." },
       { label: "Revisar videos", desc: "Comprueba que los enlaces sigan funcionando." },

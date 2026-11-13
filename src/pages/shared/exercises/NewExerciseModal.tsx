@@ -35,6 +35,8 @@ export default function NewExerciseModal({
   const editing = !!exercise;
   const [name, setName] = useState(exercise?.name ?? "");
   const [muscleId, setMuscleId] = useState(exercise?.primary_muscle_id ?? "");
+  // Músculos que también trabaja (cuentan media serie en el volumen semanal).
+  const [secIds, setSecIds] = useState<string[]>(exercise?.secondary_muscle_ids ?? []);
   const [patternId, setPatternId] = useState(exercise?.movement_pattern_id ?? "");
   const [equipIds, setEquipIds] = useState<string[]>(exercise?.equipment_ids ?? []);
   const [difficulty, setDifficulty] = useState<NewExerciseInput["difficulty"]>(exercise?.difficulty ?? "intermediate");
@@ -67,6 +69,7 @@ export default function NewExerciseModal({
       const input: NewExerciseInput = {
         name: name.trim(),
         primary_muscle_id: muscleId || null,
+        ...(secIds.length || editing ? { secondary_muscle_ids: secIds.filter((x) => x !== muscleId) } : {}),
         movement_pattern_id: patternId || null,
         equipment_ids: equipIds,
         difficulty,
@@ -128,6 +131,30 @@ export default function NewExerciseModal({
             <option value="advanced">Avanzado</option>
           </select>
         </div>
+      </div>
+
+      <div style={{ marginBottom: 12 }}>
+        <label className="field-label">Músculos secundarios (opcional)</label>
+        <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
+          {muscles
+            .filter((m) => m.id !== muscleId && m.key !== "cuerpo_completo" && m.key !== "cardio")
+            .map((m) => {
+              const on = secIds.includes(m.id);
+              return (
+                <button
+                  key={m.id}
+                  type="button"
+                  className={`chip-toggle${on ? " on" : ""}`}
+                  onClick={() => setSecIds((ids) => (on ? ids.filter((x) => x !== m.id) : [...ids, m.id]))}
+                >
+                  {m.label}
+                </button>
+              );
+            })}
+        </div>
+        <p className="note" style={{ margin: "6px 0 0", fontSize: 12.5 }}>
+          Los que también trabaja (por ejemplo, el press de banca: tríceps y hombros). Cuentan media serie en el volumen semanal.
+        </p>
       </div>
 
       <label className="field-label">Equipamiento</label>

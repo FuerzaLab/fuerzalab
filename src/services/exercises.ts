@@ -10,6 +10,8 @@ export interface ExerciseRow {
   name: string;
   description: string | null;
   primary_muscle_id: string | null;
+  /** Músculos secundarios (part4m). */
+  secondary_muscle_ids?: string[] | null;
   movement_pattern_id: string | null;
   equipment_ids: string[];
   difficulty: "beginner" | "intermediate" | "advanced" | null;
@@ -230,6 +232,8 @@ export interface NewExerciseInput {
   common_mistakes: string;
   /** Región del cuerpo (part4b). Solo se manda si se eligió. */
   body_region?: "Superior" | "Inferior" | "Full body" | null;
+  /** Músculos secundarios (part4m): cuentan media serie en el volumen por grupo muscular. */
+  secondary_muscle_ids?: string[];
 }
 
 export async function createExercise(
@@ -245,9 +249,14 @@ export async function createExercise(
     owner_id: scope === "global" ? null : ownerId,
   };
   let { data, error } = await supabase.from("exercises").insert(row).select().single();
+  // Sin part4m_migration.sql no existe secondary_muscle_ids: se guarda igual, sin los secundarios.
+  if (error && /secondary_muscle_ids/.test(error.message)) {
+    const { secondary_muscle_ids: _s, ...rest } = row as any;
+    ({ data, error } = await supabase.from("exercises").insert(rest).select().single());
+  }
   // Sin part4b_migration.sql no existe body_region: se guarda igual, sin la región.
   if (error && /body_region/.test(error.message)) {
-    const { body_region: _omit, ...rest } = row as any;
+    const { body_region: _omit, secondary_muscle_ids: _s2, ...rest } = row as any;
     ({ data, error } = await supabase.from("exercises").insert(rest).select().single());
   }
   if (error) throw error;
@@ -261,8 +270,12 @@ export async function createExercise(
  */
 export async function updateExercise(id: string, input: NewExerciseInput): Promise<ExerciseRow> {
   let { data, error } = await supabase.from("exercises").update(input).eq("id", id).select();
+  if (error && /secondary_muscle_ids/.test(error.message)) {
+    const { secondary_muscle_ids: _s, ...rest } = input as any;
+    ({ data, error } = await supabase.from("exercises").update(rest).eq("id", id).select());
+  }
   if (error && /body_region/.test(error.message)) {
-    const { body_region: _omit, ...rest } = input as any;
+    const { body_region: _omit, secondary_muscle_ids: _s2, ...rest } = input as any;
     ({ data, error } = await supabase.from("exercises").update(rest).eq("id", id).select());
   }
   if (error) throw error;

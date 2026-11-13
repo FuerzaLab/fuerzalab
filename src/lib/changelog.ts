@@ -22,6 +22,14 @@ export interface ChangelogEntry {
 
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    id: "2026-11-12-muscle-volume",
+    date: "2026-11-12",
+    title: "Volumen por grupo muscular",
+    body: "En el Constructor, abajo, «Volumen de la semana por grupo muscular»: cuántas series recibe cada músculo, contadas como el metaanálisis de Pelland y colaboradores (2026) —la serie vale 1 para el músculo principal y 0,5 para los secundarios—, en cuántos días se trabaja y su tonelaje, planificado al lado de lo realizado. Los ejercicios ahora tienen músculos secundarios: ya los cargamos en los del catálogo, y puedes ajustarlos.",
+    for: ["trainer"],
+    link: { label: "Ir al Constructor", to: paths.trainerBuilder },
+  },
+  {
     id: "2026-11-12-minors",
     date: "2026-11-12",
     title: "Alumnos menores de edad: autorización del tutor",

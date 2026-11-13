@@ -64,6 +64,9 @@ export default function OnboardingForm({ clientId, onDone }: { clientId: string;
   const [gCi, setGCi] = useState("");
   const [gRel, setGRel] = useState("");
   const [gPhone, setGPhone] = useState("");
+  const [gEmail, setGEmail] = useState("");
+  // CI del propio alumno menor, si tiene (lo pide la autorización).
+  const [studentCi, setStudentCi] = useState("");
   const minor = isMinor(birthDate);
   const [emergencyPhone, setEmergencyPhone] = useState("");
   const [emergencyRelationship, setEmergencyRelationship] = useState("");
@@ -104,7 +107,18 @@ export default function OnboardingForm({ clientId, onDone }: { clientId: string;
           : minor
             ? { name: gName.trim(), phone: gPhone.trim(), relationship: gRel }
             : null,
-        ...(minor ? { guardian: { name: gName.trim(), ci: gCi.trim(), relationship: gRel, phone: gPhone.trim() } } : {}),
+        ...(minor
+          ? {
+              guardian: {
+                name: gName.trim(),
+                ci: gCi.trim(),
+                relationship: gRel,
+                phone: gPhone.trim(),
+                ...(gEmail.trim() ? { email: gEmail.trim() } : {}),
+                ...(studentCi.trim() ? { student_ci: studentCi.trim() } : {}),
+              },
+            }
+          : {}),
       });
       notify("¡Listo! Ya puedes ver el resto de la app.");
       onDone();
@@ -301,6 +315,14 @@ export default function OnboardingForm({ clientId, onDone }: { clientId: string;
                 <label className="field-label">Celular (WhatsApp)</label>
                 <input className="input" type="tel" inputMode="tel" value={gPhone} onChange={(e) => setGPhone(e.target.value)} />
               </div>
+              <div>
+                <label className="field-label">Su correo (opcional)</label>
+                <input className="input" type="email" value={gEmail} onChange={(e) => setGEmail(e.target.value)} />
+              </div>
+            </div>
+            <div style={{ marginTop: 12, maxWidth: 260 }}>
+              <label className="field-label">Tu carnet de identidad (si tienes)</label>
+              <input className="input" value={studentCi} onChange={(e) => setStudentCi(e.target.value)} />
             </div>
           </div>
         )}

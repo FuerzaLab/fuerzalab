@@ -60,6 +60,7 @@ import FixedRoutinesBuilder from "./FixedRoutinesBuilder";
 import { createFixedProgram } from "../../../services/fixedRoutines";
 import { paths } from "../../../routes/paths";
 import ExportRoutineButton from "../../../components/ExportRoutineButton";
+import WeekVolumePanel from "./WeekVolumePanel";
 
 /** El programa archivado "Clases grupales" (Sala · Misma rutina para todos) no se edita acá. */
 const notGroupArchive = (p: { name: string; status: string }) => !(p.name === "Clases grupales" && p.status === "archived");
@@ -261,6 +262,9 @@ export default function BuilderPage() {
             />
           )}
         />
+      )}
+      {isFixed && programId && (
+        <WeekVolumePanel mode="fixed" programId={programId} exercises={exercises} muscles={muscles} />
       )}
 
       {!isFixed && weeks.length > 0 && (
@@ -485,6 +489,9 @@ export default function BuilderPage() {
               onExerciseCreated={(ex) => setExercises((xs) => [ex, ...xs])}
               doneAt={doneSessions[sessionId]}
             />
+          )}
+          {programId && sessions.length > 0 && (
+            <WeekVolumePanel mode="week" sessions={sessions} programId={programId} exercises={exercises} muscles={muscles} />
           )}
         </>
       )}

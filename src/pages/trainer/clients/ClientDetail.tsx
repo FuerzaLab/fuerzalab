@@ -408,17 +408,15 @@ function formToProfile(f: FormState) {
 
 function DeleteClientModal({ client, onClose, onDeleted }: { client: ClientRow; onClose: () => void; onDeleted: () => void }) {
   const { notify } = useToast();
-  const [blockers, setBlockers] = useState<{ programs: number; plans: number } | null>(null);
+  const [counts, setCounts] = useState<{ programs: number; plans: number } | null>(null);
   const [confirmText, setConfirmText] = useState("");
   const [error, setError] = useState("");
   const [deleting, setDeleting] = useState(false);
 
   useEffect(() => {
-    getClientDeleteBlockers(client.id).then(setBlockers).catch((e) => setError(e.message));
+    getClientDeleteBlockers(client.id).then(setCounts).catch(() => setCounts({ programs: 0, plans: 0 }));
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
-
-  const blocked = blockers !== null && (blockers.programs > 0 || blockers.plans > 0);
 
   const submit = async () => {
     if (confirmText.trim() !== client.full_name) {
@@ -428,8 +426,8 @@ function DeleteClientModal({ client, onClose, onDeleted }: { client: ClientRow; 
     setError("");
     setDeleting(true);
     try {
-      await deleteClient(client.id);
-      notify(`${client.full_name} fue eliminado.`);
+      await deleteClient(client);
+      notify(`${client.full_name} y todos sus datos fueron eliminados.`);
       onDeleted();
     } catch (e: any) {
       setError(e.message ?? "No pudimos eliminar este cliente.");
@@ -439,30 +437,29 @@ function DeleteClientModal({ client, onClose, onDeleted }: { client: ClientRow; 
 
   return (
     <Modal title={`Eliminar a ${client.full_name}`} onClose={onClose}>
-      {blockers === null ? (
-        <p className="note">Comprobando…</p>
-      ) : blocked ? (
-        <p>
-          Este cliente todavía tiene {blockers.programs > 0 && <>{" "}<b>{blockers.programs}</b> programa{blockers.programs === 1 ? "" : "s"} (con sus rutinas)</>}
-          {blockers.programs > 0 && blockers.plans > 0 && " y"}
-          {blockers.plans > 0 && <>{" "}<b>{blockers.plans}</b> plan{blockers.plans === 1 ? "" : "es"} de pago</>}. No se puede
-          eliminar mientras tenga algo de eso — primero elimina sus programas desde Planificación, o usa "Dar de baja" en
-          vez de eliminarlo, que conserva todo su historial.
-        </p>
-      ) : (
-        <>
-          <p style={{ marginBottom: 14 }}>
-            Esta acción es <b>permanente</b> y no se puede deshacer. No tiene programas ni planes de pago, así que es
-            segura, pero confírmala escribiendo el nombre exacto del cliente:
-          </p>
-          <p className="note" style={{ marginBottom: 6 }}><b>{client.full_name}</b></p>
-          <input className="input" style={{ marginBottom: 12 }} value={confirmText} onChange={(e) => setConfirmText(e.target.value)} autoFocus />
-          {error && <p className="error-text" style={{ marginBottom: 12 }}>{error}</p>}
-          <button className="btn" style={{ background: "var(--bad)", borderColor: "var(--bad)" }} onClick={submit} disabled={deleting}>
-            {deleting ? "Eliminando…" : "Eliminar definitivamente"}
-          </button>
-        </>
-      )}
+      <p style={{ marginTop: 0 }}>
+        Se borra <b>todo</b>, de forma <b>permanente</b> y sin posibilidad de recuperarlo:
+      </p>
+      <ul style={{ margin: "0 0 12px", paddingLeft: 20, display: "grid", gap: 3, fontSize: 14 }}>
+        <li>
+          Sus programas y rutinas{counts && counts.programs > 0 ? ` (${counts.programs})` : ""}, incluidas las que ya entrenó, y sus series.
+        </li>
+        <li>Su formulario de ingreso, evaluaciones, medidas y bienestar.</li>
+        <li>Sus fotos de progreso, comprobantes de pago y la autorización del tutor, si la tiene.</li>
+        <li>Sus planes{counts && counts.plans > 0 ? ` (${counts.plans})` : ""} y pagos, mensajes, notas y citas de la Agenda.</li>
+        <li>Su cuenta de acceso a la app, si la creó.</li>
+      </ul>
+      <p className="note" style={{ margin: "0 0 14px", background: "var(--bg)", borderRadius: 8, padding: "8px 10px" }}>
+        💡 Si solo deja de entrenar, mejor usa <b>«Dar de baja»</b>: pierde el acceso y no se le cobra, pero conservas su historial por si
+        vuelve. «Eliminar» es para cuando él, o su tutor, piden que se borren sus datos.
+      </p>
+      <p style={{ marginBottom: 6 }}>Para confirmar, escribe su nombre exacto:</p>
+      <p className="note" style={{ marginBottom: 6 }}><b>{client.full_name}</b></p>
+      <input className="input" style={{ marginBottom: 12 }} value={confirmText} onChange={(e) => setConfirmText(e.target.value)} autoFocus />
+      {error && <p className="error-text" style={{ marginBottom: 12 }}>{error}</p>}
+      <button className="btn" style={{ background: "var(--bad)", borderColor: "var(--bad)" }} onClick={submit} disabled={deleting}>
+        {deleting ? "Eliminando…" : "Eliminar todo definitivamente"}
+      </button>
     </Modal>
   );
 }
