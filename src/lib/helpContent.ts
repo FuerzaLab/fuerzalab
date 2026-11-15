@@ -403,7 +403,7 @@ export const HELP_TOPICS: HelpTopic[] = [
       "Toca «Entrenar ahora» o «Ver y entrenar»: ves todos los ejercicios del día, sin empezar.",
       "«▶ Ver» en un ejercicio: su video o foto.",
       "«Empezar entrenamiento» → «Sí, empezar ahora».",
-      "En cada serie: repeticiones y carga (ya vienen cargadas), y ✓. Arranca el descanso, que suena al terminar (🔔 para silenciarlo).",
+      "En cada serie: repeticiones y carga (ya vienen cargadas), y ✓. Arranca el descanso, que suena al terminar (toca 🔔 para elegir el sonido, el volumen o silenciarlo).",
       "Al terminar, «Terminar»: ves cuánto duró, cuánto levantaste y cómo te fue comparado con la vez anterior. Si batiste un récord, se celebra.",
     ],
     tips: ["Si tu entrenador lo activó, haces tus rutinas en orden: la siguiente se habilita cuando terminas la anterior (las demás aparecen con un candado).", "«Última vez» te muestra lo que hiciste la sesión anterior en ese ejercicio.", "«Descargar en PDF», arriba en Mi rutina, te deja tu rutina de la semana para tenerla a mano o imprimirla."],

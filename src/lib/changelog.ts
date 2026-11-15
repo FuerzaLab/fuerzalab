@@ -22,6 +22,13 @@ export interface ChangelogEntry {
 
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    id: "2026-11-14-rest-alarm",
+    date: "2026-11-14",
+    title: "Alarma del descanso más fuerte y a tu gusto",
+    body: "Toca la campanita 🔔 del cronómetro de descanso para elegir el sonido (bip de gimnasio, campana de boxeo, silbato, bocina o sirena) y el volumen (normal, fuerte o muy fuerte). Ahora se escucha bastante más, y en iPhone suena aunque el celular esté en silencio.",
+    for: ["trainer", "client"],
+  },
+  {
     id: "2026-11-13-strict-order",
     date: "2026-11-13",
     title: "Tus alumnos hacen las rutinas en orden",

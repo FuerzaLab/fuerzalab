@@ -1,5 +1,6 @@
 import { useOrgBrand } from "../../hooks/useOrgBrand";
 import { brandInitials, type OrgBrand } from "../../services/brand";
+import BetaBadge from "../BetaBadge";
 
 /**
  * Logo + "FuerzaLab". Si la organización del usuario cargó su marca
@@ -27,6 +28,7 @@ export default function Brand({ className = "brand", withOrg = true }: { classNa
           Fuerza<span>Lab</span>
         </span>
       </span>
+      <BetaBadge />
     </div>
   );
 }

@@ -1,4 +1,5 @@
 import { useEffect, type ReactNode } from "react";
+import { IS_BETA } from "../../lib/beta";
 import { Link, useLocation } from "react-router-dom";
 import { paths } from "../../routes/paths";
 import "./landing.css";
@@ -229,6 +230,13 @@ export function TermsPage() {
         Trabajamos para que FuerzaLab esté siempre disponible, pero puede haber interrupciones por mantenimiento o por fallas
         de los proveedores técnicos. Recomendamos no depender de la app como único registro de información crítica.
       </p>
+      {IS_BETA && (
+        <p>
+          FuerzaLab se encuentra en <strong>versión beta</strong>: es un servicio nuevo que seguimos desarrollando, por lo
+          que algunas funciones pueden cambiar, agregarse o retirarse, y pueden aparecer errores que corregiremos a medida
+          que los detectemos. Si encuentras uno, te agradecemos que nos avises.
+        </p>
+      )}
 
       <h2>8. Responsabilidad</h2>
       <p>
