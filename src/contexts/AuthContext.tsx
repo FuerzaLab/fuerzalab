@@ -11,6 +11,9 @@ import type { Profile, StaffAccess, StaffModule, StaffLevel } from "../types/aut
 import { hasLevel } from "../lib/staffModules";
 import { fetchMyOrgBilling, type OrgBilling } from "../services/orgBilling";
 
+/** Versión de los Términos y la Privacidad que acepta quien se registra (igual a LEGAL.version en pages/public/Legal.tsx). */
+const LEGAL_VERSION = "2026-11-15";
+
 interface AuthContextValue {
   session: Session | null;
   user: User | null;
@@ -24,6 +27,9 @@ interface AuthContextValue {
     password: string;
     fullName: string;
     inviteCode?: string;
+    /** Consentimientos separados (Términos punto 5): datos de salud (solo alumnos) y servidores fuera de Bolivia. */
+    healthConsent?: boolean;
+    abroadConsent?: boolean;
   }) => Promise<{ error: string | null }>;
   signOut: () => Promise<void>;
   requestPasswordReset: (email: string) => Promise<{ error: string | null }>;
@@ -112,7 +118,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return { error: error ? traducirErrorAuth(error.message) : null };
   };
 
-  const signUp: AuthContextValue["signUp"] = async ({ email, password, fullName, inviteCode }) => {
+  const signUp: AuthContextValue["signUp"] = async ({ email, password, fullName, inviteCode, healthConsent, abroadConsent }) => {
     const { error } = await supabase.auth.signUp({
       email,
       password,
@@ -123,7 +129,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           // Constancia de que aceptó los Términos y la Política de privacidad
           // (queda en los datos de la cuenta, en Supabase → Authentication).
           terms_accepted_at: new Date().toISOString(),
-          terms_version: "2026-10-27",
+          terms_version: LEGAL_VERSION,
+          health_consent_at: healthConsent ? new Date().toISOString() : null,
+          abroad_storage_consent_at: abroadConsent ? new Date().toISOString() : null,
         },
       },
     });

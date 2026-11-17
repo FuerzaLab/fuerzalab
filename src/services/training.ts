@@ -29,17 +29,71 @@ export interface SetLogRow {
   load_unit?: "kg" | "lb" | null;
 }
 
+/**
+ * El plan que el alumno tiene "en curso" (el que ve en su app y con el que
+ * entrena el entrenador):
+ *  1. Si está haciendo una rutina ahora (empezada en las últimas 12 horas y
+ *     sin terminar), el plan de esa rutina — aunque se haya cerrado o haya un
+ *     plan más nuevo: nunca se le corta una rutina a la mitad.
+ *  2. Si no, el plan activo más nuevo; pero si ese plan está EN ESPERA
+ *     (part4s) y el anterior todavía tiene rutinas sin hacer, el anterior.
+ */
 export async function getActiveProgramForClient(clientId: string): Promise<ProgramRow | null> {
   const { data, error } = await supabase
     .from("programs")
     .select("*")
     .eq("client_id", clientId)
-    .eq("status", "active")
+    .eq("is_template", false)
+    .in("status", ["active", "completed"])
     .order("created_at", { ascending: false })
+    .limit(30);
+  if (error) throw error;
+  const all = (data ?? []) as ProgramRow[];
+  if (!all.length) return null;
+
+  // 1. Una rutina a la mitad.
+  const since = new Date(Date.now() - 12 * 3600 * 1000).toISOString();
+  const { data: live } = await supabase
+    .from("workout_logs")
+    .select("started_at, sessions(program_id)")
+    .eq("client_id", clientId)
+    .eq("status", "in_progress")
+    .gte("started_at", since)
+    .order("started_at", { ascending: false })
     .limit(1)
     .maybeSingle();
-  if (error) throw error;
-  return data as ProgramRow | null;
+  const liveProgram = (live as any)?.sessions?.program_id as string | undefined;
+  const inProgress = liveProgram ? all.find((p) => p.id === liveProgram) : undefined;
+  if (inProgress) return inProgress;
+
+  // 2. El más nuevo, salvo que esté en espera de que termine el anterior.
+  const actives = all.filter((p) => p.status === "active");
+  if (!actives.length) return null;
+  let i = 0;
+  while (actives[i].queued && i + 1 < actives.length && !(await programFinished(actives[i + 1]))) i++;
+  return actives[i];
+}
+
+/** ¿Ya no le queda ninguna rutina por hacer en este plan? Las rutinas fijas nunca terminan solas. */
+export async function programFinished(program: Pick<ProgramRow, "id" | "plan_mode">): Promise<boolean> {
+  if (program.plan_mode === "fixed") return false;
+  const { data, error } = await supabase.from("sessions").select("id").eq("program_id", program.id);
+  if (error) return false;
+  const ids = (data ?? []).map((s: any) => s.id as string);
+  if (!ids.length) return true;
+  const st = await getSessionStatuses(ids);
+  return ids.every((id) => st[id] === "completed" || st[id] === "skipped");
+}
+
+/** Cuántas rutinas le quedan por hacer en un plan (null si son rutinas fijas). */
+export async function pendingSessionsCount(program: Pick<ProgramRow, "id" | "plan_mode">): Promise<number | null> {
+  if (program.plan_mode === "fixed") return null;
+  const { data, error } = await supabase.from("sessions").select("id").eq("program_id", program.id);
+  if (error) return 0;
+  const ids = (data ?? []).map((s: any) => s.id as string);
+  if (!ids.length) return 0;
+  const st = await getSessionStatuses(ids);
+  return ids.filter((id) => st[id] !== "completed" && st[id] !== "skipped").length;
 }
 
 /** Si el cliente ya completó alguna rutina hoy, devuelve el nombre de esa sesión; si no, null. Para el límite de una rutina por día. */

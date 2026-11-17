@@ -1,4 +1,5 @@
 import { useState } from "react";
+import AgeConfirmCheckbox from "../../../components/AgeConfirmCheckbox";
 import Modal from "../../../components/ui/Modal";
 import FilePickerButton from "../../../components/ui/FilePickerButton";
 import WhatsAppButton from "../../../components/WhatsAppButton";
@@ -62,6 +63,7 @@ export default function BulkInviteModal({
   const [rows, setRows] = useState<Draft[]>([]);
   const [results, setResults] = useState<Done[] | null>(null);
   const [working, setWorking] = useState(false);
+  const [ageOk, setAgeOk] = useState(false);
 
   const fromFile = async (file: File) => {
     try {
@@ -88,7 +90,7 @@ export default function BulkInviteModal({
     const created: ClientRow[] = [];
     for (const r of rows) {
       try {
-        const { client, code } = await createClientWithInvite({ organizationId, trainerId, fullName: r.name, email: r.email, phone: r.phone });
+        const { client, code } = await createClientWithInvite({ organizationId, trainerId, fullName: r.name, email: r.email, phone: r.phone, ageConfirmed: true });
         created.push(client);
         out.push({ ...r, link: `${window.location.origin}${paths.register}?codigo=${code}`, pending: client.seat_pending });
       } catch (e: any) {
@@ -151,7 +153,8 @@ export default function BulkInviteModal({
                   </tbody>
                 </table>
               </div>
-              <button className="btn" onClick={createAll} disabled={working || rows.some((r) => !r.name.trim())}>
+              <AgeConfirmCheckbox plural checked={ageOk} onChange={setAgeOk} />
+              <button className="btn" onClick={createAll} disabled={working || !ageOk || rows.some((r) => !r.name.trim())}>
                 {working ? "Creando…" : `Crear ${rows.length} ${rows.length === 1 ? "alumno" : "alumnos"} con su invitación`}
               </button>
             </>

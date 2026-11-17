@@ -33,6 +33,8 @@ export default function Register() {
   const [preview, setPreview] = useState<InvitePreview | null>(null);
   const [checkingCode, setCheckingCode] = useState(false);
   const [acceptTerms, setAcceptTerms] = useState(false);
+  const [healthConsent, setHealthConsent] = useState(false);
+  const [abroadConsent, setAbroadConsent] = useState(false);
 
   // Verifica el código apenas el usuario termina de escribirlo (12
   // caracteres), para mostrarle de inmediato a qué organización se une.
@@ -77,6 +79,8 @@ export default function Register() {
     if (password.length < 6) return setError("La contraseña debe tener al menos 6 caracteres.");
     if (password !== confirmPassword) return setError("Las contraseñas no coinciden.");
     if (!acceptTerms) return setError("Para crear tu cuenta tienes que aceptar los Términos de uso y la Política de privacidad.");
+    if (!isTeam && !healthConsent) return setError("Para crear tu cuenta tienes que autorizar el registro de tus datos de salud.");
+    if (!abroadConsent) return setError("Para crear tu cuenta tienes que autorizar que tus datos se guarden en servidores fuera de Bolivia.");
 
     setError("");
     setLoading(true);
@@ -85,6 +89,8 @@ export default function Register() {
       password,
       fullName: fullName.trim(),
       inviteCode: code.trim(),
+      healthConsent: !isTeam && healthConsent,
+      abroadConsent,
     });
     setLoading(false);
     if (err) {
@@ -119,13 +125,17 @@ export default function Register() {
       {isTeam ? (
         <>
           <h2 style={{ marginBottom: 6 }}>{firstName ? `¡Hola, ${firstName}!` : "¡Te damos la bienvenida!"}</h2>
-          <p className="note" style={{ marginBottom: welcome?.trial_days ? 12 : 20 }}>
+          <p className="note" style={{ marginBottom: welcome?.trial_days || preview?.role === "trainer" ? 12 : 20 }}>
             Te invitaron a <b style={{ color: "var(--ink)" }}>{preview!.org_name}</b> como {rolLabel(preview!.role)} en FuerzaLab.{" "}
             {preview!.role === "trainer"
               ? "Crea tu cuenta para armar los planes de tus alumnos y seguir su progreso."
               : "Crea tu cuenta para empezar."}
           </p>
-          {welcome?.trial_days ? (
+          {preview!.role === "trainer" ? (
+            <div className="welcome-trial">
+              🎁 FuerzaLab es <b>gratis para ti</b> como entrenador. Durante la etapa de prueba, tus alumnos también la usan gratis.
+            </div>
+          ) : welcome?.trial_days ? (
             <div className="welcome-trial">
               🎁 Tienes <b>{welcome.trial_days} {welcome.trial_days === 1 ? "día" : "días"} gratis</b> para probar la app
               {welcome.trial_free_clients ? ` con hasta ${welcome.trial_free_clients} alumnos` : ""}.
@@ -219,9 +229,18 @@ export default function Register() {
         <span>
           Acepto los{" "}
           <Link to={paths.terms} target="_blank" rel="noreferrer">Términos de uso</Link> y la{" "}
-          <Link to={paths.privacy} target="_blank" rel="noreferrer">Política de privacidad</Link>
-          {isTeam ? "." : ", incluido el uso de mis datos de salud para planificar mi entrenamiento."}
+          <Link to={paths.privacy} target="_blank" rel="noreferrer">Política de privacidad</Link>.
         </span>
+      </label>
+      {!isTeam && (
+        <label style={{ display: "flex", gap: 10, alignItems: "flex-start", margin: "8px 0 4px", fontSize: 13.5 }}>
+          <input type="checkbox" checked={healthConsent} onChange={(e) => setHealthConsent(e.target.checked)} style={{ marginTop: 3 }} />
+          <span>Autorizo expresamente el registro de mis datos de salud (cuestionario PAR-Q+, lesiones, medicamentos, bienestar y evaluaciones físicas) para que mi entrenador planifique mi entrenamiento de forma segura.</span>
+        </label>
+      )}
+      <label style={{ display: "flex", gap: 10, alignItems: "flex-start", margin: "8px 0 4px", fontSize: 13.5 }}>
+        <input type="checkbox" checked={abroadConsent} onChange={(e) => setAbroadConsent(e.target.checked)} style={{ marginTop: 3 }} />
+        <span>Autorizo expresamente que mis datos se guarden en servidores ubicados fuera de Bolivia (Estados Unidos).</span>
       </label>
 
       {error && <p className="error-text" style={{ margin: "10px 0" }}>{error}</p>}

@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import AgeConfirmCheckbox from "../../../components/AgeConfirmCheckbox";
 import { ChevronLeft, ChevronRight, Plus, Trash2 } from "lucide-react";
 import { useAuth } from "../../../contexts/AuthContext";
 import { useToast } from "../../../contexts/ToastContext";
@@ -399,6 +400,7 @@ function AppointmentModal({
   const [addingClient, setAddingClient] = useState(false);
   const [newClientName, setNewClientName] = useState("");
   const [newClientEmail, setNewClientEmail] = useState("");
+  const [newClientAgeOk, setNewClientAgeOk] = useState(false);
   const [creatingClient, setCreatingClient] = useState(false);
   const [confirmingDelete, setConfirmingDelete] = useState(false);
   const [deleting, setDeleting] = useState(false);
@@ -466,12 +468,13 @@ function AppointmentModal({
           <input className="input" style={{ marginBottom: 8 }} value={newClientName} onChange={(e) => setNewClientName(e.target.value)} />
           <label className="field-label">Correo</label>
           <input className="input" style={{ marginBottom: 10 }} value={newClientEmail} onChange={(e) => setNewClientEmail(e.target.value)} />
+          <AgeConfirmCheckbox checked={newClientAgeOk} onChange={setNewClientAgeOk} />
           <div style={{ display: "flex", gap: 8 }}>
             <button
               type="button"
               className="btn"
               style={{ padding: "5px 12px", fontSize: 12.5 }}
-              disabled={creatingClient || !newClientName.trim() || !newClientEmail.trim()}
+              disabled={creatingClient || !newClientName.trim() || !newClientEmail.trim() || !newClientAgeOk}
               onClick={async () => {
                 setCreatingClient(true);
                 try {
@@ -480,6 +483,7 @@ function AppointmentModal({
                     trainerId,
                     fullName: newClientName.trim(),
                     email: newClientEmail.trim(),
+                    ageConfirmed: true,
                   });
                   setLocalClients((cs) => [...cs, client]);
                   setClientId(client.id);
@@ -487,6 +491,7 @@ function AppointmentModal({
                   setAddingClient(false);
                   setNewClientName("");
                   setNewClientEmail("");
+                  setNewClientAgeOk(false);
                   notify(`"${client.full_name}" agregado — no te olvides de invitarlo desde Clientes.`);
                 } catch (e: any) {
                   notify(e.message);

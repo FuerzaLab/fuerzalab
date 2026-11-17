@@ -36,6 +36,9 @@ import Loading from "../../../components/ui/Loading";
 import { cloneProgram } from "../../../services/sessions";
 import SearchSelect from "../../../components/ui/SearchSelect";
 import EmptyState from "../../../components/ui/EmptyState";
+import PlanHandoffPicker from "../../../components/PlanHandoffPicker";
+import { applyHandoff, startQueuedNow, reopenPlan, closePlan, type Handoff } from "../../../services/programHandoff";
+import { getActiveProgramForClient } from "../../../services/training";
 
 const PHASE_COLOR: Record<string, string> = {
   accumulation: "#2E8B6E",
@@ -68,10 +71,27 @@ export default function ProgramsPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  const loadPrograms = async (cId: string) => {
-    const ps = await listPrograms(cId);
+  // El plan que el alumno tiene en curso (part4s: los planes nuevos pueden quedar en espera).
+  const [currentId, setCurrentId] = useState<string | null>(null);
+  const [planBusy, setPlanBusy] = useState(false);
+
+  const loadPrograms = async (cId: string, keep?: string) => {
+    const [ps, cur] = await Promise.all([listPrograms(cId), getActiveProgramForClient(cId).catch(() => null)]);
     setPrograms(ps);
-    setProgramId(ps[0]?.id ?? "");
+    setCurrentId(cur?.id ?? null);
+    setProgramId(keep && ps.some((p) => p.id === keep) ? keep : cur?.id ?? ps[0]?.id ?? "");
+  };
+
+  const planAction = async (fn: () => Promise<void>, msg: string) => {
+    setPlanBusy(true);
+    try {
+      await fn();
+      await loadPrograms(clientId, programId);
+      notify(msg);
+    } catch (e: any) {
+      notify(e.message);
+    }
+    setPlanBusy(false);
   };
 
   useEffect(() => {
@@ -186,6 +206,7 @@ export default function ProgramsPage() {
             >
               <button onClick={() => setProgramId(p.id)} style={{ border: 0, background: "none", color: "inherit", cursor: "pointer", font: "inherit" }}>
                 {p.name}
+                {p.id === currentId ? " · en curso" : p.status === "completed" ? " · cerrado" : p.status === "active" && p.queued ? " · en espera" : ""}
               </button>
               <button
                 aria-label={`Eliminar ${p.name}`}
@@ -198,6 +219,54 @@ export default function ProgramsPage() {
           ))}
         </div>
       )}
+
+      {program && program.status !== "archived" && (() => {
+        const clientFirst = clients.find((c) => c.id === clientId)?.full_name.split(" ")[0] ?? "El alumno";
+        const current = programs.find((p) => p.id === currentId) ?? null;
+        const newerActives = programs.filter((p) => p.status === "active" && p.created_at > program.created_at);
+        let box: { text: string; actions: { label: string; run: () => void }[] } | null = null;
+        if (program.status === "completed") {
+          box = {
+            text: `Este plan está cerrado: ${clientFirst} ya no lo ve en su app. Su historial se conserva.`,
+            actions: [{ label: "Volver a abrirlo", run: () => planAction(() => reopenPlan(program.id), "Plan abierto de nuevo.") }],
+          };
+        } else if (program.id !== currentId && program.queued) {
+          box = {
+            text: `En espera: ${clientFirst} empieza este plan cuando termine «${current?.name ?? "su plan actual"}».`,
+            actions: [{ label: "Empezar ya", run: () => planAction(() => startQueuedNow(program), `Listo: ${clientFirst} ya entrena con «${program.name}».`) }],
+          };
+        } else if (program.id !== currentId && program.status === "active" && current) {
+          box = {
+            text: `${clientFirst} ve «${current.name}» en su app; este plan sigue abierto, pero no lo ve.`,
+            actions: [
+              ...(newerActives.length
+                ? [{
+                    label: "Que primero termine este",
+                    run: () =>
+                      planAction(async () => {
+                        for (const p of newerActives) await applyHandoff(p.id, clientId, "queue");
+                      }, `Listo: ${clientFirst} sigue con «${program.name}» y después pasa al nuevo.`),
+                  }]
+                : []),
+              { label: "Cerrar este plan", run: () => planAction(() => closePlan(program.id), "Plan cerrado.") },
+            ],
+          };
+        } else if (program.id === currentId) {
+          const waiting = programs.find((p) => p.status === "active" && p.queued && p.id !== program.id && p.created_at > program.created_at);
+          if (waiting) box = { text: `Plan en curso. Cuando lo termine, ${clientFirst} sigue con «${waiting.name}» (en espera).`, actions: [] };
+        }
+        if (!box) return null;
+        return (
+          <div className="billing-banner warn" style={{ marginBottom: 14 }}>
+            <span style={{ flex: 1 }}>{box.text}</span>
+            {box.actions.map((a) => (
+              <button key={a.label} className="btn ghost" style={{ padding: "4px 10px", fontSize: 12.5, flex: "none" }} disabled={planBusy} onClick={a.run}>
+                {a.label}
+              </button>
+            ))}
+          </div>
+        );
+      })()}
 
       {program && (
         <>
@@ -515,8 +584,7 @@ export default function ProgramsPage() {
           onClose={() => setShowNew(false)}
           onCreated={async (p) => {
             setShowNew(false);
-            await loadPrograms(clientId);
-            setProgramId(p.id);
+            await loadPrograms(clientId, p.id);
             notify(`Programa "${p.name}" creado.`);
           }}
         />
@@ -560,6 +628,9 @@ function NewProgramModal({
   const [method, setMethod] = useState<ProgramMethod>("atr");
   const [error, setError] = useState("");
   const [saving, setSaving] = useState(false);
+  const [handoff, setHandoff] = useState<Handoff>("queue");
+  const [needsHandoff, setNeedsHandoff] = useState(false);
+  const [handoffReady, setHandoffReady] = useState(false);
 
   const submit = async () => {
     if (!name.trim()) {
@@ -576,6 +647,7 @@ function NewProgramModal({
         name: name.trim(),
         method,
       });
+      if (needsHandoff) await applyHandoff(p.id, clientId, handoff);
       onCreated(p);
     } catch (e: any) {
       setError(e.message ?? "No pudimos crear el programa.");
@@ -598,8 +670,10 @@ function NewProgramModal({
         El método no se podrá cambiar después de crear el programa. La duración no se pide ahora — va a ser la suma de los bloques que armes después, dentro del programa.
       </p>
 
+      <PlanHandoffPicker clientId={clientId} value={handoff} onChange={setHandoff} onInfo={(i) => { setNeedsHandoff(!!i); setHandoffReady(true); }} />
+
       {error && <p className="error-text" style={{ marginBottom: 12 }}>{error}</p>}
-      <button className="btn" onClick={submit} disabled={saving}>
+      <button className="btn" onClick={submit} disabled={saving || !handoffReady}>
         {saving ? "Creando…" : "Crear programa"}
       </button>
     </Modal>

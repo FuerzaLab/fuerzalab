@@ -23,6 +23,7 @@ const Organizations = lazy(() => import("../pages/admin/Organizations"));
 const AdminBillingPage = lazy(() => import("../pages/admin/billing/BillingPage"));
 const PlatformReportPage = lazy(() => import("../pages/admin/PlatformReportPage"));
 const Users = lazy(() => import("../pages/admin/Users"));
+const MinorsPage = lazy(() => import("../pages/admin/MinorsPage"));
 const TrainerDashboard = lazy(() => import("../pages/trainer/Dashboard"));
 const ClientDashboard = lazy(() => import("../pages/client/Dashboard"));
 const ClientsList = lazy(() => import("../pages/trainer/clients/ClientsList"));
@@ -33,6 +34,8 @@ const BuilderPage = lazy(() => import("../pages/trainer/builder/BuilderPage"));
 const TrainerPaymentsPage = lazy(() => import("../pages/trainer/payments/PaymentsPage"));
 const TrainerMessagesPage = lazy(() => import("../pages/trainer/messages/MessagesPage"));
 const ClientPayments = lazy(() => import("../pages/client/Payments"));
+const FuerzaLabPlan = lazy(() => import("../pages/client/FuerzaLabPlan"));
+const StudentBillingPage = lazy(() => import("../pages/admin/StudentBillingPage"));
 const ClientMessages = lazy(() => import("../pages/client/Messages"));
 const Settings = lazy(() => import("../pages/shared/Settings"));
 const ClientRoutine = lazy(() => import("../pages/client/Routine"));
@@ -94,6 +97,8 @@ export default function AppRoutes() {
             <Route path={paths.adminExercises} element={<ExercisesPage scope="global" />} />
             <Route path={paths.adminBilling} element={<AdminBillingPage />} />
             <Route path={paths.adminReports} element={<PlatformReportPage />} />
+            <Route path={paths.adminMinors} element={<MinorsPage />} />
+            <Route path={paths.adminStudentBilling} element={<StudentBillingPage />} />
             <Route path={paths.adminSettings} element={<Settings />} />
           </Route>
         </Route>
@@ -141,6 +146,7 @@ export default function AppRoutes() {
             <Route path={paths.clientAssessments} element={<ClientAssessments />} />
             <Route path={paths.clientMessages} element={<ClientMessages />} />
             <Route path={paths.clientPayments} element={<ClientPayments />} />
+            <Route path={paths.clientPlan} element={<FuerzaLabPlan />} />
             <Route path={paths.clientProfile} element={<Settings />} />
             <Route path={paths.clientWellness} element={<ClientWellness />} />
             <Route path={paths.clientReports} element={<ClientReports />} />

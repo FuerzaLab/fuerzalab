@@ -21,6 +21,11 @@ export interface ClientRow {
   guardian_consent_path?: string | null;
   /** Menores: el tutor autorizó las fotos de progreso (part4l). */
   guardian_photos_ok?: boolean;
+  /** El entrenador confirmó la edad al cargarlo (part4p). */
+  age_confirmed_at?: string | null;
+  /** Plan del alumno con FuerzaLab (part4q). */
+  access_until?: string | null;
+  student_billing_exempt?: boolean;
 }
 
 export interface ParQAnswers {
@@ -227,6 +232,8 @@ async function clientStoragePaths(client: Pick<ClientRow, "id" | "organization_i
  * mensajes, citas— y su cuenta de acceso. No se puede deshacer.
  */
 export async function deleteClient(client: Pick<ClientRow, "id" | "organization_id">): Promise<void> {
+  // Fotos que el alumno marcó "solo para mí" (part4r): se habilitan para poder borrarlas también.
+  await supabase.rpc("release_private_photos_for_deletion", { p_client: client.id }).then(() => null, () => null);
   const paths = await clientStoragePaths(client);
   for (let i = 0; i < paths.length; i += 100) {
     await supabase.storage.from("client-files").remove(paths.slice(i, i + 100)).catch(() => {});
@@ -250,19 +257,25 @@ export async function createClientWithInvite(params: {
   email: string;
   /** Teléfono / WhatsApp (opcional). */
   phone?: string;
+  /** El entrenador confirmó que es mayor de edad o que pedirá la autorización de su tutor (part4p). */
+  ageConfirmed?: boolean;
 }): Promise<{ client: ClientRow; code: string }> {
-  const { data: client, error: clientError } = await supabase
-    .from("clients")
-    .insert({
-      organization_id: params.organizationId,
-      trainer_id: params.trainerId,
-      full_name: params.fullName,
-      email: params.email || null,
-      phone: params.phone?.trim() || null,
-      status: "prospect",
-    })
-    .select()
-    .single();
+  const base = {
+    organization_id: params.organizationId,
+    trainer_id: params.trainerId,
+    full_name: params.fullName,
+    email: params.email || null,
+    phone: params.phone?.trim() || null,
+    status: "prospect",
+  };
+  const withAge = params.ageConfirmed
+    ? { ...base, age_confirmed_at: new Date().toISOString(), age_confirmed_by: params.trainerId }
+    : base;
+  let { data: client, error: clientError } = await supabase.from("clients").insert(withAge).select().single();
+  // Sin part4p_migration.sql todavía: se crea igual, sin la confirmación.
+  if (clientError && withAge !== base && /age_confirmed/.test(clientError.message)) {
+    ({ data: client, error: clientError } = await supabase.from("clients").insert(base).select().single());
+  }
   if (clientError) throw clientError;
 
   // El cliente podrá completar su ficha más adelante (el formulario de

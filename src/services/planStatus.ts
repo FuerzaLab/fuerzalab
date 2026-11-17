@@ -34,6 +34,10 @@ export async function planStatusByClient(clientIds: string[]): Promise<Record<st
   for (const p of progs ?? []) if (!active.has(p.client_id)) active.set(p.client_id, p);
   for (const id of clientIds) if (!active.has(id)) out[id] = { state: "none" };
 
+  // Si el más nuevo está EN ESPERA (part4s), ya tiene su próximo plan listo: no hace falta avisar que termina.
+  for (const p of active.values()) if (p.queued) out[p.client_id] = { state: "ok", programId: p.id, programName: p.name };
+  for (const p of [...active.values()]) if (p.queued) active.delete(p.client_id);
+
   const weekly = [...active.values()].filter((p) => p.plan_mode !== "fixed");
   for (const p of active.values()) if (p.plan_mode === "fixed") out[p.client_id] = { state: "ok", programId: p.id, programName: p.name };
   if (!weekly.length) return out;

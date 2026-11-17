@@ -137,7 +137,7 @@ export default function RestSoundToggle({ style }: { style?: CSSProperties }) {
               </div>
 
               <p className="note" style={{ margin: 0 }}>
-                Sube también el volumen del celular. Para que suene, deja esta pantalla abierta durante el descanso: si bloqueas el
+                Sube también el volumen del celular con sus botones, con la app abierta (en iPhone es el volumen de música y videos, no el del timbre). Para que suene, deja esta pantalla abierta durante el descanso: si bloqueas el
                 celular o cambias de app, el navegador no deja sonar. Se guarda en este dispositivo.
               </p>
             </Modal>

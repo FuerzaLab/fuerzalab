@@ -73,6 +73,7 @@ import SearchSelect from "../../../components/ui/SearchSelect";
 import AssessmentPhotosSection from "./AssessmentPhotosSection";
 import { movePhotosDate, listPhotosOnDate } from "../../../services/progressPhotos";
 import EmptyState from "../../../components/ui/EmptyState";
+import { useClientLocked } from "../../../services/minorLock";
 import PerformanceSection from "./PerformanceSection";
 
 const CATEGORY_ORDER: AssessmentCategory[] = ["body", "circumferences", "skinfolds", "strength", "power", "endurance", "mobility", "flexibility"];
@@ -82,6 +83,7 @@ export default function AssessmentsPage() {
   const { notify } = useToast();
   const [clients, setClients] = useState<ClientRow[]>([]);
   const [clientId, setClientId] = useState("");
+  const minorLocked = useClientLocked(clientId);
   const [clientProfile, setClientProfile] = useState<ClientProfileRow | null>(null);
   const [assessments, setAssessments] = useState<AssessmentRow[]>([]);
   const [selectedId, setSelectedId] = useState("");
@@ -157,6 +159,14 @@ export default function AssessmentsPage() {
         </SearchSelect>
       </div>
 
+      {clientId && minorLocked && (
+        <div className="panel" style={{ marginBottom: 18, borderLeft: "4px solid #E3A21A" }}>
+          <div className="bd">
+            <b>🔒 Falta la autorización de su tutor.</b> Este alumno es menor de edad: hasta que subas en su ficha la autorización
+            firmada de su madre, padre o tutor, no se le pueden cargar evaluaciones ni medidas.
+          </div>
+        </div>
+      )}
       {clientId && suggestion && (
         <div className="panel" style={{ marginBottom: 18, borderLeft: "4px solid var(--pri)" }}>
           <div className="bd">

@@ -18,6 +18,8 @@ export interface ProgramRow {
   plan_mode?: "fixed" | "weekly" | null;
   /** El alumno hace las rutinas en orden, sin saltearse (part4o; true por defecto). */
   strict_order?: boolean;
+  /** Plan nuevo en espera: el alumno lo empieza cuando termina el anterior (part4s). */
+  queued?: boolean;
 }
 
 export interface MesocycleRow {

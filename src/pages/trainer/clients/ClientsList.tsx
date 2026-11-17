@@ -1,4 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
+import { clientPlanState } from "../../../services/studentBilling";
+import AgeConfirmCheckbox from "../../../components/AgeConfirmCheckbox";
 import { useNavigate } from "react-router-dom";
 import { Search, UserPlus, Copy } from "lucide-react";
 import { useAuth } from "../../../contexts/AuthContext";
@@ -192,6 +194,9 @@ export default function ClientsList() {
                           </div>
                         )}
                         {!c.profile_id && <Chip tone="warn">Sin aceptar invitación</Chip>}
+                        {c.profile_id && clientPlanState(c.access_until, c.student_billing_exempt).kind === "blocked" && (
+                          <Chip tone="bad">App pausada: su plan FuerzaLab venció</Chip>
+                        )}
                         {minors.has(c.id) && (c.guardian_consent_at ? <Chip tone="pri">Menor de edad</Chip> : <Chip tone="warn">Menor · falta autorización</Chip>)}
                         {c.status === "active" && plans[c.id]?.state === "ending" && (
                           <span title="Está en la última semana con rutinas armadas: arma lo que sigue">
@@ -323,10 +328,15 @@ function InviteClientModal({
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
   const [code, setCode] = useState<string | null>(null);
+  const [ageOk, setAgeOk] = useState(false);
 
   const submit = async () => {
     if (!fullName.trim()) {
       setError("Escribe el nombre del cliente.");
+      return;
+    }
+    if (!ageOk) {
+      setError("Marca la casilla de confirmación de edad.");
       return;
     }
     setError("");
@@ -338,6 +348,7 @@ function InviteClientModal({
         fullName: fullName.trim(),
         email: email.trim(),
         phone: phone.trim(),
+        ageConfirmed: true,
       });
       onCreated(client);
       setCode(inviteCode);
@@ -367,8 +378,9 @@ function InviteClientModal({
           <input className="input" style={{ marginBottom: 12 }} inputMode="tel" placeholder="Ej. 71234567" value={phone} onChange={(e) => setPhone(e.target.value)} />
           <label className="field-label">Email (opcional, fija el código a ese correo)</label>
           <input className="input" style={{ marginBottom: 16 }} value={email} onChange={(e) => setEmail(e.target.value)} />
+          <AgeConfirmCheckbox checked={ageOk} onChange={setAgeOk} />
           {error && <p className="error-text" style={{ marginBottom: 12 }}>{error}</p>}
-          <button className="btn" onClick={submit} disabled={loading}>
+          <button className="btn" onClick={submit} disabled={loading || !ageOk}>
             {loading ? "Creando…" : "Generar código"}
           </button>
         </>

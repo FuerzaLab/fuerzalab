@@ -22,6 +22,53 @@ export interface ChangelogEntry {
 
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    id: "2026-11-16-plan-handoff",
+    date: "2026-11-16",
+    title: "Plan nuevo sin cortar el anterior",
+    body: "Al crear un plan nuevo (o aplicar una plantilla) para un alumno al que le quedan rutinas, eliges: que primero termine el anterior (el nuevo queda en espera y empieza solo) o reemplazarlo ya. Si está haciendo una rutina en ese momento, siempre la puede terminar. En Planificación ves cuál está «en curso», cuál «en espera» y cuál «cerrado», con «Empezar ya» para adelantar uno en espera.",
+    for: ["trainer"],
+    link: { label: "Ir a Planificación", to: paths.trainerPrograms },
+  },
+  {
+    id: "2026-11-16-private-photos",
+    date: "2026-11-16",
+    title: "Tus fotos, solo para ti si quieres",
+    body: "Al subir fotos de progreso eliges quién las ve: tú y tu entrenador, o solo tú. En cada foto que subiste puedes cambiarlo cuando quieras.",
+    for: ["client"],
+    link: { label: "Ir a Mi progreso", to: paths.clientProgress },
+  },
+  {
+    id: "2026-11-16-private-photos-trainer",
+    date: "2026-11-16",
+    title: "Fotos que tus alumnos se guardan para ellos",
+    body: "Tus alumnos ahora pueden marcar las fotos de progreso que suben como «solo para mí». Esas no las ves ni en Fotos de progreso ni en los reportes; te avisamos cuántas tiene ocultas. Las que subes tú siempre las ves.",
+    for: ["trainer"],
+  },
+  {
+    id: "2026-11-15-student-plan",
+    date: "2026-11-15",
+    title: "FuerzaLab ahora es gratis para entrenadores",
+    body: "Ya no pagas por usar FuerzaLab ni por cupos de alumnos. Cada alumno paga su propio plan a FuerzaLab desde su app, con QR. Si el plan de un alumno vence, él deja de ver la app hasta que pague, pero tú sigues viendo y cargando todo lo suyo (en Clientes lo marcamos con «App pausada»).",
+    for: ["trainer"],
+    notForStaff: true,
+  },
+  {
+    id: "2026-11-15-student-plan-client",
+    date: "2026-11-15",
+    title: "Tu plan FuerzaLab",
+    body: "En «Mi plan FuerzaLab» ves hasta cuándo tienes la app y puedes pagar tu plan (mensual, trimestral, semestral o anual) con QR. Te avisamos unos días antes de que venza.",
+    for: ["client"],
+    link: { label: "Ver mi plan", to: paths.clientPlan },
+  },
+  {
+    id: "2026-11-15-minors-lock",
+    date: "2026-11-15",
+    title: "Alumnos menores: la ficha espera la autorización del tutor",
+    body: "Si un alumno es menor de 18 años, hasta que subas en su ficha la autorización firmada de su madre, padre o tutor no se le pueden registrar entrenamientos, evaluaciones, medidas ni fotos (sí puedes ir armándole el plan). Además, al cargar un alumno nuevo te pedimos confirmar que es mayor de edad o que vas a pedir esa autorización.",
+    for: ["trainer"],
+    link: { label: "Ir a Clientes", to: paths.trainerClients },
+  },
+  {
     id: "2026-11-14-rest-alarm",
     date: "2026-11-14",
     title: "Alarma del descanso más fuerte y a tu gusto",

@@ -7,6 +7,8 @@ import { paths } from "../../routes/paths";
 import { listPlatformEvents, markPlatformEventsSeen, refreshAllOrgBilling, type PlatformEvent } from "../../services/orgBilling";
 import WhatsAppButton from "../../components/WhatsAppButton";
 import { listOrganizations, listUsers, type OrganizationRow, type UserRow } from "../../services/admin";
+import { fetchMinorsOverview } from "../../services/adminMinors";
+import { fetchActivePlans, fetchPlatformSettings, listPendingPayments } from "../../services/studentBilling";
 
 export default function AdminDashboard() {
   const { profile } = useAuth();
@@ -67,6 +69,8 @@ export default function AdminDashboard() {
       </div>
 
       <TrialsPanel />
+      <StudentBillingAlertPanel />
+      <MinorsAlertPanel />
       <PlatformFeed />
     </div>
   );
@@ -211,7 +215,7 @@ function TrialsPanel() {
               <b>{r.org.name}</b>{" "}
               <span style={{ color: r.days < 0 ? "var(--bad)" : "var(--warn)", fontWeight: 600 }}>· la prueba {when(r.days)}</span>
               <div className="note" style={{ fontSize: 12.5 }}>
-                {r.org.billing_exempt ? "Sin cobro: es solo un recordatorio, no se suspende." : "Sin plan asignado: al terminar, se suspende si no registras un cobro."}
+                {r.org.billing_exempt ? "Al terminar su prueba, sus alumnos que se registraron durante la prueba pasan a pagar su plan de FuerzaLab." : "Sin plan asignado: al terminar, se suspende si no registras un cobro."}
               </div>
             </span>
             <WhatsAppButton
@@ -225,6 +229,69 @@ function TrialsPanel() {
         <p className="note" style={{ margin: 0, fontSize: 12.5 }}>
           Para sacar una de la lista: asígnale un plan, o en Organizaciones → «Plan, prueba y contacto» borra la fecha o ponle otra.
         </p>
+      </div>
+    </div>
+  );
+}
+
+/** Aviso en el Panel: menores de edad sin la autorización de su tutor (part4p). */
+function MinorsAlertPanel() {
+  const navigate = useNavigate();
+  const [pending, setPending] = useState<{ total: number; late: number } | null>(null);
+  useEffect(() => {
+    fetchMinorsOverview()
+      .then((rows) => {
+        const p = rows.filter((r) => r.is_minor && !r.consent_at);
+        const late = p.filter((r) => Date.now() - new Date(r.client_created_at).getTime() > 7 * 86400000).length;
+        setPending({ total: p.length, late });
+      })
+      .catch(() => setPending(null));
+  }, []);
+  if (!pending || pending.total === 0) return null;
+  return (
+    <div className="panel" style={{ marginTop: 20, borderLeft: "4px solid var(--bad)" }}>
+      <div className="bd" style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
+        <span>
+          <b>
+            {pending.total} {pending.total === 1 ? "alumno menor de edad" : "alumnos menores de edad"} sin la autorización de su tutor
+          </b>
+          {pending.late > 0 && <span style={{ color: "var(--bad)", fontWeight: 600 }}> · {pending.late} hace más de 7 días</span>}
+          <div className="note" style={{ fontSize: 12.5 }}>Su ficha está bloqueada hasta que el entrenador suba la autorización.</div>
+        </span>
+        <button className="btn ghost" onClick={() => navigate(paths.adminMinors)}>Ver menores</button>
+      </div>
+    </div>
+  );
+}
+
+/** Aviso en el Panel: comprobantes de alumnos por confirmar, QR por vencer o sin planes (part4q). */
+function StudentBillingAlertPanel() {
+  const navigate = useNavigate();
+  const [msgs, setMsgs] = useState<string[]>([]);
+  useEffect(() => {
+    (async () => {
+      const [pending, settings, plans] = await Promise.all([listPendingPayments(), fetchPlatformSettings(), fetchActivePlans()]);
+      const out: string[] = [];
+      if (pending.length) out.push(`${pending.length} ${pending.length === 1 ? "comprobante de alumno" : "comprobantes de alumnos"} por confirmar`);
+      if (!settings?.qr_path) out.push("Todavía no subiste el QR para que los alumnos paguen");
+      else if (settings.qr_expires_on) {
+        const d = Math.round((new Date(settings.qr_expires_on + "T00:00:00").getTime() - Date.now()) / 86400000);
+        if (d <= 15) out.push(d < 0 ? "El QR de pago ya venció: genera uno nuevo" : `El QR de pago vence en ${d} días`);
+      }
+      if (plans.length === 0) out.push("No hay planes de alumno activos (con precio)");
+      setMsgs(out);
+    })().catch(() => setMsgs([]));
+  }, []);
+  if (!msgs.length) return null;
+  return (
+    <div className="panel" style={{ marginTop: 20, borderLeft: "4px solid var(--warn)" }}>
+      <div className="bd" style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
+        <span style={{ display: "grid", gap: 2 }}>
+          {msgs.map((m) => (
+            <b key={m}>{m}</b>
+          ))}
+        </span>
+        <button className="btn ghost" onClick={() => navigate(paths.adminStudentBilling)}>Ir a Pagos de alumnos</button>
       </div>
     </div>
   );

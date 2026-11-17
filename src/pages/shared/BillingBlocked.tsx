@@ -2,6 +2,7 @@ import { useNavigate } from "react-router-dom";
 import { useAuth } from "../../contexts/AuthContext";
 import { billingBlock } from "../../services/orgBilling";
 import { paths } from "../../routes/paths";
+import StudentPlanPanel from "../../components/StudentPlanPanel";
 
 const WHATSAPP = (import.meta.env.VITE_CONTACT_WHATSAPP ?? "").replace(/\D/g, "");
 const fmt = (iso: string) => new Date(iso.slice(0, 10) + "T12:00:00").toLocaleDateString("es", { day: "numeric", month: "long" });
@@ -13,6 +14,31 @@ export default function BillingBlocked() {
   const block = billingBlock(orgBilling);
   const isClient = orgBilling?.role === "client";
   const due = orgBilling?.next_due;
+  const { refreshProfile } = useAuth();
+
+  // Alumno con su plan de FuerzaLab vencido (part4q): la misma pantalla de pago, sola.
+  if (block?.reason === "student_unpaid") {
+    return (
+      <div className="auth-shell" style={{ alignItems: "flex-start", padding: "32px 16px" }}>
+        <div style={{ width: "100%", maxWidth: 640, margin: "0 auto" }}>
+          <h2 style={{ marginBottom: 14 }}>Tu plan de FuerzaLab venció</h2>
+          <StudentPlanPanel />
+          <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginTop: 16 }}>
+            <button className="btn ghost" onClick={() => refreshProfile()}>Ya me confirmaron el pago, volver a intentar</button>
+            <button
+              className="btn ghost"
+              onClick={async () => {
+                await signOut();
+                navigate(paths.login, { replace: true });
+              }}
+            >
+              Cerrar sesión
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="auth-shell">

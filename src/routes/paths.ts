@@ -12,6 +12,8 @@ export const paths = {
   adminExercises: "/admin/ejercicios",
   adminBilling: "/admin/pagos",
   adminReports: "/admin/reportes",
+  adminMinors: "/admin/menores",
+  adminStudentBilling: "/admin/pagos-alumnos",
   adminSettings: "/admin/configuracion",
 
   trainerDashboard: "/t",
@@ -51,6 +53,7 @@ export const paths = {
   clientAssessments: "/c/evaluaciones",
   clientMessages: "/c/mensajes",
   clientPayments: "/c/pagos",
+  clientPlan: "/c/mi-plan",
   clientProfile: "/c/perfil",
   clientWellness: "/c/bienestar",
   clientReports: "/c/reportes",

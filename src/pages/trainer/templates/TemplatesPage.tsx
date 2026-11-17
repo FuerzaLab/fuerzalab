@@ -9,6 +9,8 @@ import { listClients, type ClientRow } from "../../../services/clients";
 import { listTemplates, deleteProgram, listWeeks, METHOD_LABEL, type ProgramRow, type WeekRow } from "../../../services/programs";
 import { cloneProgram, listSessions, listWorkoutExercises } from "../../../services/sessions";
 import { getActiveProgramForClient } from "../../../services/training";
+import PlanHandoffPicker from "../../../components/PlanHandoffPicker";
+import { applyHandoff, type Handoff } from "../../../services/programHandoff";
 import {
   listWorkoutTemplates,
   deleteWorkoutTemplate,
@@ -380,6 +382,9 @@ function ApplyTemplateModal({
   const [clientId, setClientId] = useState("");
   const [name, setName] = useState(template.name);
   const [saving, setSaving] = useState(false);
+  const [handoff, setHandoff] = useState<Handoff>("queue");
+  const [needsHandoff, setNeedsHandoff] = useState(false);
+  const [handoffReady, setHandoffReady] = useState(false);
 
   const submit = async () => {
     if (!clientId) {
@@ -395,6 +400,7 @@ function ApplyTemplateModal({
         name: name.trim() || template.name,
         targetClientId: clientId,
       });
+      if (needsHandoff) await applyHandoff(created.id, clientId, handoff);
       onApplied(created.id);
     } catch (e: any) {
       notify(e.message);
@@ -405,13 +411,14 @@ function ApplyTemplateModal({
   return (
     <Modal title={`Usar "${template.name}"`} onClose={onClose}>
       <label className="field-label">Cliente</label>
-      <SearchSelect className="input" style={{ marginBottom: 14 }} value={clientId} onChange={(e) => setClientId(e.target.value)}>
+      <SearchSelect className="input" style={{ marginBottom: 14 }} value={clientId} onChange={(e) => { setClientId(e.target.value); setHandoffReady(false); }}>
         <option value="">Elige un cliente</option>
         {clients.map((c) => <option key={c.id} value={c.id}>{c.full_name}</option>)}
       </SearchSelect>
       <label className="field-label">Nombre del programa para este cliente</label>
       <input className="input" style={{ marginBottom: 18 }} value={name} onChange={(e) => setName(e.target.value)} />
-      <button className="btn" onClick={submit} disabled={saving}>{saving ? "Aplicando…" : "Aplicar plantilla"}</button>
+      {clientId && <PlanHandoffPicker clientId={clientId} value={handoff} onChange={setHandoff} onInfo={(i) => { setNeedsHandoff(!!i); setHandoffReady(true); }} />}
+      <button className="btn" onClick={submit} disabled={saving || (!!clientId && !handoffReady)}>{saving ? "Aplicando…" : "Aplicar plantilla"}</button>
     </Modal>
   );
 }

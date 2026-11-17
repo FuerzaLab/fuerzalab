@@ -18,6 +18,7 @@ import {
   type ProgressPhotoRow,
   type PhotoVisibility,
   type PhotoAngle,
+  privatePhotoCount,
 } from "../../../services/progressPhotos";
 import Loading from "../../../components/ui/Loading";
 import SearchSelect from "../../../components/ui/SearchSelect";
@@ -36,6 +37,8 @@ export default function ProgressPhotosPage() {
   const [lightboxSession, setLightboxSession] = useState<ProgressPhotoRow[] | null>(null);
   const [lightboxIndex, setLightboxIndex] = useState(0);
   const [toDelete, setToDelete] = useState<ProgressPhotoRow | null>(null);
+  // Fotos que el alumno marcó "solo para mí" (part4r): solo el número.
+  const [hiddenCount, setHiddenCount] = useState(0);
 
   useEffect(() => {
     listClients().then(setClients).catch((e) => notify(e.message));
@@ -47,6 +50,7 @@ export default function ProgressPhotosPage() {
     try {
       const list = await listProgressPhotos(cId);
       setPhotos(list);
+      privatePhotoCount(cId).then(setHiddenCount).catch(() => setHiddenCount(0));
       const entries = await Promise.all(list.map(async (p) => [p.id, await getPhotoUrl(p.storage_path)] as const));
       setUrls(Object.fromEntries(entries));
     } catch (e: any) {
@@ -103,6 +107,12 @@ export default function ProgressPhotosPage() {
 
       {!clientId && <p className="note">Elige un cliente para empezar.</p>}
       {clientId && loading && <Loading />}
+      {clientId && !loading && hiddenCount > 0 && (
+        <p className="note" style={{ marginBottom: 14 }}>
+          🔒 {clients.find((c) => c.id === clientId)?.full_name.split(" ")[0] ?? "Este alumno"} tiene {hiddenCount}{" "}
+          {hiddenCount === 1 ? "foto que marcó" : "fotos que marcó"} como «solo para mí»: no las ves aquí ni en los reportes.
+        </p>
+      )}
       {clientId && !loading && sessions.length === 0 && (
         <EmptyState title="Todavía no hay fotos de progreso">
           Las puede subir tu alumno desde su app, o tú en Evaluaciones → "Fotos de progreso", el mismo día que lo mides. Con dos
@@ -121,7 +131,7 @@ export default function ProgressPhotosPage() {
         <div style={{ display: "grid", gap: 16 }}>
           {sessions.map((s) => (
             <div key={s.key} className="panel">
-              <div className="hd"><h3>{s.date ? new Date(s.date).toLocaleDateString("es") : "Sin fecha"}</h3></div>
+              <div className="hd"><h3>{s.date ? new Date(s.date.slice(0, 10) + "T12:00:00").toLocaleDateString("es") : "Sin fecha"}</h3></div>
               <div className="bd" style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill,minmax(130px,1fr))", gap: 12 }}>
                 {s.photos.map((p, i) => (
                   <div key={p.id} style={{ borderRadius: 8, overflow: "hidden", border: "1px solid var(--line)" }}>

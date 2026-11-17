@@ -52,11 +52,12 @@ export default function MinorConsentPanel({ client, intake, onChange }: { client
         {!ok && (
           <>
             <p style={{ margin: 0, fontSize: 14 }}>
-              🔒 Mientras falte la autorización, <b>{client.full_name.split(" ")[0]} no puede usar la app</b> (solo ve un aviso de espera).
+              🔒 Mientras falte la autorización, <b>{client.full_name.split(" ")[0]} no puede usar la app</b> (solo ve un aviso de espera) y
+              <b> no se le pueden registrar entrenamientos, evaluaciones, medidas ni fotos</b>. Sí puedes ir armándole el plan.
             </p>
             <ol style={{ margin: 0, paddingLeft: 20, display: "grid", gap: 4, fontSize: 14 }}>
               <li>Descarga la autorización, imprímela y haz que la firme su madre, padre o tutor.</li>
-              <li>Indica qué marcó sobre las fotos de progreso y sube una foto de la hoja firmada. Queda guardada en un lugar que solo ves tú.</li>
+              <li>Indica qué marcó sobre las fotos de progreso y sube una foto de la hoja firmada. Queda guardada en un lugar privado: solo la ves tú (y FuerzaLab, si necesita verificarla).</li>
             </ol>
             <div className="minor-photos">
               <span>En la hoja firmada, las fotos de progreso:</span>

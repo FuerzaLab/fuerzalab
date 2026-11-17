@@ -37,6 +37,13 @@ export interface OrgBilling {
   trial_free_clients?: number;
   pending_clients?: number;
   pending_seats?: { amount: number; currency: string; due_date: string; count: number } | null;
+  /** Solo alumnos: su plan con FuerzaLab (part4q). */
+  access_until?: string | null;
+  student_exempt?: boolean;
+  grace_days?: number;
+  reminder_days?: number;
+  student_pending_payment?: boolean;
+  student_blocked?: boolean;
 }
 
 /** Recalcula el estado (por si venció algo) y lo devuelve. null si no aplica o falta la migración. */
@@ -56,10 +63,10 @@ const dateOnly = (iso: string) => new Date(iso.slice(0, 10) + "T00:00:00");
 export const daysBetween = (from: Date, to: Date) => Math.round((to.getTime() - from.getTime()) / 86400000);
 
 /** ¿Esta persona tiene el acceso cortado? (y por qué) */
-export function billingBlock(b: OrgBilling | null): null | { reason: "suspended" | "unpaid"; clientsUntil?: string } {
+export function billingBlock(b: OrgBilling | null): null | { reason: "suspended" | "unpaid" | "student_unpaid"; clientsUntil?: string } {
   if (!b) return null;
   if (b.suspended) return { reason: "suspended" };
-  if (b.role === "client") return b.client_blocked ? { reason: "unpaid" } : null;
+  if (b.role === "client") return b.client_blocked ? { reason: "unpaid" } : b.student_blocked ? { reason: "student_unpaid" } : null;
   if (b.blocked_since && dateOnly(b.blocked_since) <= today()) {
     const until = dateOnly(b.blocked_since);
     until.setDate(until.getDate() + 7);

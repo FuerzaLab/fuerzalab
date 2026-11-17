@@ -152,6 +152,7 @@ export default function OnboardingForm({ clientId, onDone }: { clientId: string;
           <div>
             <label className="field-label">Fecha de nacimiento</label>
             <input type="date" className="input" value={birthDate} onChange={(e) => setBirthDate(e.target.value)} />
+            <span className="note" style={{ display: "block", fontSize: 12, marginTop: 3 }}>Debe ser tu fecha real: al enviar, declaras que es verdadera.</span>
           </div>
           <div>
             <label className="field-label">Sexo</label>

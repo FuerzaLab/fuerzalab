@@ -11,6 +11,7 @@ import {
   uploadProgressPhotoSet,
   getPhotoUrl,
   deleteProgressPhoto,
+  setPhotoPrivate,
   groupPhotosBySession,
   ANGLE_LABEL,
   ANGLE_ORDER,
@@ -68,7 +69,10 @@ export default function ClientProgressPhotos() {
       <div style={{ display: "flex", flexWrap: "wrap", justifyContent: "space-between", gap: 12, marginBottom: 20 }}>
         <div>
           <h1 style={{ marginBottom: 4 }}>Mi progreso</h1>
-          <p className="note">Fotos para ver tu propio cambio en el tiempo. Solo tú y tu entrenador las ven.</p>
+          <p className="note">
+            Fotos para ver tu propio cambio en el tiempo. Por defecto las ve también tu entrenador; las que marques como
+            🔒 «Solo para mí» no las ve nadie más.
+          </p>
         </div>
         {clientId && !photosBlocked && (
           <button className="btn" onClick={() => setShowUpload(true)}>
@@ -100,7 +104,7 @@ export default function ClientProgressPhotos() {
           )}
           {sessions.map((s) => (
             <div key={s.key} className="panel">
-              <div className="hd"><h3>{s.date ? new Date(s.date).toLocaleDateString("es") : "Sin fecha"}</h3></div>
+              <div className="hd"><h3>{s.date ? new Date(s.date.slice(0, 10) + "T12:00:00").toLocaleDateString("es") : "Sin fecha"}</h3></div>
               <div className="bd" style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill,minmax(130px,1fr))", gap: 12 }}>
                 {s.photos.map((p, i) => (
                   <div key={p.id} style={{ borderRadius: 8, overflow: "hidden", border: "1px solid var(--line)" }}>
@@ -112,6 +116,30 @@ export default function ClientProgressPhotos() {
                     />
                     <div style={{ padding: 6, fontSize: 12 }}>
                       <div className="note" style={{ marginBottom: 4 }}>{p.angle ? ANGLE_LABEL[p.angle] : "Sin etiquetar"}</div>
+                      {p.client_private !== undefined && (
+                        p.uploaded_by && p.uploaded_by !== profile?.id ? (
+                          <div className="note" style={{ fontSize: 11.5, marginBottom: 4 }}>La subió tu entrenador</div>
+                        ) : (
+                          <button
+                            type="button"
+                            className={`chip ${p.client_private ? "warn" : "ok"}`}
+                            style={{ border: 0, cursor: "pointer", marginBottom: 4, fontSize: 11.5 }}
+                            title={p.client_private ? "Solo la ves tú. Toca para compartirla con tu entrenador." : "La ve tu entrenador. Toca para que sea solo para ti."}
+                            onClick={async () => {
+                              const next = !p.client_private;
+                              try {
+                                await setPhotoPrivate(p.id, next);
+                                setPhotos((ps) => ps.map((x) => (x.id === p.id ? { ...x, client_private: next } : x)));
+                                notify(next ? "Listo: esta foto ahora es solo para ti." : "Listo: tu entrenador ya puede ver esta foto.");
+                              } catch (e: any) {
+                                notify(e.message);
+                              }
+                            }}
+                          >
+                            {p.client_private ? "🔒 Solo para mí" : "👁 La ve mi entrenador"}
+                          </button>
+                        )
+                      )}
                       <button onClick={() => setToDelete(p)} style={{ border: 0, background: "none", color: "var(--bad)", cursor: "pointer", display: "flex", alignItems: "center", gap: 4 }}>
                         <Trash2 size={13} /> Eliminar
                       </button>
@@ -195,6 +223,7 @@ function UploadPhotoSetModal({
   const [files, setFiles] = useState<Partial<Record<PhotoAngle, File>>>({});
   const [takenAt, setTakenAt] = useState(() => new Date().toISOString().slice(0, 10));
   const [notes, setNotes] = useState("");
+  const [onlyMe, setOnlyMe] = useState(false);
   const [uploading, setUploading] = useState(false);
 
   const pickFile = (angle: PhotoAngle) => async (e: ChangeEvent<HTMLInputElement>) => {
@@ -211,7 +240,7 @@ function UploadPhotoSetModal({
     }
     setUploading(true);
     try {
-      await uploadProgressPhotoSet({ organizationId, clientId, files, takenAt, notes, visibility: "client_and_trainer" });
+      await uploadProgressPhotoSet({ organizationId, clientId, files, takenAt, notes, visibility: "client_and_trainer", clientPrivate: onlyMe });
       onUploaded();
     } catch (e: any) {
       notify(e.message);
@@ -233,7 +262,22 @@ function UploadPhotoSetModal({
       <label className="field-label">Fecha</label>
       <input type="date" className="input" style={{ marginBottom: 12 }} value={takenAt} onChange={(e) => setTakenAt(e.target.value)} />
       <label className="field-label">Notas (opcional)</label>
-      <textarea className="input" style={{ minHeight: 60, marginBottom: 16 }} value={notes} onChange={(e) => setNotes(e.target.value)} />
+      <textarea className="input" style={{ minHeight: 60, marginBottom: 14 }} value={notes} onChange={(e) => setNotes(e.target.value)} />
+      <div className="field-label">¿Quién las ve?</div>
+      <div style={{ display: "grid", gap: 6, marginBottom: 16 }}>
+        {[
+          { v: false, t: "👁 Yo y mi entrenador", d: "Le sirven para seguir tu progreso." },
+          { v: true, t: "🔒 Solo yo", d: "Nadie más las ve. Las puedes compartir después." },
+        ].map((o) => (
+          <label key={String(o.v)} style={{ display: "flex", gap: 10, alignItems: "flex-start", padding: "8px 10px", borderRadius: 8, border: onlyMe === o.v ? "2px solid var(--pri)" : "1px solid var(--line)", cursor: "pointer" }}>
+            <input type="radio" name="photo-who" checked={onlyMe === o.v} onChange={() => setOnlyMe(o.v)} style={{ marginTop: 3 }} />
+            <span>
+              <b style={{ fontSize: 14 }}>{o.t}</b>
+              <span className="note" style={{ display: "block", fontSize: 12.5 }}>{o.d}</span>
+            </span>
+          </label>
+        ))}
+      </div>
       <button className="btn" onClick={submit} disabled={uploading}>{uploading ? "Subiendo…" : "Subir"}</button>
     </Modal>
   );

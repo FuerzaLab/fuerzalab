@@ -10,6 +10,7 @@ import { TrainSession } from "../../client/Routine";
 import Loading from "../../../components/ui/Loading";
 import SearchSelect from "../../../components/ui/SearchSelect";
 import EmptyState from "../../../components/ui/EmptyState";
+import { useClientLocked } from "../../../services/minorLock";
 
 const STATUS_LABEL: Record<WorkoutLogRow["status"], string> = {
   pending: "Pendiente",
@@ -23,6 +24,8 @@ export default function RunSessionPage() {
   const { notify } = useToast();
   const [clients, setClients] = useState<ClientRow[]>([]);
   const [clientId, setClientId] = useState("");
+  // Menor de edad sin la autorización de su tutor (part4p): no se le pueden registrar entrenamientos.
+  const minorLocked = useClientLocked(clientId);
   const [program, setProgram] = useState<ProgramRow | null>(null);
   const [weeks, setWeeks] = useState<WeekRow[]>([]);
   const [weekStatus, setWeekStatus] = useState<Record<string, WeekStatus>>({});
@@ -126,14 +129,23 @@ export default function RunSessionPage() {
           apenas se pague, queda habilitado. El detalle está en Configuración → Mi plan.
         </EmptyState>
       )}
-      {clientId && !pendingSeat && loading && <Loading />}
-      {clientId && !pendingSeat && !loading && !program && (
+      {!pendingSeat && minorLocked && (
+        <EmptyState
+          title="Falta la autorización de su tutor"
+          action={{ label: "Ir a su ficha", onClick: () => navigate(paths.trainerClientDetail(clientId)) }}
+        >
+          Este alumno es menor de edad. Hasta que subas la autorización firmada de su madre, padre o tutor no se le pueden
+          registrar entrenamientos, evaluaciones ni medidas. Sí puedes ir armándole el plan.
+        </EmptyState>
+      )}
+      {clientId && !pendingSeat && !minorLocked && loading && <Loading />}
+      {clientId && !pendingSeat && !minorLocked && !loading && !program && (
         <EmptyState title="Este alumno todavía no tiene un plan activo">
           Para entrenar con él, primero ármale su plan en Planificación y la rutina de cada día en el Constructor de rutinas.
         </EmptyState>
       )}
 
-      {clientId && !pendingSeat && !loading && program && (
+      {clientId && !pendingSeat && !minorLocked && !loading && program && (
         <>
           <p className="note" style={{ marginBottom: 14 }}>{program.name}</p>
           {weeks.length > 0 && (

@@ -24,7 +24,7 @@ import {
   UserCog,
   Sparkles,
   ChevronDown,
-  Eye, BarChart3, HelpCircle } from "lucide-react";
+  Eye, BarChart3, HelpCircle, ShieldCheck, Wallet } from "lucide-react";
 import { useAuth } from "../../contexts/AuthContext";
 import { paths } from "../paths";
 import type { Role, StaffAccess } from "../../types/auth";
@@ -33,6 +33,7 @@ import Brand from "../../components/ui/Brand";
 import DemoGate from "../../components/DemoGate";
 import ScreenIntro from "../../components/ScreenIntro";
 import BillingBanner from "../../components/BillingBanner";
+import StudentPlanBanner from "../../components/StudentPlanBanner";
 import QuickSearch from "../../components/QuickSearch";
 import HelpButton from "../../components/HelpButton";
 import PageLoading from "../../components/ui/PageLoading";
@@ -54,8 +55,10 @@ const NAV: Record<Role, NavItem[]> = {
     { to: paths.adminOrgs, label: "Organizaciones", icon: Building2 },
     { to: paths.adminUsers, label: "Usuarios", icon: Users },
     { to: paths.adminExercises, label: "Ejercicios globales", icon: Dumbbell },
-    { to: paths.adminBilling, label: "Pagos", icon: CreditCard },
+    { to: paths.adminStudentBilling, label: "Pagos de alumnos", icon: Wallet },
+    { to: paths.adminBilling, label: "Cobro a estudios (apagado)", icon: CreditCard },
     { to: paths.adminReports, label: "Reportes", icon: BarChart3 },
+    { to: paths.adminMinors, label: "Menores de edad", icon: ShieldCheck },
     { to: paths.adminSettings, label: "Configuración", icon: Settings },
   ],
   trainer: [
@@ -93,7 +96,8 @@ const NAV: Record<Role, NavItem[]> = {
     { to: paths.clientWellness, label: "Bienestar", icon: Ruler, accent: "wellness" },
     { to: paths.clientAssessments, label: "Mis evaluaciones", icon: ClipboardList },
     { to: paths.clientReports, label: "Mis reportes", icon: FileText },
-    { to: paths.clientPayments, label: "Pagos", icon: CreditCard },
+    { to: paths.clientPayments, label: "Pagos a mi entrenador", icon: CreditCard },
+    { to: paths.clientPlan, label: "Mi plan FuerzaLab", icon: Wallet },
     { to: paths.clientMessages, label: "Mensajes", icon: MessageSquare },
     { to: paths.clientWhatsNew, label: "Qué hay de nuevo", icon: Sparkles },
     { to: paths.clientHelp, label: "Ayuda", icon: HelpCircle },
@@ -299,6 +303,7 @@ function TrainerLauncherShell({
           </div>
         )}
         <BillingBanner />
+        <StudentPlanBanner />
         <ScreenIntro />
         <DemoGate>
           <Suspense fallback={<PageLoading />}>

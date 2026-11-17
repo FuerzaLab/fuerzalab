@@ -31,7 +31,7 @@ export interface Guardian {
 export const LEGAL_PROVIDER = {
   name: "Mario Ernesto Rodas Arce",
   nit: "en trámite",
-  address: "El Rincón de la Hacienda # 18 Norte, Santa Cruz de la Sierra",
+  address: "Condominio El Rincón de la Hacienda, casa Nº 18, zona Norte, Santa Cruz de la Sierra",
   email: "yoguirodasa@gmail.com",
   termsUrl: "https://fuerzala.netlify.app/terminos",
   privacyUrl: "https://fuerzala.netlify.app/privacidad",
