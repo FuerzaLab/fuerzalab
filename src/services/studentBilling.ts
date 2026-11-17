@@ -28,6 +28,8 @@ export interface PlatformSettings {
   qr_expires_on: string | null;
   account_holder: string;
   bank_name: string | null;
+  /** Cobro a alumnos prendido (part4t). Apagado = etapa de prueba: nadie paga ni se bloquea. */
+  student_billing_enabled?: boolean;
 }
 
 export interface StudentPayment {
@@ -60,6 +62,7 @@ export const monthsLabel = (m: number) => (m === 1 ? "1 mes" : `${m} meses`);
 
 export type StudentPlanState =
   | { kind: "none" } // sin datos (sin la migración o sin cuenta)
+  | { kind: "paused" } // cobro a alumnos pausado (etapa de prueba)
   | { kind: "exempt" }
   | { kind: "ok" | "soon"; until: string; daysLeft: number }
   | { kind: "grace"; until: string; graceLeft: number }
@@ -75,6 +78,7 @@ const diff = (a: Date, b: Date) => Math.round((b.getTime() - a.getTime()) / 8640
 
 export function studentPlanState(b: OrgBilling | null): StudentPlanState {
   if (!b || b.role !== "client") return { kind: "none" };
+  if (b.student_billing_enabled === false) return { kind: "paused" };
   if (b.student_exempt) return { kind: "exempt" };
   if (!b.access_until) return { kind: "none" };
   const left = diff(today0(), day(b.access_until));
@@ -85,8 +89,8 @@ export function studentPlanState(b: OrgBilling | null): StudentPlanState {
 }
 
 /** Lo mismo, desde los datos de una ficha (para el entrenador y el Super Admin). */
-export function clientPlanState(accessUntil: string | null | undefined, exempt: boolean | undefined, grace = 7, reminder = 5): StudentPlanState {
-  return studentPlanState({ role: "client", suspended: false, access_until: accessUntil ?? null, student_exempt: !!exempt, grace_days: grace, reminder_days: reminder } as OrgBilling);
+export function clientPlanState(accessUntil: string | null | undefined, exempt: boolean | undefined, grace = 7, reminder = 5, enabled = true): StudentPlanState {
+  return studentPlanState({ role: "client", suspended: false, access_until: accessUntil ?? null, student_exempt: !!exempt, grace_days: grace, reminder_days: reminder, student_billing_enabled: enabled } as OrgBilling);
 }
 
 // --- Alumno ---------------------------------------------------------------
@@ -214,4 +218,16 @@ export async function addManualPayment(clientId: string, planId: string, amount:
 export async function setStudentAccess(clientId: string, until: string | null, exempt: boolean): Promise<void> {
   const { error } = await supabase.rpc("admin_set_student_access", { p_client: clientId, p_until: until, p_exempt: exempt });
   if (error) throw wrap(error);
+}
+
+/** Prende el cobro a alumnos: cada alumno (que no sea "sin cobro") tiene al menos estos días desde hoy para pagar. */
+export async function startStudentBilling(days: number): Promise<number> {
+  const { data, error } = await supabase.rpc("admin_start_student_billing", { p_days: days });
+  if (error) throw /admin_start_student_billing/.test(error.message) ? new Error("Falta correr part4t_migration.sql en Supabase.") : wrap(error);
+  return Number(data ?? 0);
+}
+
+/** Vuelve a pausar el cobro a alumnos (nadie recibe avisos ni se le pausa la app). */
+export async function pauseStudentBilling(): Promise<void> {
+  await savePlatformSettings({ student_billing_enabled: false });
 }

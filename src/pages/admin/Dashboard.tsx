@@ -272,6 +272,7 @@ function StudentBillingAlertPanel() {
     (async () => {
       const [pending, settings, plans] = await Promise.all([listPendingPayments(), fetchPlatformSettings(), fetchActivePlans()]);
       const out: string[] = [];
+      if (settings && settings.student_billing_enabled === false && !pending.length) return setMsgs([]); // cobro pausado (etapa de prueba)
       if (pending.length) out.push(`${pending.length} ${pending.length === 1 ? "comprobante de alumno" : "comprobantes de alumnos"} por confirmar`);
       if (!settings?.qr_path) out.push("Todavía no subiste el QR para que los alumnos paguen");
       else if (settings.qr_expires_on) {

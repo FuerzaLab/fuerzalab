@@ -44,6 +44,8 @@ export interface OrgBilling {
   reminder_days?: number;
   student_pending_payment?: boolean;
   student_blocked?: boolean;
+  /** Interruptor general del cobro a alumnos (part4t). Sin la migración no viene (= prendido). */
+  student_billing_enabled?: boolean;
 }
 
 /** Recalcula el estado (por si venció algo) y lo devuelve. null si no aplica o falta la migración. */

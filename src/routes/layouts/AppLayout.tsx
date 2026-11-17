@@ -139,7 +139,7 @@ function staffNav(access: StaffAccess | null): NavItem[] {
 }
 
 export default function AppLayout() {
-  const { profile, signOut, staffAccess } = useAuth();
+  const { profile, signOut, staffAccess, orgBilling } = useAuth();
   const navigate = useNavigate();
   const isOwner = useIsStudioOwner();
   const { unseenCount } = useWhatsNew();
@@ -152,7 +152,9 @@ export default function AppLayout() {
       ? staffNav(staffAccess)
       : profile.role === "trainer"
         ? NAV.trainer.filter((i) => (isOwner || i.to !== paths.trainerStudio) && !hiddenSections(profile).includes(i.to))
-        : NAV[profile.role];
+        : profile.role === "client" && orgBilling?.student_billing_enabled === false
+          ? NAV.client.filter((i) => i.to !== paths.clientPlan) // cobro a alumnos pausado (part4t)
+          : NAV[profile.role];
 
   const handleLogout = async () => {
     if (!window.confirm("¿Cerrar sesión?")) return;

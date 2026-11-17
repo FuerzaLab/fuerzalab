@@ -92,6 +92,8 @@ export default function StudentPlanPanel() {
 
   const statusBox = () => {
     switch (state.kind) {
+      case "paused":
+        return { tone: "ok", title: "Por ahora FuerzaLab es gratis para ti", text: "Estamos en la etapa de prueba: no tienes que pagar nada. Antes de empezar a cobrar te vamos a avisar dentro de la app, con tiempo." };
       case "exempt":
         return { tone: "ok", title: "Tu cuenta no tiene cobro", text: "Puedes usar FuerzaLab sin pagar ningún plan." };
       case "ok":
@@ -143,7 +145,7 @@ export default function StudentPlanPanel() {
 
       {error && <p className="error-text" style={{ margin: 0 }}>{error}</p>}
 
-      {state.kind !== "exempt" && !pending && plans && (
+      {state.kind !== "exempt" && state.kind !== "paused" && !pending && plans && (
         <div className="panel">
           <div className="hd"><h3>Pagar mi plan</h3></div>
           <div className="bd" style={{ display: "grid", gap: 16 }}>

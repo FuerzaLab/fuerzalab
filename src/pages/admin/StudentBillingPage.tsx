@@ -19,6 +19,8 @@ import {
   savePlan,
   savePlatformSettings,
   setStudentAccess,
+  startStudentBilling,
+  pauseStudentBilling,
   uploadQr,
   type PlatformSettings,
   type StudentBillingRow,
@@ -84,6 +86,12 @@ export default function StudentBillingPage() {
         en que vence el actual (o desde hoy, si ya venció). {grace} días después del vencimiento sin pagar, se pausa su acceso
         a la app; su entrenador nunca pierde el acceso a sus datos.
       </p>
+      {settings && settings.student_billing_enabled === false && (
+        <div className="billing-banner warn" style={{ marginBottom: 10 }}>
+          <b>Cobro a alumnos: pausado.</b> Nadie recibe avisos de pago ni se le pausa la app. Las fechas de abajo son las que
+          se aplicarían. Para empezar a cobrar, ve a «Planes, precios y QR».
+        </div>
+      )}
       {settings?.beta_mode && (
         <div className="billing-banner warn" style={{ marginBottom: 16 }}>
           Etapa de prueba activa: los alumnos que se registran tienen la app gratis hasta que termina la prueba de su
@@ -451,6 +459,8 @@ function Setup({ settings, onSaved, notify }: { settings: PlatformSettings; onSa
 
   return (
     <div style={{ display: "grid", gap: 18, maxWidth: 760 }}>
+      <BillingSwitch settings={s} hasQr={!!s.qr_path} hasPlans={!!plans?.some((p) => p.active && p.price > 0)} onChanged={onSaved} notify={notify} />
+
       <div className="panel">
         <div className="hd"><h3>Planes del alumno</h3></div>
         <div className="bd" style={{ display: "grid", gap: 10 }}>
@@ -644,6 +654,104 @@ function PlanRow({ plan, onSaved, notify }: { plan: StudentPlan; onSaved: () => 
       >
         Eliminar
       </button>
+    </div>
+  );
+}
+
+// --- Interruptor del cobro a alumnos (part4t) -------------------------------
+
+function BillingSwitch({
+  settings,
+  hasQr,
+  hasPlans,
+  onChanged,
+  notify,
+}: {
+  settings: PlatformSettings;
+  hasQr: boolean;
+  hasPlans: boolean;
+  onChanged: () => Promise<void>;
+  notify: (m: string) => void;
+}) {
+  const on = settings.student_billing_enabled !== false;
+  const [days, setDays] = useState(15);
+  const [confirming, setConfirming] = useState(false);
+  const [busy, setBusy] = useState(false);
+  const missing = [!hasPlans && "al menos un plan activo con precio", !hasQr && "el QR"].filter(Boolean) as string[];
+
+  return (
+    <div className="panel" style={{ borderLeft: `4px solid ${on ? "var(--ok)" : "#E3A21A"}` }}>
+      <div className="hd"><h3>Cobro a alumnos: {on ? "activo" : "pausado"}</h3></div>
+      <div className="bd" style={{ display: "grid", gap: 10 }}>
+        {on ? (
+          <>
+            <p className="note" style={{ margin: 0 }}>
+              Los alumnos reciben el aviso {settings.reminder_days} días antes de vencer y, {settings.grace_days} días después del
+              vencimiento sin pagar, se les pausa la app.
+            </p>
+            <button
+              className="btn ghost"
+              style={{ justifySelf: "start" }}
+              disabled={busy}
+              onClick={async () => {
+                if (!confirm("¿Pausar el cobro a alumnos? Nadie va a recibir avisos de pago ni se le va a pausar la app.")) return;
+                setBusy(true);
+                try {
+                  await pauseStudentBilling();
+                  notify("Cobro a alumnos pausado.");
+                  await onChanged();
+                } catch (e: any) {
+                  notify(e.message);
+                }
+                setBusy(false);
+              }}
+            >
+              Pausar el cobro
+            </button>
+          </>
+        ) : (
+          <>
+            <p className="note" style={{ margin: 0 }}>
+              Etapa de prueba: nadie paga, nadie recibe avisos de pago y a nadie se le pausa la app. Cuando empieces a cobrar,
+              cada alumno (salvo los «sin cobro») tendrá al menos los días que elijas para pagar, desde ese día. Los Términos piden
+              avisar con al menos 15 días.
+            </p>
+            {missing.length > 0 ? (
+              <p style={{ margin: 0, fontSize: 13.5, color: "var(--bad)" }}>Para empezar a cobrar, primero carga {missing.join(" y ")} (más abajo).</p>
+            ) : !confirming ? (
+              <button className="btn" style={{ justifySelf: "start" }} onClick={() => setConfirming(true)}>
+                Empezar a cobrar
+              </button>
+            ) : (
+              <div style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center" }}>
+                <label className="note" style={{ display: "flex", gap: 6, alignItems: "center" }}>
+                  Días para pagar desde hoy
+                  <input className="input" type="number" min={0} style={{ width: 80 }} value={days} onChange={(e) => setDays(Math.max(0, Math.round(Number(e.target.value) || 0)))} />
+                </label>
+                <button
+                  className="btn"
+                  disabled={busy}
+                  onClick={async () => {
+                    setBusy(true);
+                    try {
+                      const n = await startStudentBilling(days);
+                      notify(`Cobro activado. ${n} ${n === 1 ? "alumno tiene" : "alumnos tienen"} al menos ${days} días para pagar.`);
+                      setConfirming(false);
+                      await onChanged();
+                    } catch (e: any) {
+                      notify(e.message);
+                    }
+                    setBusy(false);
+                  }}
+                >
+                  {busy ? "Activando…" : "Confirmar y empezar"}
+                </button>
+                <button className="btn ghost" onClick={() => setConfirming(false)}>Cancelar</button>
+              </div>
+            )}
+          </>
+        )}
+      </div>
     </div>
   );
 }
