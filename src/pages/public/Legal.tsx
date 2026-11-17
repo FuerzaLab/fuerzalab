@@ -1,5 +1,6 @@
 import { useEffect, type ReactNode } from "react";
 import { LEGAL_PROVIDER } from "../../lib/minors";
+import { LEGAL_UPDATED, LEGAL_VERSION } from "../../lib/legalVersion";
 import { Link, useLocation } from "react-router-dom";
 import { paths } from "../../routes/paths";
 import "./landing.css";
@@ -14,8 +15,8 @@ export const LEGAL = {
   owner: LEGAL_PROVIDER.name,
   address: "Condominio El Rincón de la Hacienda, casa Nº 18, zona Norte, Santa Cruz de la Sierra – Bolivia",
   email: LEGAL_PROVIDER.email,
-  updated: "15 de noviembre de 2026",
-  version: "2026-11-15",
+  updated: LEGAL_UPDATED,
+  version: LEGAL_VERSION,
 };
 const contact = <a href={`mailto:${LEGAL.email}`}>{LEGAL.email}</a>;
 
@@ -123,7 +124,7 @@ export function TermsPage() {
         <li>Cada entrenador define con qué edades trabaja. Los alumnos menores de 18 años solo pueden usar FuerzaLab con la autorización escrita de su madre, padre o tutor.</li>
         <li>Mientras la autorización firmada no esté cargada en la app y verificada por el entrenador, el menor no puede usar la aplicación, y no se le pueden registrar entrenamientos, evaluaciones, medidas ni fotos.</li>
         <li>En el caso de los menores, quien acepta estos Términos, contrata el plan y realiza los pagos es su madre, padre o tutor.</li>
-        <li>La madre, padre o tutor puede ejercer en nombre del menor todos los derechos de la Política de privacidad, y pedir en cualquier momento ver los mensajes entre el menor y su entrenador.</li>
+        <li>La madre, padre o tutor puede ejercer en nombre del menor todos los derechos de la Política de privacidad, y puede leer en cualquier momento los mensajes entre el menor y su entrenador mediante un enlace privado de solo lectura que le envía el entrenador.</li>
       </ul>
 
       <h2>7. Obligaciones del entrenador o estudio</h2>
@@ -158,7 +159,7 @@ export function TermsPage() {
       <ul>
         <li>FuerzaLab avisará al alumno dentro de la app 5 días antes del vencimiento de su período gratuito o de su plan.</li>
         <li>Si el pago no se realiza dentro de los 7 días siguientes al vencimiento, se suspende el acceso del alumno a la app.</li>
-        <li>Durante la suspensión, los datos del alumno se conservan y el entrenador mantiene el acceso a sus datos de salud, para que el entrenamiento presencial siga siendo seguro.</li>
+        <li>Durante la suspensión, los datos del alumno se conservan y el entrenador mantiene el acceso a sus datos de salud durante 30 días, para que el entrenamiento presencial siga siendo seguro. Pasado ese plazo, el entrenador deja de verlos hasta que el alumno pague.</li>
         <li>Al pagar, el acceso se reactiva con todo el historial. Si la suspensión dura más de 6 meses, los datos se eliminan, previo aviso al alumno.</li>
       </ul>
 
@@ -321,7 +322,7 @@ export function PrivacyPage() {
         Para usar FuerzaLab como alumno siendo menor de 18 años hace falta la autorización escrita de tu madre, padre o
         tutor, cargada en la app y verificada por tu entrenador. Hasta entonces, no puedes usar la app y no se te pueden
         cargar entrenamientos, evaluaciones, medidas ni fotos. Ellos pueden ejercer los derechos del punto 8 en tu nombre y
-        pedir ver los mensajes con tu entrenador.
+        leer los mensajes con tu entrenador mediante un enlace privado de solo lectura.
       </p>
 
       <h2>10. Fotos de progreso</h2>

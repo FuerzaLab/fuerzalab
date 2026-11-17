@@ -4,9 +4,10 @@ import type { Role } from "../../types/auth";
 import { paths } from "../paths";
 import BillingBlocked from "../../pages/shared/BillingBlocked";
 import { billingBlock } from "../../services/orgBilling";
+import TermsReaccept, { needsTermsReaccept } from "../../components/TermsReaccept";
 
 export default function RequireRole({ allow }: { allow: Role[] }) {
-  const { profile, loading, orgBilling } = useAuth();
+  const { profile, loading, orgBilling, user } = useAuth();
 
   if (loading) {
     return (
@@ -25,6 +26,9 @@ export default function RequireRole({ allow }: { allow: Role[] }) {
   if (!allow.includes(profile.role)) {
     return <Navigate to={paths.noAccess} replace />;
   }
+
+  // Versión nueva de los Términos y la Privacidad: aceptarla antes de seguir.
+  if (needsTermsReaccept(user, profile.role)) return <TermsReaccept />;
 
   return <Outlet />;
 }

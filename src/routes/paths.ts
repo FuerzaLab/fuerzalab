@@ -14,6 +14,8 @@ export const paths = {
   adminReports: "/admin/reportes",
   adminMinors: "/admin/menores",
   adminStudentBilling: "/admin/pagos-alumnos",
+  adminDataDeletion: "/admin/datos-por-borrar",
+  guardianMessages: "/tutor/:token",
   adminSettings: "/admin/configuracion",
 
   trainerDashboard: "/t",

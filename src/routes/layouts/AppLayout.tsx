@@ -24,7 +24,7 @@ import {
   UserCog,
   Sparkles,
   ChevronDown,
-  Eye, BarChart3, HelpCircle, ShieldCheck, Wallet } from "lucide-react";
+  Eye, BarChart3, HelpCircle, ShieldCheck, Wallet, Trash2 } from "lucide-react";
 import { useAuth } from "../../contexts/AuthContext";
 import { paths } from "../paths";
 import type { Role, StaffAccess } from "../../types/auth";
@@ -59,6 +59,7 @@ const NAV: Record<Role, NavItem[]> = {
     { to: paths.adminBilling, label: "Cobro a estudios (apagado)", icon: CreditCard },
     { to: paths.adminReports, label: "Reportes", icon: BarChart3 },
     { to: paths.adminMinors, label: "Menores de edad", icon: ShieldCheck },
+    { to: paths.adminDataDeletion, label: "Datos por borrar", icon: Trash2 },
     { to: paths.adminSettings, label: "Configuración", icon: Settings },
   ],
   trainer: [

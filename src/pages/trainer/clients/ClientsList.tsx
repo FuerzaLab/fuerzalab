@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { clientPlanState, fetchPlatformSettings } from "../../../services/studentBilling";
+import { fetchPlatformSettings, trainerViewOfClient, type PlatformSettings } from "../../../services/studentBilling";
 import AgeConfirmCheckbox from "../../../components/AgeConfirmCheckbox";
 import { useNavigate } from "react-router-dom";
 import { Search, UserPlus, Copy } from "lucide-react";
@@ -52,9 +52,9 @@ export default function ClientsList() {
   // Menores de edad (por la fecha de nacimiento del formulario de ingreso).
   const [minors, setMinors] = useState<Set<string>>(new Set());
   // ¿Se cobra a los alumnos? (part4t; en la etapa de prueba, no: nadie tiene la app pausada).
-  const [studentBilling, setStudentBilling] = useState(false);
+  const [billingSettings, setBillingSettings] = useState<PlatformSettings | null>(null);
   useEffect(() => {
-    fetchPlatformSettings().then((s) => setStudentBilling(s?.student_billing_enabled ?? true)).catch(() => setStudentBilling(false));
+    fetchPlatformSettings().then(setBillingSettings).catch(() => setBillingSettings(null));
   }, []);
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState("");
@@ -199,8 +199,11 @@ export default function ClientsList() {
                           </div>
                         )}
                         {!c.profile_id && <Chip tone="warn">Sin aceptar invitación</Chip>}
-                        {studentBilling && c.profile_id && clientPlanState(c.access_until, c.student_billing_exempt).kind === "blocked" && (
+                        {c.profile_id && trainerViewOfClient(c.access_until, c.student_billing_exempt, billingSettings) === "suspended" && (
                           <Chip tone="bad">App pausada: su plan FuerzaLab venció</Chip>
+                        )}
+                        {c.profile_id && trainerViewOfClient(c.access_until, c.student_billing_exempt, billingSettings) === "hidden" && (
+                          <Chip tone="bad">Datos ocultos: su plan FuerzaLab venció hace más de {billingSettings?.trainer_access_days ?? 30} días</Chip>
                         )}
                         {minors.has(c.id) && (c.guardian_consent_at ? <Chip tone="pri">Menor de edad</Chip> : <Chip tone="warn">Menor · falta autorización</Chip>)}
                         {c.status === "active" && plans[c.id]?.state === "ending" && (

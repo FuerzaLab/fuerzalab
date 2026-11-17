@@ -22,6 +22,14 @@ export interface ChangelogEntry {
 
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    id: "2026-11-17-legal-v2",
+    date: "2026-11-17",
+    title: "Términos actualizados y novedades con menores",
+    body: "Actualizamos los Términos y la Política de privacidad (te pedimos aceptarlos al entrar). Con alumnos menores: en su ficha puedes crear un enlace privado para que su madre, padre o tutor lea sus mensajes contigo (solo lectura), y las autorizaciones ya subidas se renuevan con el formulario nuevo en 30 días.",
+    for: ["trainer"],
+    link: { label: "Ir a Clientes", to: paths.trainerClients },
+  },
+  {
     id: "2026-11-16-plan-handoff",
     date: "2026-11-16",
     title: "Plan nuevo sin cortar el anterior",

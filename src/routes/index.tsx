@@ -36,6 +36,8 @@ const TrainerMessagesPage = lazy(() => import("../pages/trainer/messages/Message
 const ClientPayments = lazy(() => import("../pages/client/Payments"));
 const FuerzaLabPlan = lazy(() => import("../pages/client/FuerzaLabPlan"));
 const StudentBillingPage = lazy(() => import("../pages/admin/StudentBillingPage"));
+const DataDeletionPage = lazy(() => import("../pages/admin/DataDeletionPage"));
+const GuardianMessagesPage = lazy(() => import("../pages/public/GuardianMessages"));
 const ClientMessages = lazy(() => import("../pages/client/Messages"));
 const Settings = lazy(() => import("../pages/shared/Settings"));
 const ClientRoutine = lazy(() => import("../pages/client/Routine"));
@@ -83,6 +85,7 @@ export default function AppRoutes() {
       <Route path="/" element={<RoleRedirect />} />
       <Route path={paths.privacy} element={<PrivacyPage />} />
       <Route path={paths.terms} element={<TermsPage />} />
+      <Route path={paths.guardianMessages} element={<GuardianMessagesPage />} />
 
       {/* A partir de aquí, hace falta sesión iniciada */}
       <Route element={<RequireAuth />}>
@@ -99,6 +102,7 @@ export default function AppRoutes() {
             <Route path={paths.adminReports} element={<PlatformReportPage />} />
             <Route path={paths.adminMinors} element={<MinorsPage />} />
             <Route path={paths.adminStudentBilling} element={<StudentBillingPage />} />
+            <Route path={paths.adminDataDeletion} element={<DataDeletionPage />} />
             <Route path={paths.adminSettings} element={<Settings />} />
           </Route>
         </Route>

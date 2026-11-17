@@ -372,7 +372,7 @@ async function photoItems(clients: ClientRow[]): Promise<FeedItem[]> {
  * sigue faltando, vuelve a aparecer a la semana.
  */
 async function minorItems(clients: ClientRow[]): Promise<FeedItem[]> {
-  const pending = clients.filter((c) => (c.status === "active" || c.status === "prospect") && !c.guardian_consent_at);
+  const pending = clients.filter((c) => (c.status === "active" || c.status === "prospect") && (!c.guardian_consent_at || !!c.guardian_consent_renew_by));
   if (!pending.length) return [];
   const { data } = await supabase.from("client_profiles").select("client_id, birth_date").in("client_id", pending.map((c) => c.id));
   const week = Math.floor(Date.now() / (7 * 86400000));
@@ -386,8 +386,10 @@ async function minorItems(clients: ClientRow[]): Promise<FeedItem[]> {
       kind: "intake",
       clientId: c.id,
       at: new Date().toISOString(),
-      title: "Falta la autorización del tutor",
-      detail: `${c.full_name.split(" ")[0]} es menor de edad. Descarga la autorización desde su ficha, que la firme su madre, padre o tutor, y sube la foto.`,
+      title: c.guardian_consent_at ? "Renovar la autorización del tutor" : "Falta la autorización del tutor",
+      detail: c.guardian_consent_at
+        ? `Actualizamos el formulario: ${c.full_name.split(" ")[0]} tiene que renovar la autorización antes del ${new Date(c.guardian_consent_renew_by! + "T12:00:00").toLocaleDateString("es")}. Descárgala desde su ficha, que la firmen y sube la foto.`
+        : `${c.full_name.split(" ")[0]} es menor de edad. Descarga la autorización desde su ficha, que la firme su madre, padre o tutor, y sube la foto.`,
       tone: "warn",
     });
   }

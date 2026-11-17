@@ -30,6 +30,8 @@ export interface PlatformSettings {
   bank_name: string | null;
   /** Cobro a alumnos prendido (part4t). Apagado = etapa de prueba: nadie paga ni se bloquea. */
   student_billing_enabled?: boolean;
+  /** Días que el entrenador sigue viendo los datos de un alumno suspendido (part4u). */
+  trainer_access_days?: number;
 }
 
 export interface StudentPayment {
@@ -230,4 +232,23 @@ export async function startStudentBilling(days: number): Promise<number> {
 /** Vuelve a pausar el cobro a alumnos (nadie recibe avisos ni se le pausa la app). */
 export async function pauseStudentBilling(): Promise<void> {
   await savePlatformSettings({ student_billing_enabled: false });
+}
+
+/**
+ * Para el entrenador: ¿el alumno está suspendido por falta de pago, y ya pasó
+ * el plazo en que el entrenador puede ver sus datos? (part4u)
+ */
+export function trainerViewOfClient(
+  accessUntil: string | null | undefined,
+  exempt: boolean | undefined,
+  settings: Pick<PlatformSettings, "student_billing_enabled" | "grace_days" | "trainer_access_days"> | null,
+): "ok" | "suspended" | "hidden" {
+  if (!settings || settings.student_billing_enabled === false || exempt || !accessUntil) return "ok";
+  const blockedSince = new Date(accessUntil.slice(0, 10) + "T00:00:00");
+  blockedSince.setDate(blockedSince.getDate() + (settings.grace_days ?? 7));
+  const t = new Date();
+  t.setHours(0, 0, 0, 0);
+  const days = Math.round((t.getTime() - blockedSince.getTime()) / 86400000);
+  if (days <= 0) return "ok";
+  return days > (settings.trainer_access_days ?? 30) ? "hidden" : "suspended";
 }

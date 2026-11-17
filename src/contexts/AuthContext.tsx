@@ -11,8 +11,7 @@ import type { Profile, StaffAccess, StaffModule, StaffLevel } from "../types/aut
 import { hasLevel } from "../lib/staffModules";
 import { fetchMyOrgBilling, type OrgBilling } from "../services/orgBilling";
 
-/** Versión de los Términos y la Privacidad que acepta quien se registra (igual a LEGAL.version en pages/public/Legal.tsx). */
-const LEGAL_VERSION = "2026-11-15";
+import { LEGAL_VERSION } from "../lib/legalVersion";
 
 interface AuthContextValue {
   session: Session | null;

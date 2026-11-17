@@ -1,4 +1,5 @@
 import { supabase } from "../lib/supabase";
+import { GUARDIAN_FORM_VERSION, LEGAL_UPDATED } from "../lib/legalVersion";
 import { exportPagesPdf } from "../lib/exportReportPdf";
 import { ageFrom, LEGAL_PROVIDER, type Guardian } from "../lib/minors";
 import type { ClientRow } from "./clients";
@@ -16,8 +17,21 @@ export async function uploadGuardianConsent(client: ClientRow, file: File, train
   const path = `${client.organization_id}/${client.id}/trainer/autorizacion-tutor-${Date.now()}.${ext}`;
   const { error: upErr } = await supabase.storage.from("client-files").upload(path, file, { upsert: false });
   if (upErr) throw upErr;
-  const fields: Partial<ClientRow> & Record<string, unknown> = { guardian_consent_at: new Date().toISOString(), guardian_consent_path: path, guardian_consent_by: trainerId, guardian_photos_ok: photosOk };
+  const fields: Partial<ClientRow> & Record<string, unknown> = {
+    guardian_consent_at: new Date().toISOString(),
+    guardian_consent_path: path,
+    guardian_consent_by: trainerId,
+    guardian_photos_ok: photosOk,
+    // Formulario vigente: si era una renovación, queda al día (part4u).
+    guardian_consent_version: GUARDIAN_FORM_VERSION,
+    guardian_consent_renew_by: null,
+  };
   let { error } = await supabase.from("clients").update(fields).eq("id", client.id);
+  if (error && /guardian_consent_version|guardian_consent_renew_by/.test(error.message)) {
+    delete fields.guardian_consent_version;
+    delete fields.guardian_consent_renew_by;
+    ({ error } = await supabase.from("clients").update(fields).eq("id", client.id));
+  }
   // Sin part4l_migration.sql no existe guardian_photos_ok: se guarda la autorización igual.
   if (error && /guardian_photos_ok/.test(error.message)) {
     delete fields.guardian_photos_ok;
@@ -26,6 +40,10 @@ export async function uploadGuardianConsent(client: ClientRow, file: File, train
   if (error) {
     await supabase.storage.from("client-files").remove([path]).catch(() => {});
     throw missing(error);
+  }
+  // La autorización anterior (si era una renovación) ya no hace falta.
+  if (client.guardian_consent_path && client.guardian_consent_path !== path) {
+    await supabase.storage.from("client-files").remove([client.guardian_consent_path]).catch(() => {});
   }
   return { ...client, ...(fields as Partial<ClientRow>) };
 }
@@ -117,14 +135,14 @@ export async function downloadGuardianConsentPdf(params: {
     <p class="prov">Alumno o alumna: ${v(params.clientName)}${g?.name ? ` · Madre, padre o tutor: ${v(g.name)}` : ""}</p>
     <p><b>6. Fotos de progreso.</b> <span class="box">☐</span> Autorizo &nbsp; <span class="box">☐</span> No autorizo que se tomen y guarden fotos del progreso físico del alumno o alumna. Las fotos solo las verá su entrenador y no se publicarán en redes sociales, publicidad ni ningún otro medio sin otra autorización escrita. Si no marco ninguna opción, se entiende que no autorizo.</p>
     <p><b>7. Mis derechos.</b> En cualquier momento puedo pedir acceso a los datos, su corrección o su eliminación, o retirar esta autorización. Puedo hacerlo ante el entrenador o escribiendo a ${esc(P.email)}. Recibiré respuesta en un plazo de 15 días hábiles. Si retiro la autorización, los datos se eliminarán en un plazo de 15 días hábiles.</p>
-    <p><b>8. Términos y Política de privacidad.</b> Declaro haber leído y aceptado los Términos de uso y la Política de privacidad de FuerzaLab, disponibles en ${esc(P.termsUrl)} y ${esc(P.privacyUrl)}, en su versión vigente a la fecha de este documento.</p>
+    <p><b>8. Términos y Política de privacidad.</b> Declaro haber leído y aceptado los Términos de uso y la Política de privacidad de FuerzaLab, disponibles en ${esc(P.termsUrl)} y ${esc(P.privacyUrl)}, en su versión vigente a la fecha de este documento (actualizados el ${esc(LEGAL_UPDATED)}).</p>
     <p><b>9. Vigencia.</b> Esta autorización rige hasta que el alumno o alumna cumpla 18 años o hasta que yo la retire. Al cumplir la mayoría de edad, el alumno o alumna podrá ratificarla por sí mismo(a).</p>
     <h2>Conformidad del alumno o alumna</h2>
     <p>Fui informado(a) de esta autorización y estoy de acuerdo.</p>
     <div class="sign"><div>Firma de la madre, padre o tutor</div><div>Aclaración y CI Nº</div></div>
     <div class="sign" style="margin-top:30px"><div>Firma del alumno o alumna</div><div>Lugar y fecha</div></div>
-    <p class="small">El entrenador guarda una copia de este documento firmado en la ficha del alumno en FuerzaLab, en una sección a la que solo él tiene acceso, y entrega una copia a la madre, padre o tutor.</p>
-    <div class="pgn">Página 2 de 2</div>
+    <p class="small">El entrenador guarda una copia de este documento firmado en la ficha del alumno en FuerzaLab, en una sección privada a la que solo él tiene acceso (y FuerzaLab, solo para verificarla), y entrega una copia a la madre, padre o tutor.</p>
+    <div class="pgn">Formulario versión ${esc(GUARDIAN_FORM_VERSION)} · Página 2 de 2</div>
   </div>`;
   document.body.appendChild(el);
   try {
@@ -133,4 +151,42 @@ export async function downloadGuardianConsentPdf(params: {
   } finally {
     el.remove();
   }
+}
+
+// --- Enlace de solo lectura para que el tutor lea los mensajes (part4u) ---------
+
+export interface GuardianLink {
+  id: string;
+  token: string;
+  created_at: string;
+  expires_at: string;
+}
+
+export const guardianLinkUrl = (token: string) => `${window.location.origin}/tutor/${token}`;
+
+/** El enlace vigente (no anulado ni vencido) de este alumno, si hay. */
+export async function activeGuardianLink(clientId: string): Promise<GuardianLink | null> {
+  const { data, error } = await supabase
+    .from("guardian_links")
+    .select("id, token, created_at, expires_at")
+    .eq("client_id", clientId)
+    .is("revoked_at", null)
+    .gt("expires_at", new Date().toISOString())
+    .order("created_at", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+  if (error) return null;
+  return (data ?? null) as GuardianLink | null;
+}
+
+/** Crea un enlace nuevo (anula los anteriores). Vence en 90 días. */
+export async function createGuardianLink(clientId: string): Promise<GuardianLink> {
+  await revokeGuardianLinks(clientId);
+  const { data, error } = await supabase.from("guardian_links").insert({ client_id: clientId }).select("id, token, created_at, expires_at").single();
+  if (error) throw /guardian_links/.test(error.message) ? new Error("Falta correr part4u_migration.sql en Supabase.") : error;
+  return data as GuardianLink;
+}
+
+export async function revokeGuardianLinks(clientId: string): Promise<void> {
+  await supabase.from("guardian_links").update({ revoked_at: new Date().toISOString() }).eq("client_id", clientId).is("revoked_at", null);
 }

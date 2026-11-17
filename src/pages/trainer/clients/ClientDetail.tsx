@@ -8,6 +8,7 @@ import { useToast } from "../../../contexts/ToastContext";
 import ConfirmModal from "../../../components/ui/ConfirmModal";
 import Modal from "../../../components/ui/Modal";
 import Chip from "../../../components/ui/Chip";
+import { fetchPlatformSettings, trainerViewOfClient, type PlatformSettings } from "../../../services/studentBilling";
 import {
   getClient,
   getClientProfile,
@@ -82,6 +83,11 @@ export default function ClientDetail() {
   const intakeRef = useRef<HTMLDivElement>(null);
 
   const [client, setClient] = useState<ClientRow | null>(null);
+  // Cobro a alumnos (part4u): si su plan venció hace mucho, sus datos quedan ocultos.
+  const [billingSettings, setBillingSettings] = useState<PlatformSettings | null>(null);
+  useEffect(() => {
+    fetchPlatformSettings().then(setBillingSettings).catch(() => setBillingSettings(null));
+  }, []);
   const [intake, setIntake] = useState<ClientProfileRow | null>(null);
   const [form, setForm] = useState<FormState>(EMPTY_FORM);
   const [loading, setLoading] = useState(true);
@@ -192,6 +198,13 @@ export default function ClientDetail() {
         </div>
       </div>
 
+      {client?.profile_id && trainerViewOfClient(client.access_until, client.student_billing_exempt, billingSettings) !== "ok" && (
+        <div className="billing-banner bad" style={{ marginBottom: 14 }}>
+          {trainerViewOfClient(client.access_until, client.student_billing_exempt, billingSettings) === "hidden"
+            ? `Su plan de FuerzaLab venció hace más de ${billingSettings?.trainer_access_days ?? 30} días: sus datos de salud, entrenamientos, evaluaciones, fotos y mensajes quedan ocultos hasta que pague. Se conservan; apenas pague, vuelves a verlos.`
+            : `Su plan de FuerzaLab venció: no puede usar la app. Tú sigues viendo sus datos por ${billingSettings?.trainer_access_days ?? 30} días desde que se le pausó; después quedan ocultos hasta que pague.`}
+        </div>
+      )}
       {client && intake && isMinor(intake.birth_date) && <MinorConsentPanel client={client} intake={intake} onChange={setClient} />}
 
       {!intake?.submitted_at ? (

@@ -26,6 +26,9 @@ export interface ClientRow {
   /** Plan del alumno con FuerzaLab (part4q). */
   access_until?: string | null;
   student_billing_exempt?: boolean;
+  /** Autorización del tutor: versión del formulario y plazo para renovarla (part4u). */
+  guardian_consent_version?: string | null;
+  guardian_consent_renew_by?: string | null;
 }
 
 export interface ParQAnswers {

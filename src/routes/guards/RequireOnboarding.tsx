@@ -34,7 +34,9 @@ export default function RequireOnboarding() {
         const [prof, client] = await Promise.all([getClientProfile(id), getClient(id).catch(() => null)]);
         setSubmitted(Boolean(prof?.submitted_at));
         setReviewed(Boolean(prof?.reviewed_at));
-        setNeedsGuardian(isMinor(prof?.birth_date) && !client?.guardian_consent_at);
+        // Sin autorización, o con la del formulario anterior y el plazo para renovarla vencido (part4u).
+        const renewOverdue = !!client?.guardian_consent_renew_by && new Date(client.guardian_consent_renew_by + "T23:59:59") < new Date();
+        setNeedsGuardian(isMinor(prof?.birth_date) && (!client?.guardian_consent_at || renewOverdue));
       }
       const billing = await fetchMyOrgBilling().catch(() => null);
       setSeatPending(Boolean(billing?.seat_pending));
