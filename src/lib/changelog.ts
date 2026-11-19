@@ -22,6 +22,14 @@ export interface ChangelogEntry {
 
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    id: "2026-11-19-block-order",
+    date: "2026-11-19",
+    title: "Ordena los bloques de cada rutina",
+    body: "En el Constructor, arrastra el título de un bloque (Calentamiento, Principal, Cardio…) o usa ▲ ▼ para ponerlo en el orden que quieras. Tu alumno lo ve en ese orden, también en el PDF y al copiar la rutina; en rutinas fijas se aplica a las próximas semanas.",
+    for: ["trainer"],
+    link: { label: "Ir al Constructor", to: paths.trainerBuilder },
+  },
+  {
     id: "2026-11-17-legal-v2",
     date: "2026-11-17",
     title: "Términos actualizados y novedades con menores",

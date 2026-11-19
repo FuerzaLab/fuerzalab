@@ -11,7 +11,7 @@ import {
   listSessionBlocks,
   listWorkoutExercises,
   BLOCK_LABEL,
-  BLOCK_ORDER,
+  type BlockKind,
   DAY_OF_WEEK_LABEL,
   todayDayOfWeek,
   computeWeekStatuses,
@@ -474,7 +474,6 @@ export function TrainSession({ sessionId, onExit, backLabel = "Volver a mi rutin
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [sessionId]);
 
-  const blockByKind = useMemo(() => Object.fromEntries(blocks.map((b) => [b.kind, b])), [blocks]);
 
   const logFor = (exerciseWorkoutId: string, setNumber: number) => setLogs.find((l) => l.workout_exercise_id === exerciseWorkoutId && l.set_number === setNumber);
 
@@ -601,14 +600,15 @@ export function TrainSession({ sessionId, onExit, backLabel = "Volver a mi rutin
         </div>
       ) : (
         <>
-          {BLOCK_ORDER.map((kind) => {
-            const block = blockByKind[kind];
-            const rows = exercises.filter((e) => block && e.block_id === block.id);
+          {[...blocks].sort((a, b) => a.sort_order - b.sort_order).map((block) => {
+            // Los bloques en el orden que eligió el entrenador.
+            const kind = block.kind as BlockKind;
+            const rows = exercises.filter((e) => e.block_id === block.id);
             if (!rows.length) return null;
             const groups = groupBySuperset(rows);
             return (
-              <div key={kind} style={{ marginBottom: 18 }}>
-                <h3 style={{ marginBottom: 10 }}>{BLOCK_LABEL[kind]}</h3>
+              <div key={block.id} style={{ marginBottom: 18 }}>
+                <h3 style={{ marginBottom: 10 }}>{BLOCK_LABEL[kind] ?? kind}</h3>
                 {groups.map((g) =>
                   g.length > 1 && g.every((ex) => !isCardioExercise(ex)) ? (
                     <SupersetTrainer

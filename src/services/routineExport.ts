@@ -1,7 +1,7 @@
 import { supabase } from "../lib/supabase";
 import { exportReportPdf } from "../lib/exportReportPdf";
 import { formatLoad } from "../lib/units";
-import { BLOCK_LABEL, BLOCK_ORDER, listSessionBlocks, listSessions, listWorkoutExercises, type SessionRow, type WorkoutExerciseRow } from "./sessions";
+import { BLOCK_LABEL, listSessionBlocks, listSessions, listWorkoutExercises, type SessionRow, type WorkoutExerciseRow } from "./sessions";
 import { getEffectiveGymUnits, getEquipmentNames, makeUnitResolver } from "./units";
 import { listFixedSlots } from "./fixedRoutines";
 
@@ -44,7 +44,7 @@ async function collect(scope: ExportScope, session: SessionRow) {
     const blockOf = new Map(blocks.map((b) => [b.id, b]));
     const order = (it: WorkoutExerciseRow) => {
       const b = it.block_id ? blockOf.get(it.block_id) : undefined;
-      return [b ? BLOCK_ORDER.indexOf(b.kind) : 99, b?.sort_order ?? 0, it.sort_order] as const;
+      return [b ? b.sort_order : 99, 0, it.sort_order] as const;
     };
     const sorted = [...items].sort((a, b) => {
       const x = order(a), y = order(b);

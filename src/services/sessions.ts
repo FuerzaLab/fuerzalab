@@ -363,6 +363,30 @@ export async function updateSessionDay(id: string, dayOfWeek: number | null): Pr
   if (error) throw error;
 }
 
+/**
+ * Cambia el orden de los bloques de una rutina (Calentamiento, Principal…).
+ * blockIds: todos los bloques de la rutina, en el orden nuevo. En rutinas
+ * fijas, el orden se copia a las próximas veces de esa rutina (part4v).
+ */
+export async function reorderSessionBlocks(sessionId: string, blockIds: string[]): Promise<void> {
+  const { error } = await supabase.rpc("reorder_session_blocks", { p_session: sessionId, p_block_ids: blockIds });
+  if (!error) return;
+  if (!/reorder_session_blocks/.test(error.message)) throw error;
+  // Sin part4v_migration.sql: uno por uno (sin copiar a las próximas veces de las rutinas fijas).
+  for (let i = 0; i < blockIds.length; i++) {
+    const { error: e } = await supabase.from("session_blocks").update({ sort_order: i }).eq("id", blockIds[i]).eq("session_id", sessionId);
+    if (e) throw e;
+  }
+}
+
+/** Al copiar una rutina: la copia queda con el mismo orden de bloques que la original. */
+async function copyBlockOrder(oldBlocks: SessionBlockRow[], newBlocks: SessionBlockRow[], newSessionId: string): Promise<void> {
+  const byKind = new Map(newBlocks.map((b) => [b.kind, b.id]));
+  const ordered = [...oldBlocks].sort((a, b) => a.sort_order - b.sort_order).map((b) => byKind.get(b.kind)).filter((id): id is string => !!id);
+  const newOrder = [...new Set([...ordered, ...newBlocks.map((b) => b.id)])];
+  if (newOrder.join() !== newBlocks.map((b) => b.id).join()) await reorderSessionBlocks(newSessionId, newOrder).catch(() => {});
+}
+
 export async function listSessionBlocks(sessionId: string): Promise<SessionBlockRow[]> {
   const { data, error } = await supabase
     .from("session_blocks")
@@ -480,6 +504,7 @@ export async function duplicateSession(session: SessionRow, newSortOrder: number
   ]);
   const blockKindToNewId = new Map(newBlocks.map((b) => [b.kind, b.id]));
   const oldBlockIdToKind = new Map(oldBlocks.map((b) => [b.id, b.kind]));
+  await copyBlockOrder(oldBlocks, newBlocks, newSession.id);
 
   for (const ex of exercises) {
     const kind = ex.block_id ? oldBlockIdToKind.get(ex.block_id) : undefined;
@@ -529,6 +554,7 @@ export async function cloneSessionToWeek(session: SessionRow, targetWeekId: stri
   ]);
   const blockKindToNewId = new Map(newBlocks.map((b) => [b.kind, b.id]));
   const oldBlockIdToKind = new Map(oldBlocks.map((b) => [b.id, b.kind]));
+  await copyBlockOrder(oldBlocks, newBlocks, newSession.id);
 
   for (const ex of exercises) {
     const kind = ex.block_id ? oldBlockIdToKind.get(ex.block_id) : undefined;
@@ -790,6 +816,7 @@ export async function copyWeek(
     ]);
     const blockKindToNewId = new Map(newBlocks.map((b) => [b.kind, b.id]));
     const oldBlockIdToKind = new Map(oldBlocks.map((b) => [b.id, b.kind]));
+    await copyBlockOrder(oldBlocks, newBlocks, newSession.id);
 
     const oldExerciseIds = exercises.map((ex) => ex.id);
     const oldNotesByExercise: Record<string, Record<number, string>> = oldExerciseIds.length

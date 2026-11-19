@@ -184,6 +184,7 @@ export const HELP_TOPICS: HelpTopic[] = [
       { label: "¿Cómo quieres trabajar? (primera vez)", desc: "Rutinas fijas: armas los días y se repiten cada semana. Plan por semanas: con bloques y progresión." },
       { label: "Días / rutinas (arriba)", desc: "Toca uno para editarlo; arrástralos para cambiarlos de lugar." },
       { label: "Añadir a la sesión", desc: "Busca un ejercicio y súmalo al bloque elegido." },
+      { label: "⋮⋮ y ▲ ▼ en cada bloque", desc: "Cambia el orden de los bloques (Calentamiento, Principal, Cardio…): arrastra el título o usa las flechas. Tu alumno los ve en ese orden." },
       { label: "Crear un ejercicio nuevo", desc: "Si no está en la lista, lo creas ahí mismo." },
       { label: "Importar rutina", desc: "Desde un Excel o Word; si un ejercicio no existe, lo puedes crear al importar." },
       { label: "Exportar", desc: "Descarga esta rutina, la semana completa o todas las rutinas fijas: en PDF con tu logo (para imprimir o mandar por WhatsApp) o en Excel, con el formato de «Importar rutina», para editarla o importarla a otro alumno. No disponible en la demo." },

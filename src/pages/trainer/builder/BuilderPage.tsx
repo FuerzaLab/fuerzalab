@@ -43,6 +43,7 @@ import {
   upsertSetNote,
   BLOCK_LABEL,
   BLOCK_ORDER,
+  reorderSessionBlocks,
   STRENGTH_TYPES,
   HR_ZONES,
   type SessionRow,
@@ -667,6 +668,26 @@ function SessionEditor({
     setItems((its) => its.filter((it) => it.id !== id));
   };
 
+  // Orden de los BLOQUES (Calentamiento, Principal…): arrastrando el título o con ▲ ▼.
+  const [dragBlockId, setDragBlockId] = useState<string | null>(null);
+  const [dragOverBlockId, setDragOverBlockId] = useState<string | null>(null);
+  const moveBlock = async (visibleIds: string[], fromId: string, toIndex: number) => {
+    const order = visibleIds.filter((id) => id !== fromId);
+    order.splice(Math.max(0, Math.min(order.length, toIndex)), 0, fromId);
+    // Los bloques vacíos (que no se ven) quedan al final, en su orden.
+    const full = [...order, ...blocks.filter((b) => !order.includes(b.id)).map((b) => b.id)];
+    if (full.join() === blocks.map((b) => b.id).join()) return;
+    const prev = blocks;
+    setBlocks(full.map((id, i) => ({ ...blocks.find((b) => b.id === id)!, sort_order: i })));
+    try {
+      await reorderSessionBlocks(sessionId, full);
+      flashSaved();
+    } catch (e: any) {
+      setBlocks(prev);
+      notify(e.message);
+    }
+  };
+
   // Arrastrar y soltar para reordenar (en computadora; en el celular siguen los botones ▲ ▼).
   const [dragId, setDragId] = useState<string | null>(null);
   const [dragOverId, setDragOverId] = useState<string | null>(null);
@@ -909,14 +930,78 @@ function SessionEditor({
         </div>
       )}
 
-      {BLOCK_ORDER.map((kind) => {
-        const rows = items.filter((it) => blockByKind[kind] && it.block_id === blockByKind[kind].id).sort((a, b) => a.sort_order - b.sort_order);
-        if (!rows.length) return null;
+      {(() => {
+        // Los bloques con ejercicios, en el orden que eligió el entrenador (session_blocks.sort_order).
+        const visible = [...blocks].sort((a, b) => a.sort_order - b.sort_order).filter((b) => items.some((it) => it.block_id === b.id));
+        const visibleIds = visible.map((b) => b.id);
+        return visible.map((block, bi) => {
+        const kind = block.kind as BlockKind;
+        const rows = items.filter((it) => it.block_id === block.id).sort((a, b) => a.sort_order - b.sort_order);
         const labels = groupLabels(rows);
         const isCardio = kind === "cardio";
         return (
-          <div className="panel" key={kind} style={{ marginBottom: 14 }}>
-            <div className="hd"><h3>{BLOCK_LABEL[kind]}</h3></div>
+          <div
+            className={`panel${dragOverBlockId === block.id ? " block-drag-over" : ""}${dragBlockId === block.id ? " block-dragging" : ""}`}
+            key={block.id}
+            style={{ marginBottom: 14 }}
+            onDragOver={(e) => {
+              if (!dragBlockId) return;
+              e.preventDefault();
+              if (dragOverBlockId !== block.id) setDragOverBlockId(block.id);
+            }}
+            onDragLeave={() => dragOverBlockId === block.id && setDragOverBlockId(null)}
+            onDrop={(e) => {
+              if (!dragBlockId) return;
+              e.preventDefault();
+              const from = dragBlockId;
+              setDragBlockId(null);
+              setDragOverBlockId(null);
+              if (from !== block.id) moveBlock(visibleIds, from, bi);
+            }}
+          >
+            <div className="hd" style={{ gap: 8 }}>
+              <div
+                draggable={!locked && visible.length > 1}
+                onDragStart={(e) => {
+                  setDragBlockId(block.id);
+                  e.dataTransfer.effectAllowed = "move";
+                  e.dataTransfer.setData("text/plain", block.id);
+                }}
+                onDragEnd={() => {
+                  setDragBlockId(null);
+                  setDragOverBlockId(null);
+                }}
+                style={{ display: "flex", alignItems: "center", gap: 8, cursor: !locked && visible.length > 1 ? "grab" : undefined }}
+                title={!locked && visible.length > 1 ? "Arrastra para cambiar el orden de los bloques" : undefined}
+              >
+                {!locked && visible.length > 1 && <span aria-hidden="true" style={{ color: "var(--muted)", fontSize: 16, lineHeight: 1 }}>⋮⋮</span>}
+                <h3>{BLOCK_LABEL[kind] ?? kind}</h3>
+              </div>
+              {!locked && visible.length > 1 && (
+                <span style={{ display: "flex", gap: 4 }}>
+                  <button
+                    type="button"
+                    className="btn ghost"
+                    style={{ padding: "2px 9px", fontSize: 12 }}
+                    disabled={bi === 0}
+                    aria-label={`Subir el bloque ${BLOCK_LABEL[kind] ?? kind}`}
+                    onClick={() => moveBlock(visibleIds, block.id, bi - 1)}
+                  >
+                    ▲
+                  </button>
+                  <button
+                    type="button"
+                    className="btn ghost"
+                    style={{ padding: "2px 9px", fontSize: 12 }}
+                    disabled={bi === visible.length - 1}
+                    aria-label={`Bajar el bloque ${BLOCK_LABEL[kind] ?? kind}`}
+                    onClick={() => moveBlock(visibleIds, block.id, bi + 1)}
+                  >
+                    ▼
+                  </button>
+                </span>
+              )}
+            </div>
             <div style={{ overflowX: "auto" }}>
               <table className="rtable builder-table" style={{ width: "100%", borderCollapse: "collapse", fontSize: 14 }}>
                 <thead>
@@ -1107,7 +1192,8 @@ function SessionEditor({
             </div>
           </div>
         );
-      })}
+        });
+      })()}
 
       <div className="panel">
         <div className="hd">
