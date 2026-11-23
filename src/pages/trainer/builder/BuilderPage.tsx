@@ -57,6 +57,7 @@ import SearchSelect from "../../../components/ui/SearchSelect";
 import { loadInputValue, parseLoadToKg, type LoadUnit } from "../../../lib/units";
 import { getDefaultGymUnits, getEffectiveGymUnits, getEquipmentNames, makeUnitResolver } from "../../../services/units";
 import { supabase } from "../../../lib/supabase";
+import { lastLoadsByExercise } from "../../../services/training";
 import FixedRoutinesBuilder from "./FixedRoutinesBuilder";
 import { createFixedProgram } from "../../../services/fixedRoutines";
 import { paths } from "../../../routes/paths";
@@ -547,11 +548,15 @@ function SessionEditor({
   const [session, setSession] = useState<SessionRow>(initialSession);
   // kg o lb para cada ejercicio, según el gimnasio del alumno de este programa (ver lib/units.ts).
   const [unitResolver, setUnitResolver] = useState<{ fn: (ex: WorkoutExerciseRow) => LoadUnit }>({ fn: () => "kg" });
+  // Alumno de este programa y la carga de la última vez que hizo cada ejercicio.
+  const [editorClientId, setEditorClientId] = useState<string | null>(null);
+  const [lastLoads, setLastLoads] = useState<Record<string, { kg: number; unit: "kg" | "lb"; date: string }>>({});
   useEffect(() => {
     let alive = true;
     (async () => {
       const { data } = await supabase.from("programs").select("client_id").eq("id", initialSession.program_id).maybeSingle();
       const orgId = profile?.organization_id ?? null;
+      if (alive) setEditorClientId((data?.client_id as string) ?? null);
       const gym = data?.client_id ? await getEffectiveGymUnits(data.client_id as string, orgId) : orgId ? await getDefaultGymUnits(orgId) : "kg";
       const eq = await getEquipmentNames();
       if (alive) setUnitResolver({ fn: makeUnitResolver(gym, eq) });
@@ -606,6 +611,19 @@ function SessionEditor({
   }, [exercises, bodyFilter, muscleFilter, search, muscleById]);
 
   const blockByKind = Object.fromEntries(blocks.map((b) => [b.kind, b]));
+
+  const exerciseKey = [...new Set(items.map((it) => it.exercise_id))].sort().join(",");
+  useEffect(() => {
+    let alive = true;
+    if (!editorClientId || !exerciseKey) {
+      setLastLoads({});
+      return;
+    }
+    lastLoadsByExercise(editorClientId, exerciseKey.split(",")).then((r) => alive && setLastLoads(r)).catch(() => {});
+    return () => {
+      alive = false;
+    };
+  }, [editorClientId, exerciseKey]);
 
   const toggleSelect = (id: string) => setSelected((s) => (s.includes(id) ? s.filter((x) => x !== id) : [...s, id]));
 
@@ -1115,6 +1133,8 @@ function SessionEditor({
                               unit={unitResolver.fn(it)}
                               onChangeKg={(v) => patchItem(it.id, "load_value", v)}
                               onChangeUnit={(u) => patchItem(it.id, "load_unit", u)}
+                              lastKg={lastLoads[it.exercise_id]?.kg ?? null}
+                              lastDate={lastLoads[it.exercise_id]?.date ?? null}
                             />
                           </td>
                           <td data-label="RIR" style={{ padding: "6px" }}><NumCell value={it.rir} onChange={(v) => patchItem(it.id, "rir", v)} /></td>
@@ -1570,12 +1590,18 @@ function LoadCell({
   unit,
   onChangeKg,
   onChangeUnit,
+  lastKg,
+  lastDate,
 }: {
   kg: number | null;
   unit: LoadUnit;
   onChangeKg: (kg: number | null) => void;
   onChangeUnit: (u: LoadUnit) => void;
+  /** Carga de la última vez que el alumno hizo este ejercicio (se muestra si la carga está vacía). */
+  lastKg?: number | null;
+  lastDate?: string | null;
 }) {
+  const lastText = lastKg != null ? loadInputValue(lastKg, unit) : "";
   const [text, setText] = useState(loadInputValue(kg, unit));
   useEffect(() => setText(loadInputValue(kg, unit)), [kg, unit]);
   return (
@@ -1585,6 +1611,12 @@ function LoadCell({
         inputMode="decimal"
         style={{ width: 64, padding: "6px 4px", textAlign: "center" }}
         value={text}
+        placeholder={lastText}
+        title={
+          lastKg != null && !text
+            ? `Última vez${lastDate ? ` (${new Date(lastDate).toLocaleDateString("es")})` : ""}: ${lastText} ${unit}. Tu alumno arranca con esa carga; escribe otra si quieres cambiarla.`
+            : undefined
+        }
         aria-label={`Carga en ${unit}`}
         onChange={(e) => setText(e.target.value)}
         onBlur={() => onChangeKg(parseLoadToKg(text, unit))}

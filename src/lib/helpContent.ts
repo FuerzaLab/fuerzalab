@@ -184,6 +184,7 @@ export const HELP_TOPICS: HelpTopic[] = [
       { label: "¿Cómo quieres trabajar? (primera vez)", desc: "Rutinas fijas: armas los días y se repiten cada semana. Plan por semanas: con bloques y progresión." },
       { label: "Días / rutinas (arriba)", desc: "Toca uno para editarlo; arrástralos para cambiarlos de lugar." },
       { label: "Añadir a la sesión", desc: "Busca un ejercicio y súmalo al bloque elegido." },
+      { label: "Carga en gris", desc: "Si dejas la carga vacía, se ve la de la última vez que tu alumno hizo ese ejercicio, y con esa arranca al entrenar. Escribe otra para cambiarla." },
       { label: "⋮⋮ y ▲ ▼ en cada bloque", desc: "Cambia el orden de los bloques (Calentamiento, Principal, Cardio…): arrastra el título o usa las flechas. Tu alumno los ve en ese orden." },
       { label: "Crear un ejercicio nuevo", desc: "Si no está en la lista, lo creas ahí mismo." },
       { label: "Importar rutina", desc: "Desde un Excel o Word; si un ejercicio no existe, lo puedes crear al importar." },

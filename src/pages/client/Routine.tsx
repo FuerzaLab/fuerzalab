@@ -869,7 +869,7 @@ function SupersetTrainer({
                         <span style={{ flex: 1, minWidth: 120 }}>{ex.exercise_name}</span>
                         <span className="note" style={{ fontSize: 12.5 }}>Obj: {repsTarget}{ex.load_value ? ` @ ${formatLoad(ex.load_value, unitFor(ex))}` : ""}</span>
                         <MiniSetInputs
-                          key={`${ex.id}-${roundNumber}-${unitFor(ex)}-${fixedMode && lastPerf[ex.exercise_id] ? "p" : "n"}`}
+                          key={`${ex.id}-${roundNumber}-${unitFor(ex)}-${lastPerf[ex.exercise_id] ? "p" : "n"}`}
                           inRound
                           register={(fn) => {
                             getters.current[`${ex.id}:${roundNumber}`] = fn;
@@ -928,8 +928,13 @@ function SupersetTrainer({
  * la última vez en esa serie (o en la última serie que tenga); si no, la que
  * indicó el entrenador.
  */
+/**
+ * Con qué carga arranca cada serie: si el entrenador escribió una carga, esa;
+ * si la dejó vacía (o son rutinas fijas), la de la última vez que hizo ese
+ * ejercicio, serie por serie.
+ */
 function prefillLoad(prescribed: number | null, perf: LastPerformance | null | undefined, setNumber: number, fixedMode: boolean): number | null {
-  if (!fixedMode || !perf) return prescribed;
+  if (!perf || (!fixedMode && prescribed != null)) return prescribed;
   const same = perf.bySet[setNumber]?.loadKg;
   if (same != null) return same;
   const sets = Object.keys(perf.bySet).map(Number).sort((a, b) => b - a);
@@ -1112,7 +1117,7 @@ function ExerciseTrainer({
               const existing = logFor(ex.id, setNumber);
               return (
                 <SetRow
-                  key={`${setNumber}-${unit}-${fixedMode && lastPerf ? "p" : "n"}`}
+                  key={`${setNumber}-${unit}-${lastPerf ? "p" : "n"}`}
                   exUnit={unit}
                   setNumber={setNumber}
                   defaultReps={ex.reps_max ?? ex.reps_min ?? 0}

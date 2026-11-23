@@ -22,6 +22,21 @@ export interface ChangelogEntry {
 
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    id: "2026-11-22-last-load",
+    date: "2026-11-22",
+    title: "La carga de la última vez, a la vista",
+    body: "En el Constructor, si dejas la carga vacía, el campo muestra en gris la carga de la última vez que tu alumno hizo ese ejercicio. Y al entrenar, la serie arranca con esa carga (serie por serie). Si escribes una carga, se usa la tuya.",
+    for: ["trainer"],
+    link: { label: "Ir al Constructor", to: paths.trainerBuilder },
+  },
+  {
+    id: "2026-11-22-last-load-client",
+    date: "2026-11-22",
+    title: "Tus cargas de la última vez",
+    body: "Cuando tu entrenador no indica una carga, cada serie arranca con la que usaste la última vez en ese ejercicio. Solo ajusta si hoy subes o bajas.",
+    for: ["client"],
+  },
+  {
     id: "2026-11-19-block-order",
     date: "2026-11-19",
     title: "Ordena los bloques de cada rutina",

@@ -165,6 +165,38 @@ export async function getLastPerformance(clientId: string, exerciseId: string, e
   return { date: data[0].performed_at, bySet };
 }
 
+/**
+ * La carga de la última vez que el alumno hizo cada ejercicio (la serie más
+ * pesada de esa sesión), para mostrarla en el Constructor cuando la carga
+ * está vacía. exerciseIds: los ejercicios de la rutina.
+ */
+export async function lastLoadsByExercise(
+  clientId: string,
+  exerciseIds: string[],
+): Promise<Record<string, { kg: number; unit: "kg" | "lb"; date: string }>> {
+  const ids = [...new Set(exerciseIds)];
+  if (!clientId || !ids.length) return {};
+  const { data, error } = await supabase
+    .from("workout_set_logs")
+    .select("exercise_id, workout_log_id, load_kg, load_unit, performed_at")
+    .eq("client_id", clientId)
+    .in("exercise_id", ids)
+    .eq("completed", true)
+    .not("load_kg", "is", null)
+    .order("performed_at", { ascending: false })
+    .limit(1000);
+  if (error) return {};
+  const out: Record<string, { kg: number; unit: "kg" | "lb"; date: string; log: string }> = {};
+  for (const r of (data ?? []) as any[]) {
+    const kg = Number(r.load_kg);
+    if (!(kg > 0)) continue;
+    const cur = out[r.exercise_id];
+    if (!cur) out[r.exercise_id] = { kg, unit: r.load_unit === "lb" ? "lb" : "kg", date: r.performed_at, log: r.workout_log_id };
+    else if (cur.log === r.workout_log_id && kg > cur.kg) cur.kg = kg; // la serie más pesada de esa misma sesión
+  }
+  return Object.fromEntries(Object.entries(out).map(([k, v]) => [k, { kg: v.kg, unit: v.unit, date: v.date }]));
+}
+
 export async function listSetLogs(workoutLogId: string): Promise<SetLogRow[]> {
   const { data, error } = await supabase
     .from("workout_set_logs")
