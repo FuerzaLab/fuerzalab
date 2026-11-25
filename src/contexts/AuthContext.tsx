@@ -81,6 +81,24 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setProfile(p);
   };
 
+  // Último ingreso real (part4w): la sesión queda iniciada, así que se avisa
+  // cada vez que alguien abre la app o vuelve a ella (la base de datos lo
+  // guarda como mucho una vez por hora).
+  const profileId = profile?.id ?? null;
+  useEffect(() => {
+    if (!profileId) return;
+    let last = 0;
+    const touch = () => {
+      if (Date.now() - last < 10 * 60 * 1000) return;
+      last = Date.now();
+      supabase.rpc("touch_last_seen").then(() => null, () => null);
+    };
+    touch();
+    const onVisible = () => document.visibilityState === "visible" && touch();
+    document.addEventListener("visibilitychange", onVisible);
+    return () => document.removeEventListener("visibilitychange", onVisible);
+  }, [profileId]);
+
   useEffect(() => {
     let isMounted = true;
 

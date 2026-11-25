@@ -457,3 +457,7 @@ Nuevo modelo (Términos, punto 8): **FuerzaLab es gratis para entrenadores y est
 ## Carga de la última vez (sin migración)
 - **Constructor**: si la carga de un ejercicio está vacía, el campo muestra en gris (placeholder) la carga de la última vez que el alumno lo hizo — la serie más pesada de esa sesión — en kg o lb según el ejercicio, con la fecha al pasar el mouse (`lastLoadsByExercise` en `services/training.ts`). No se guarda como carga indicada: si el entrenador escribe un valor, ese manda.
 - **Al entrenar** (Mi rutina del alumno y Entrenar con cliente, `prefillLoad` en `pages/client/Routine.tsx`; la Sala ya lo hacía): si el entrenador no indicó carga (o son rutinas fijas), cada serie arranca con la carga de esa misma serie la última vez (o la última serie con carga). Si indicó una carga, arranca con la indicada.
+
+## Último ingreso real (part4w_migration.sql)
+- Antes, «Último ingreso» solo cambiaba al escribir correo y contraseña (`auth.users.last_sign_in_at`). Como la app deja la sesión iniciada, los que la abrían a diario quedaban con una fecha vieja.
+- Ahora la app llama a `touch_last_seen()` al abrirse y cada vez que vuelve a primer plano (como mucho cada 10 minutos desde el celular; la base de datos guarda como mucho una vez por hora) y actualiza `profiles.last_sign_in_at`. Se ve en Clientes, Equipo, Tu estudio y Usuarios del Super Admin. Las fechas se corrigen a medida que cada uno vuelve a abrir la app.
